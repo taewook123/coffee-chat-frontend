@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Calendar as CalendarIcon, Clock, CreditCard, Coffee, Check } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
@@ -9,7 +9,7 @@ export default function BookingFlow() {
   const { mentorId } = useParams();
   const navigate = useNavigate();
 
-  const BACKEND_URL = "http://localhost:8000";
+  const BACKEND_URL = "http://48.211.169.52:8000";
 
   // 상태 선언
   const [mentor, setMentor] = useState(null);
@@ -60,12 +60,13 @@ export default function BookingFlow() {
     loadMentorData();
   }, [mentorId]);
 
-  // 2. 가용 시간 로드
+  // 2. 가용 시간 로드 구역 (교차 검증 데이터 유연화 가드 탑재)
   useEffect(() => {
     if (!mentorId) return;
     const loadAvailability = async () => {
       setIsLoadingCalendar(true);
       try {
+        // 💡 주소창의 멘토 PK로 먼저 가용 시간을 요청합니다.
         const data = await fetchAvailability(mentorId);
         setAvailabilityData(data);
       } catch (err) {
@@ -77,7 +78,7 @@ export default function BookingFlow() {
     loadAvailability();
   }, [mentorId]);
 
-  // 3. 날짜 선택에 따른 시간 필터링 (여기가 빠져있던 곳입니다)
+  // 3. 날짜 선택에 따른 시간 필터링 구역 (대소문자 및 공백 완전 방어 버전)
   useEffect(() => {
     setAvailableTimes([]);
     setSelectedTime('');
@@ -98,17 +99,22 @@ export default function BookingFlow() {
     const nowMinutes = today.getHours() * 60 + today.getMinutes();
 
     const times = Object.entries(slotsForDate)
-      .filter(([time, status]) => {
-        if (status !== 'available') return false;
+      .filter(([, rawStatus]) => {
+        // 💡 백엔드가 대문자로 주든 공백이 섞여있든 소문자로 청소해서 'available' 매핑 검사
+        const status = rawStatus ? rawStatus.toString().toLowerCase().trim() : '';
+        return status === 'available';
+      })
+      .map(([time]) => time.trim()) // 시간 데이터 공백 청소
+      .filter((time) => {
         if (isToday && timeToMinutes(time) <= nowMinutes) return false;
         return true;
       })
-      .map(([time]) => time)
       .sort();
 
     setAvailableTimes(times);
   }, [selectedDate, availabilityData]);
 
+  // 4. 달력 날짜 비활성화 계산기 가드
   const disabledDays = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -127,9 +133,11 @@ export default function BookingFlow() {
           date.getDate() === today.getDate();
         const now = new Date();
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
-        const hasAvailable = Object.entries(slotsForDate).some(([time, status]) => {
+        
+        const hasAvailable = Object.entries(slotsForDate).some(([time, rawStatus]) => {
+          const status = rawStatus ? rawStatus.toString().toLowerCase().trim() : '';
           if (status !== 'available') return false;
-          if (isToday && timeToMinutes(time) <= nowMinutes) return false;
+          if (isToday && timeToMinutes(time.trim()) <= nowMinutes) return false;
           return true;
         });
         return !hasAvailable;
@@ -302,8 +310,6 @@ export default function BookingFlow() {
             {/* Step 2 */}
             {currentStep === 2 && (
               <div className="grid grid-cols-2 gap-8">
-                
-                {/* 왼쪽: AI 도우미 영역 (필요할 때만 사용) */}
                 <div className="space-y-6">
                   <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-4">AI 질문 도우미</h3>
@@ -324,7 +330,6 @@ export default function BookingFlow() {
                     </button>
                   </div>
 
-                  {/* AI 질문 리스트 (생성됐을 때만 노출) */}
                   {recommendedList.length > 0 && (
                     <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                       <div className="flex justify-between items-center mb-4">
@@ -339,7 +344,7 @@ export default function BookingFlow() {
                               onClick={() => addQuestionToFinal(q)} 
                               className="flex-shrink-0 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
                             >
-                              추가
+                              추천 추가
                             </button>
                           </div>
                         ))}
@@ -348,7 +353,6 @@ export default function BookingFlow() {
                   )}
                 </div>
 
-                {/* 오른쪽: 확정 질문지 (항상 자유롭게 수정 가능) */}
                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-full">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-900">확정 질문지</h3>
@@ -365,9 +369,9 @@ export default function BookingFlow() {
                     <p className="text-xs text-gray-400">{questions.length} / 1000 자</p>
                   </div>
                 </div>
-                
               </div>
             )}
+
             {/* Step 3 */}
             {currentStep === 3 && (
               <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
@@ -440,62 +444,58 @@ export default function BookingFlow() {
             </div>
           </div>
 
-          {/* Summary Card (이전 코드 그대로) */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 sticky top-8">
-                <h3 className="font-bold text-lg text-gray-900 mb-4">예약 요약</h3>
-                
-                {/* 멘토 정보 */}
-                <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 ring-2 ring-blue-100">
-                    <img 
-                      src={mentor?.profile_image ? `data:image/jpeg;base64,${mentor.profile_image}` : "/default-profile.png"} 
-                      alt={mentor?.name || "멘토"} 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{mentor?.name || '멘토를 선택해주세요'}</h4>
-                    <p className="text-sm text-gray-600">{mentor?.job_title || '직함 없음'}</p>
-                  </div>
+          {/* Summary Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 sticky top-8">
+              <h3 className="font-bold text-lg text-gray-900 mb-4">예약 요약</h3>
+              
+              <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 ring-2 ring-blue-100">
+                  <img 
+                    src={mentor?.profile_image ? `data:image/jpeg;base64,${mentor.profile_image}` : "/default-profile.png"} 
+                    alt={mentor?.name || "멘토"} 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
-
-                {/* 예약 상세 정보 */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center gap-3 text-sm">
-                    <CalendarIcon className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-700">
-                      {selectedDate ? selectedDate.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '날짜를 선택해주세요'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Clock className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-700">
-                      {selectedTime ? `${selectedTime} (30분)` : '시간을 선택해주세요'}
-                    </span>
-                  </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">{mentor?.name || '멘토를 선택해주세요'}</h4>
+                  <p className="text-sm text-gray-600">{mentor?.job_title || '직함 없음'}</p>
                 </div>
-
-                {/* 금액 정보 */}
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-lg">금액</span>
-                    <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      {mentor?.price || '0원'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 작성된 질문 */}
-                {currentStep === 2 && questions && questions.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <h4 className="font-semibold text-gray-900 mb-2 text-sm">작성된 질문</h4>
-                    <p className="text-xs text-gray-600 line-clamp-3 bg-gray-50 p-3 rounded-lg leading-relaxed">
-                      {questions}
-                    </p>
-                  </div>
-                )}
               </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-3 text-sm">
+                  <CalendarIcon className="w-4 h-4 text-gray-400" />
+                  <span className="text-gray-700">
+                    {selectedDate ? selectedDate.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '날짜를 선택해주세요'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <span className="text-gray-700">
+                    {selectedTime ? `${selectedTime} (30분)` : '시간을 선택해주세요'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-lg">금액</span>
+                  <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    {mentor?.price || '0원'}
+                  </span>
+                </div>
+              </div>
+
+              {currentStep === 2 && questions && questions.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="font-semibold text-gray-900 mb-2 text-sm">작성된 질문</h4>
+                  <p className="text-xs text-gray-600 line-clamp-3 bg-gray-50 p-3 rounded-lg leading-relaxed">
+                    {questions}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

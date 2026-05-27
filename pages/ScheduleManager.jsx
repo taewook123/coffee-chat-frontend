@@ -11,27 +11,22 @@ const SLOT_STATUS = {
  
 export default function ScheduleManager() {
   const [date, setDate] = useState(new Date());
-  /**
-   * scheduleData 구조:
-   * {
-   *   '2026-05-23': {
-   *     '09:00': 'available',
-   *     '10:00': 'booked',
-   *     ...
-   *   },
-   *   ...
-   * }
-   */
   const [scheduleData, setScheduleData] = useState({});
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
  
-  // 화면 진입 시 DB에서 가용/예약 슬롯 불러오기
+  // ─── [정밀 리팩토링] 새로고침 시 대소문자 무관 완벽 데이터 동기화 및 복원 ───
   useEffect(() => {
     const fetchSchedule = async () => {
-      const userId = localStorage.getItem('userId') || 1;
+      let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id') || "13";
+      
+      // 숫자 외 기생 문자열 청소 가위질
+      const cleanId = parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10);
+
       try {
-        const res = await axios.get(`http://48.211.169.52:8000/api/mentor/availability/${userId}`);
+        setInitialLoading(true);
+        // 백엔드 교차 검증 엔드포인트로 유저 PK 전달하여 예약/가용 데이터 한번에 수신
+        const res = await axios.get(`http://48.211.169.52:8000/api/mentor/availability/${cleanId}`);
         setScheduleData(res.data);
       } catch (error) {
         console.error('일정 불러오기 실패:', error);
@@ -82,10 +77,13 @@ export default function ScheduleManager() {
   // ─── 슬롯 토글 ───────────────────────────────────────────
   const toggleSlot = (time) => {
     if (isSlotDisabled(time)) return; // 과거 슬롯은 조작 불가
-    const status = currentDaySlots[time];
+    const rawStatus = currentDaySlots[time];
+    
+    // 💡 백엔드 대소문자 혼용 유연 방어 가드 탑재
+    const status = rawStatus ? rawStatus.toString().toLowerCase().trim() : null;
  
-    // 1) 예약 확정 슬롯 → 취소 시 패널티 모달
-    if (status === SLOT_STATUS.BOOKED) {
+    // 1) 예약 확정 슬롯 → 취소 시 패널티 모달 가동
+    if (status === 'booked' || status === SLOT_STATUS.BOOKED) {
       setPenaltyModal({ open: true, time, penaltyLoading: false });
       return;
     }
@@ -105,20 +103,19 @@ export default function ScheduleManager() {
   // ─── 패널티 확인 후 취소 ─────────────────────────────────
   const confirmPenaltyCancel = async () => {
     const { time } = penaltyModal;
-    const userId = localStorage.getItem('userId') || 1;
+    let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id') || "13";
+    const cleanId = parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10);
  
     setPenaltyModal((prev) => ({ ...prev, penaltyLoading: true }));
  
     try {
-      // 패널티 API 호출
       await axios.post(`http://48.211.169.52:8000/api/mentor/penalty`, {
-        mentor_id: userId,
+        mentor_id: cleanId,
         date: currentDateKey,
         time,
         reason: 'mentor_cancelled_booked_slot',
       });
  
-      // 슬롯 제거
       setScheduleData((prev) => {
         const day = { ...(prev[currentDateKey] || {}) };
         delete day[time];
@@ -137,53 +134,61 @@ export default function ScheduleManager() {
   // ─── 전체 저장 ───────────────────────────────────────────
   const handleSaveAll = async () => {
     setLoading(true);
-    const userId = localStorage.getItem('userId') || 1;
- 
-    // 서버에는 available 슬롯 목록만 전송 (booked는 서버가 이미 알고 있음)
+    
+    let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id') || "13";
+    const cleanId = parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10);
+  
+    // 서버에는 오직 'available' 슬롯 목록만 골라서 전송
     const availableOnly = {};
     for (const [dateKey, slots] of Object.entries(scheduleData)) {
       const times = Object.entries(slots)
-        .filter(([, status]) => status === SLOT_STATUS.AVAILABLE)
+        .filter(([, rawStatus]) => {
+          const status = rawStatus ? rawStatus.toString().toLowerCase().trim() : '';
+          return status === 'available';
+        })
         .map(([time]) => time)
         .sort();
       if (times.length > 0) availableOnly[dateKey] = times;
     }
- 
+  
     try {
       await axios.post(`http://48.211.169.52:8000/api/mentor/availability/bulk`, {
-        mentor_id: userId,
+        mentor_id: cleanId, 
         schedules: availableOnly,
       });
-      alert('모든 일정이 성공적으로 저장되었습니다!');
+      alert('🎉 모든 일정이 성공적으로 DB에 저장되었습니다!');
     } catch (error) {
       console.error('저장 실패:', error);
-      alert('저장에 실패했습니다. 서버 상태를 확인해주세요.');
+      const errorMsg = error.response?.data?.detail || '저장에 실패했습니다. 서버 상태를 확인해주세요.';
+      alert(`❌ 저장 실패: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
   };
  
-  // ─── 슬롯 스타일 결정 ────────────────────────────────────
+  // ─── [정밀 조율] 대소문자 혼용 통합 문자열 매핑 스타일러 분기 ───
   const getSlotStyle = (time) => {
     if (isSlotDisabled(time)) {
       return 'bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed line-through';
     }
-    const status = currentDaySlots[time];
-    if (status === SLOT_STATUS.BOOKED) {
+    const rawStatus = currentDaySlots[time];
+    const status = rawStatus ? rawStatus.toString().toLowerCase().trim() : null;
+
+    if (status === 'booked') {
       return 'bg-red-100 text-red-700 border-red-300 font-bold cursor-pointer hover:bg-red-200';
     }
-    if (status === SLOT_STATUS.AVAILABLE) {
+    if (status === 'available') {
       return 'bg-[#4a90e2] text-white border-[#4a90e2] font-bold hover:bg-[#357abd]';
     }
     return 'bg-white text-gray-700 border-gray-300 hover:border-[#4a90e2] hover:bg-blue-50';
   };
  
-  // ─── 달력 타일 콘텐츠 ────────────────────────────────────
+  // ─── 달력 작은 점 표시 가드 ───
   const tileContent = ({ date: tileDate }) => {
     const dateKey = formatDate(tileDate);
     const slots = scheduleData[dateKey] || {};
-    const hasAvailable = Object.values(slots).some((s) => s === SLOT_STATUS.AVAILABLE);
-    const hasBooked = Object.values(slots).some((s) => s === SLOT_STATUS.BOOKED);
+    const hasAvailable = Object.values(slots).some((s) => s && s.toString().toLowerCase().trim() === 'available');
+    const hasBooked = Object.values(slots).some((s) => s && s.toString().toLowerCase().trim() === 'booked');
     return (
       <div className="flex justify-center gap-0.5 mt-1">
         {hasAvailable && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />}
@@ -192,13 +197,16 @@ export default function ScheduleManager() {
     );
   };
  
-  const availableCount = Object.values(currentDaySlots).filter((s) => s === SLOT_STATUS.AVAILABLE).length;
-  const bookedCount = Object.values(currentDaySlots).filter((s) => s === SLOT_STATUS.BOOKED).length;
+  const availableCount = Object.values(currentDaySlots).filter((s) => s && s.toString().toLowerCase().trim() === 'available').length;
+  const bookedCount = Object.values(currentDaySlots).filter((s) => s && s.toString().toLowerCase().trim() === 'booked').length;
  
   if (initialLoading) {
     return (
       <div className="w-full bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-center min-h-[300px]">
-        <p className="text-gray-400 text-sm">일정을 불러오는 중...</p>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm">스케줄 정보를 안전하게 동기화하는 중...</p>
+        </div>
       </div>
     );
   }
@@ -207,7 +215,6 @@ export default function ScheduleManager() {
     <div className="w-full bg-white p-6 rounded-xl shadow-sm border border-gray-200">
       <h2 className="text-2xl font-bold text-[#1a2332] mb-2">멘토링 일정 관리</h2>
  
-      {/* 범례 */}
       <div className="flex gap-4 mb-6 text-sm">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-[#4a90e2]" />
@@ -224,7 +231,6 @@ export default function ScheduleManager() {
       </div>
  
       <div className="flex flex-col md:flex-row gap-8">
-        {/* 달력 */}
         <div className="w-full md:w-1/3">
           <h3 className="font-semibold mb-3">날짜 선택</h3>
           <Calendar
@@ -238,7 +244,6 @@ export default function ScheduleManager() {
           />
         </div>
  
-        {/* 시간 슬롯 */}
         <div className="flex-1">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-lg">{currentDateKey} 가능한 시간</h3>
@@ -257,22 +262,17 @@ export default function ScheduleManager() {
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 mb-6">
             {timeSlots.map((time) => {
               const disabled = isSlotDisabled(time);
+              const rawStatus = currentDaySlots[time];
+              const isBooked = rawStatus && rawStatus.toString().toLowerCase().trim() === 'booked';
               return (
               <button
                 key={time}
                 onClick={() => toggleSlot(time)}
                 disabled={disabled}
-                title={
-                  disabled
-                    ? '이미 지난 시간입니다.'
-                    : currentDaySlots[time] === SLOT_STATUS.BOOKED
-                    ? '예약 확정된 시간입니다. 취소 시 패널티가 부여됩니다.'
-                    : undefined
-                }
                 className={`py-2 px-1 text-xs sm:text-sm rounded border transition-colors ${getSlotStyle(time)}`}
               >
                 {time}
-                {currentDaySlots[time] === SLOT_STATUS.BOOKED && !disabled && (
+                {isBooked && !disabled && (
                   <span className="block text-[9px] leading-tight">예약됨</span>
                 )}
               </button>
@@ -287,44 +287,10 @@ export default function ScheduleManager() {
               loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1a2332] text-white hover:bg-black'
             }`}
           >
-            {loading ? '저장 중...' : '모든 일정 한 번에 저장하기'}
+            {loading ? '모든 일정 한 번에 저장하는 중...' : '모든 일정 한 번에 저장하기'}
           </button>
         </div>
       </div>
- 
-      {/* 패널티 확인 모달 */}
-      {penaltyModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4">
-            <div className="text-4xl mb-3 text-center">⚠️</div>
-            <h3 className="text-xl font-bold text-center text-[#1a2332] mb-2">예약 취소 경고</h3>
-            <p className="text-gray-600 text-center mb-1">
-              <strong>{currentDateKey} {penaltyModal.time}</strong>
-            </p>
-            <p className="text-gray-600 text-center mb-6">
-              이 시간은 멘티가 이미 예약한 슬롯입니다.
-              취소하면 <span className="text-red-600 font-bold">패널티</span>가 부여됩니다.
-              정말 취소하시겠습니까?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setPenaltyModal({ open: false, time: null, penaltyLoading: false })}
-                disabled={penaltyModal.penaltyLoading}
-                className="flex-1 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition disabled:opacity-50"
-              >
-                돌아가기
-              </button>
-              <button
-                onClick={confirmPenaltyCancel}
-                disabled={penaltyModal.penaltyLoading}
-                className="flex-1 py-3 rounded-lg bg-red-500 text-white font-bold hover:bg-red-600 transition disabled:opacity-50"
-              >
-                {penaltyModal.penaltyLoading ? '처리 중...' : '패널티 감수하고 취소'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
