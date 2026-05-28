@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ChevronDown, Sparkles, Filter } from 'lucide-react';
+import { Search, ChevronDown, Sparkles, Filter, X } from 'lucide-react';
 
 export default function Mentors() {
   const stripHTML = (htmlString) => {
@@ -129,34 +129,37 @@ export default function Mentors() {
   ];
 
   const filteredMentors = mentorsList.filter((mentor) => {
+    // 1. 상태 필터 (전체 또는 일치)
     const mentorStatus = mentor.status || '현직자';
     const matchesStatus = selectedStatus === '전체' || mentorStatus === selectedStatus;
 
+    // 2. 직무 필터 (주/세부 직무 매칭 로직 개선)
     let matchesCategory = true;
-    const techStackArray = mentor.techStack || [];
-    const mentorRole = mentor.job_title || '';
-
     if (selectedSubCategory !== '전체') {
+      // 멘토의 직무 정보를 가져옴 (백엔드 데이터 구조에 따라 mentor.main_category, sub_category 혹은 job_title 등 사용)
+      const mentorMain = mentor.main_category || '';
+      const mentorSub = mentor.sub_category || '';
+
       if (selectedSubCategory.startsWith('전체')) {
+        // '전체 [메인카테고리]'를 선택했을 때
         const mainCatKey = selectedSubCategory.split(' ')[1];
-        matchesCategory = techStackArray.some(tech => tech.includes(mainCatKey)) || mentorRole.includes(mainCatKey);
+        matchesCategory = mentorMain === mainCatKey;
       } else {
-        const targetJob = selectedSubCategory.replace(/\(.*\)/, '').trim();
-        matchesCategory =
-          techStackArray.some(tech => tech.toLowerCase().includes(targetJob.toLowerCase())) ||
-          mentorRole.toLowerCase().includes(targetJob.toLowerCase());
+        // 구체적인 [세부직무]를 선택했을 때
+        matchesCategory = mentorSub === selectedSubCategory;
       }
     }
 
+    // 3. 키워드 검색 (기존 로직 유지)
     const mentorName = mentor.name || '';
     const mentorCompany = mentor.company || '🏢 크루 멤버';
-    const mentorBio = mentor.bio || mentor.job_title || '안녕하세요! 반가워요.';
+    const mentorRole = mentor.job_title || '';
+    const techStackArray = mentor.techStack || [];
 
     const matchesSearch =
-      mentorName.includes(searchQuery) ||
+      mentorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       mentorCompany.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mentorRole.includes(searchQuery) ||
-      mentorBio.includes(searchQuery) ||
+      mentorRole.toLowerCase().includes(searchQuery.toLowerCase()) ||
       techStackArray.some(tech => tech.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesStatus && matchesCategory && matchesSearch;
@@ -218,56 +221,41 @@ export default function Mentors() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold text-slate-400 w-16 flex-shrink-0">직무별</span>
-                  <div className="flex gap-4 pb-1 overflow-visible"> {/* overflow-x-auto를 overflow-visible로 변경 */}
-                    {categories.map((cat) => (
-                      <div key={cat.main} className="relative py-1 flex-shrink-0">  {/* flex-shrink-0 추가 */}      
-                        <button 
-                          // 클릭 시 해당 카테고리만 열고, 이미 열려있으면 닫음
-                          onClick={() => setOpenCategory(openCategory === cat.main ? null : cat.main)}
-                          className={`text-xs font-bold transition flex items-center gap-0.5 border-0 cursor-pointer ${
-                            openCategory === cat.main ? 'text-blue-600' : 'text-slate-700'
-                          }`}
-                        >
-                          {cat.main.split('/')[0]} <ChevronDown className="w-3 h-3" />
-                        </button>
-                        
-                        {/* 조건부 렌더링: state가 일치할 때만 표시 */}
-                        {openCategory === cat.main && (
-                          <div className="absolute left-0 top-full mt-2 w-52 z-[9999] bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5">
-                            {cat.subs.map((sub) => (
-                              <button
-                                key={sub}
-                                onClick={() => {
-                                  setSelectedSubCategory(sub);
-                                  setOpenCategory(null); // 선택 완료 후 자동으로 닫기
-                                }}
-                                className={`px-4 py-2 text-left text-xs ${
-                                  selectedSubCategory === sub 
-                                    ? 'bg-blue-50 text-blue-600 font-bold' 
-                                    : 'text-slate-600 hover:bg-slate-50'
-                                }`}
-                              >
-                                {sub}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                <div className="flex flex-col gap-3"> {/* <div className="flex flex-col gap-3"> {/* 열 방향 컨테이너 시작 */}
+                  <div className="flex items-start gap-4">
+                    <span className="text-xs font-bold text-slate-400 w-16 flex-shrink-0 mt-1.5">직무별</span>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                      {categories.map((cat) => (
+                        <div key={cat.main} className="relative">
+                          <button 
+                            onClick={() => setOpenCategory(openCategory === cat.main ? null : cat.main)}
+                            className={`text-xs font-bold transition flex items-center gap-0.5 border-0 cursor-pointer ${openCategory === cat.main ? 'text-blue-600' : 'text-slate-700'}`}
+                          >
+                            {cat.main.split('/')[0]} <ChevronDown className="w-3 h-3" />
+                          </button>
+                          {openCategory === cat.main && (
+                            <div className="absolute left-0 top-6 mt-2 w-48 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5">
+                              {cat.subs.map((sub) => (
+                                <button key={sub} onClick={() => { setSelectedSubCategory(sub); setOpenCategory(null); }} className="block w-full px-4 py-2 text-left text-xs text-slate-600 hover:bg-slate-50">
+                                  {sub}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  {selectedSubCategory !== '전체' && (
-                    <button
-                      onClick={() => setSelectedSubCategory('전체')}
-                      className="text-[10px] bg-amber-50 text-amber-700 px-2.5 py-1 rounded-md border border-amber-200/60 font-semibold cursor-pointer flex-shrink-0"
-                    >
-                      {selectedSubCategory} ✕
-                    </button>
-                  )}
-                </div>
-              </div> {/* ✅ lg:col-span-8 닫힘 */}
 
+                  {selectedSubCategory !== '전체' && (
+                    <div className="ml-20">
+                      <button onClick={() => setSelectedSubCategory('전체')} className="text-[10px] bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 font-semibold cursor-pointer flex items-center gap-1.5">
+                        {selectedSubCategory} <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div> {/* 1. 여기서 열 방향 컨테이너 닫기 */}
+              </div> {/* 2. 여기서 lg:col-span-8 (왼쪽 영역) 닫기 */}
               {/* 오른쪽 키워드 검색바 */}
               <div className="lg:col-span-4 w-full">
                 <span className="block text-xs font-bold text-slate-400 mb-2">키워드 검색</span>

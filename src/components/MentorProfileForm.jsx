@@ -14,10 +14,8 @@ export default function MentorProfileForm({
   handleExperienceChange,
   addExperienceField,
   removeExperienceField
-})
+}){
 
-export default function MentorProfileForm({ formData, setFormData, ...props }) {
-  
   // 1. 카테고리 데이터를 여기서 정의하거나 별도 파일에서 import 하세요.
   const categories = [
     {
@@ -105,7 +103,7 @@ export default function MentorProfileForm({ formData, setFormData, ...props }) {
     }
   ];
   const statuses = ['현직자', '이직자', '프리랜서', '대학생', '취준생'];
-{
+
   return (
     <div className="space-y-6 animate-fadeIn">
       
@@ -114,7 +112,41 @@ export default function MentorProfileForm({ formData, setFormData, ...props }) {
         <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
           <Briefcase className="w-4 h-4 text-purple-600" /> 기본 정보 및 경력
         </h3>
-        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-2">현재 상태</label>
+            <select 
+              value={formData.status || '현직자'} 
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })} 
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm"
+            >
+              {statuses.map(st => <option key={st} value={st}>{st}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-2">주 직무</label>
+            <select 
+              value={formData.main_category || ''} 
+              onChange={(e) => setFormData({ ...formData, main_category: e.target.value, sub_category: '' })} 
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm"
+            >
+              <option value="">주 직무 선택</option>
+              {categories.map(c => <option key={c.main} value={c.main}>{c.main}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-2">세부 직무</label>
+            <select 
+              value={formData.sub_category || ''} 
+              onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })} 
+              disabled={!formData.main_category} 
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm disabled:bg-gray-100"
+            >
+              <option value="">세부 직무 선택</option>
+              {categories.find(c => c.main === formData.main_category)?.subs.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+            </select>
+          </div>
+        </div>
         <div>
           <label className="block text-xs font-bold text-gray-600 mb-2">이름 / 닉네임</label>
           <input
@@ -126,7 +158,7 @@ export default function MentorProfileForm({ formData, setFormData, ...props }) {
           />
         </div>
 
-        
+
 
         <div>
           <label className="block text-xs font-bold text-gray-600 mb-2">현재 직무 및 연차</label>
