@@ -483,12 +483,12 @@ export default function BookingFlow() {
                 <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 ring-2 ring-blue-100">
                   <img 
                     src={mentor?.profile_image ? `data:image/jpeg;base64,${mentor.profile_image}` : "/default-profile.png"} 
-                    alt={mentor?.name || "멘토"} 
+                    alt={mentor?.name || "호스트"} 
                     className="w-full h-full object-cover" 
                   />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900">{mentor?.name || '멘토를 선택해주세요'}</h4>
+                  <h4 className="font-semibold text-gray-900">{mentor?.name || '호스트를 선택해주세요'}</h4>
                   <p className="text-sm text-gray-600">{mentor?.job_title || '직함 없음'}</p>
                 </div>
               </div>

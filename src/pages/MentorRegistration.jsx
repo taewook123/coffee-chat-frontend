@@ -262,9 +262,9 @@ const MentorRegistration = () => {
       });
       
       if (response.ok) {
-        alert("🎉 성공적으로 멘토 등록이 완료되었습니다!");
+        alert("🎉 성공적으로 호스트 등록이 완료되었습니다!");
       } else {
-        alert("❌ 멘토 등록에 실패했습니다. 입력값을 확인해 주세요.");
+        alert("❌ 호스트 등록에 실패했습니다. 입력값을 확인해 주세요.");
       }
     } catch (error) {
       console.error("통신 에러 발생:", error);
@@ -277,7 +277,7 @@ const MentorRegistration = () => {
       <div className="max-w-3xl mx-auto space-y-8">
         
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900">멘토 등록하기</h1>
+          <h1 className="text-3xl font-bold text-gray-900">호스트 등록하기</h1>
           <p className="mt-2 text-gray-600">예비 멘티들에게 나누어 줄 소중한 경험을 적어주세요.</p>
         </div>
 
@@ -348,7 +348,7 @@ const MentorRegistration = () => {
 
           <div className="bg-white rounded-2xl p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
             <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              멘토님의 성장 스토리 (자기소개)
+              호스트님의 성장 스토리 (자기소개)
             </h2>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -551,7 +551,7 @@ const MentorRegistration = () => {
               type="submit" 
               className="w-full bg-[#4078FF] hover:bg-[#2b65f5] text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:shadow-xl transition-all"
             >
-              멘토 등록하기
+              호스트 등록하기
             </button>
           </div>
 

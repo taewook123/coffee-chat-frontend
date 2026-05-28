@@ -27,7 +27,7 @@
   color: #f43f5e;
 }
 
-/* 멘토 카드 그리드 */
+/* 호스트 카드 그리드 */
 .mentor-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr); /* 한 줄에 4개 */

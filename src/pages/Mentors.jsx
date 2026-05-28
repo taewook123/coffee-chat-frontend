@@ -35,7 +35,7 @@ export default function Mentors() {
           setMentorsList(data);
         }
       } catch (error) {
-        console.error("❌ 멘토 실시간 목록 수신 실패:", error);
+        console.error("❌ 호스트 실시간 목록 수신 실패:", error);
       } finally {
         setLoading(false);
       }
@@ -129,7 +129,7 @@ export default function Mentors() {
                 <Sparkles className="w-5 h-5" />
               </div>
               <h2 className="text-xl font-bold text-slate-800 tracking-tight m-0">
-                원하는 조건의 멘토 크루 찾기
+                원하는 조건의 호스트 크루 찾기
               </h2>
             </div>
 
@@ -244,7 +244,7 @@ export default function Mentors() {
                       {mentor.company || '🏢 CoffeeChat 크루'}
                     </span>
                     <h4 className="font-bold text-base text-slate-800 group-hover:text-blue-600 transition m-0">
-                      {mentor.name} 멘토
+                      {mentor.name} 호스트
                     </h4>
                     <p className="text-xs text-slate-500 mt-1 font-semibold m-0">
                       {mentor.job_title || '커리어 가이드'}
@@ -252,7 +252,7 @@ export default function Mentors() {
                   </div>
                   
                   <p className="text-xs text-slate-600 text-center leading-relaxed line-clamp-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-100 m-0 font-medium min-h-[48px] flex items-center justify-center">
-                  {stripHTML(mentor.bio) || mentor.job_title || '반가워요! 함께 깊이 고민하고 길을 찾는 든든한 멘토링 메이트가 되어 드리겠습니다.'}
+                  {stripHTML(mentor.bio) || mentor.job_title || '반가워요! 함께 깊이 고민하고 길을 찾는 든든한 상담 메이트가 되어 드리겠습니다.'}
                 </p>
 
                   {/* 기술 스택 해시태그 목록 출력 피드 안전장치 가드 처리 */}
@@ -266,7 +266,7 @@ export default function Mentors() {
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100 text-center text-xs text-blue-600 font-bold group-hover:text-blue-700 tracking-tight">
-                  상세 프로필 & 커피챗 신청하기 ☕
+                  상세 프로필 & 티타임 신청하기 ☕
                 </div>
               </Link>
             ))}
@@ -274,7 +274,7 @@ export default function Mentors() {
 
           {filteredMentors.length === 0 && (
             <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-              <p className="text-slate-400 text-sm font-medium m-0">조건에 일치하는 커피챗 멘토 크루가 아직 없습니다.</p>
+              <p className="text-slate-400 text-sm font-medium m-0">조건에 일치하는 티타임 호스트 크루가 아직 없습니다.</p>
               <button 
                 onClick={() => { setSelectedStatus('전체'); setSelectedSubCategory('전체'); setSearchQuery(''); }}
                 className="mt-3 text-xs bg-white text-slate-600 px-4 py-2 rounded-xl border border-slate-200 font-semibold cursor-pointer hover:bg-slate-50"

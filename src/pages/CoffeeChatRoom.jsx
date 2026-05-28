@@ -40,7 +40,7 @@ export default function CoffeeChatRoom() {
             </div>
             <div className="text-white">
               <h2 className="font-bold">Yongjin</h2>
-              <p className="text-sm text-white/80">커피챗 진행중</p>
+              <p className="text-sm text-white/80">티타임 진행중</p>
             </div>
           </div>
           <div className="flex items-center gap-4">

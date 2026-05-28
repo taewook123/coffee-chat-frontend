@@ -18,7 +18,7 @@ export default function MentorDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const [mentorName, setMentorName] = useState(() => {
-    return localStorage.getItem('userName') || '멘토';
+    return localStorage.getItem('userName') || '호스트';
   });
   const [upcomingChats, setUpcomingChats] = useState([]);
   const [stats, setStats] = useState([]);
@@ -60,7 +60,7 @@ export default function MentorDashboard() {
           { label: '총 채팅 수', value: String(backendStats.total_chats), icon: MessageSquare, color: 'bg-blue-500' },
           { label: '총 수익', value: `$${backendStats.total_earnings.toLocaleString()}`, icon: DollarSign, color: 'bg-green-500' },
           { label: '평균 평점', value: String(backendStats.average_rating), icon: TrendingUp, color: 'bg-purple-500' },
-          { label: '멘토링 시간', value: String(backendStats.mentoring_hours), icon: Clock, color: 'bg-orange-500' }
+          { label: '티타임 시간', value: String(backendStats.mentoring_hours), icon: Clock, color: 'bg-orange-500' }
         ];
         setStats(formattedStats);
         setUpcomingChats(upcoming_chats);
@@ -101,11 +101,11 @@ export default function MentorDashboard() {
         })}
       </div>
 
-      {/* 예정된 커피챗 */}
+      {/* 예정된 티타임 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-[#1a2332] mb-4">예정된 커피챗</h2>
+        <h2 className="text-xl font-semibold text-[#1a2332] mb-4">예정된 티타임</h2>
         {upcomingChats.length === 0 ? (
-          <p className="text-gray-500 text-sm">예정된 커피챗이 없습니다.</p>
+          <p className="text-gray-500 text-sm">예정된 티타임이 없습니다.</p>
         ) : (
           <ul className="space-y-3">
             {upcomingChats.map((chat, idx) => (
@@ -128,7 +128,7 @@ export default function MentorDashboard() {
   if (loading) {
     return (
       <div className="w-full h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-semibold animate-pulse">
-        ☕ 커피챗 실시간 통계 정보를 로드하고 있습니다...
+        ☕ 티타임 실시간 통계 정보를 로드하고 있습니다...
       </div>
     );
   }
@@ -141,7 +141,7 @@ export default function MentorDashboard() {
         <div className="p-6 sticky top-0">
           <Link to="/" className="flex items-center gap-2 mb-8 no-underline text-white">
             <Coffee className="w-8 h-8" />
-            <span className="text-xl font-semibold">Coffee Chat</span>
+            <span className="text-xl font-semibold">TeeTimes</span>
           </Link>
           <nav className="space-y-2">
             <button
