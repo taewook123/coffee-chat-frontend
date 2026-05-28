@@ -30,6 +30,9 @@ export default function ProfileSetup() {
   const [formData, setFormData] = useState({
     name: '', bio: '', mbti: '', hashtags: '', experience: '', portfolio_url: '', help_provide: '', help_receive: '',
     phone_number: '', // 💡 [추가] 초기 상태값에 전화번호 필드 결합
+    main_category: '', 
+    sub_category: '',
+    status: '',
     mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', mentor_keywords: '',
     mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
   });
@@ -136,6 +139,9 @@ export default function ProfileSetup() {
         help_receive: formData.help_receive, 
         profile_image: profileImage || "", 
         phone_number: formData.phone_number, // 💡 [추가] 백엔드 전송 페이로드에 전화번호 포함
+        main_category: formData.main_category,
+        sub_category: formData.sub_category,
+        status: formData.status,
 
         // 멘토 관련 데이터 이름 변경 
         job_title: formData.mentor_job || "", 
