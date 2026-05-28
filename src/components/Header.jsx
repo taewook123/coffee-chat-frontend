@@ -11,7 +11,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
 
   const [notifications, setNotifications] = useState([]); 
   const [hasUnread, setHasUnread] = useState(false);       
-  const [isOpen, setIsOpen] = useState(false);             
+  const [isOpen, setIsOpen] = useState(false);
 
   const BACKEND_URL = 'http://48.211.169.52:8000';
 
