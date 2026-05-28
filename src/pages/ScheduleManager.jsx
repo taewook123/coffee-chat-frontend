@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import axios from 'axios';
- 
+import { useNavigate } from 'react-router-dom'; // 💡 페이지 이동을 위해 추가
+
 // 슬롯 상태 상수
 const SLOT_STATUS = {
-  AVAILABLE: 'available', // 멘토가 설정한 가능 시간
-  BOOKED: 'booked',       // 멘티가 예약 확정한 시간
+  AVAILABLE: 'available', 
+  BOOKED: 'booked',       
 };
  
 export default function ScheduleManager() {
@@ -14,18 +15,47 @@ export default function ScheduleManager() {
   const [scheduleData, setScheduleData] = useState({});
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const navigate = useNavigate();
  
-  // ─── [정밀 리팩토링] 새로고침 시 대소문자 무관 완벽 데이터 동기화 및 복원 ───
+  // 타임존 버그 해결: 무조건 로컬 시간(한국 시간) 기준
+  const formatDate = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // 💡 [핵심 교정] 13번 강제 배정 로직 완전 삭제! 없으면 null 반환
+  const getMyId = () => {
+    let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
+    if (!savedId || savedId === 'null' || savedId === 'undefined') {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                savedId = payload.user_id;
+                if (savedId) localStorage.setItem('userId', savedId);
+            } catch (e) { console.error("토큰 파싱 에러:", e); }
+        }
+    }
+    // 💡 13번 하드코딩을 없애고, 정보가 없으면 null을 반환합니다.
+    return savedId ? parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10) : null;
+  };
+
+  // 새로고침 시 데이터 동기화
   useEffect(() => {
     const fetchSchedule = async () => {
-      let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id') || "13";
+      const cleanId = getMyId();
       
-      // 숫자 외 기생 문자열 청소 가위질
-      const cleanId = parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10);
+      // 💡 내 아이디가 없으면 남의 일정을 띄우지 말고 튕겨냅니다.
+      if (!cleanId) {
+        alert("로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
+        navigate('/login');
+        return;
+      }
 
       try {
         setInitialLoading(true);
-        // 백엔드 교차 검증 엔드포인트로 유저 PK 전달하여 예약/가용 데이터 한번에 수신
         const res = await axios.get(`http://48.211.169.52:8000/api/mentor/availability/${cleanId}`);
         setScheduleData(res.data);
       } catch (error) {
@@ -35,37 +65,31 @@ export default function ScheduleManager() {
       }
     };
     fetchSchedule();
-  }, []);
+  }, [navigate]);
  
-  // 패널티 취소 확인 모달 상태
   const [penaltyModal, setPenaltyModal] = useState({
     open: false,
     time: null,
     penaltyLoading: false,
   });
  
-  const formatDate = (d) => d.toISOString().split('T')[0];
   const currentDateKey = formatDate(date);
  
-  // 현재 시각 (렌더마다 최신 유지)
   const now = new Date();
   const todayKey = formatDate(now);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
  
-  // 선택한 날짜가 과거 날짜인지 여부
   const isSelectedDatePast = currentDateKey < todayKey;
  
-  // 특정 시간 슬롯이 비활성화되어야 하는지 판단
   const isSlotDisabled = (time) => {
-    if (currentDateKey < todayKey) return true; // 과거 날짜 전체 비활성
+    if (currentDateKey < todayKey) return true;
     if (currentDateKey === todayKey) {
       const [h, m] = time.split(':').map(Number);
-      return h * 60 + m <= nowMinutes; // 오늘 중 현재 시각 이전 슬롯 비활성
+      return h * 60 + m <= nowMinutes; 
     }
     return false;
   };
  
-  // 00:00 ~ 23:30 까지 30분 단위 슬롯 48개
   const timeSlots = Array.from({ length: 48 }, (_, i) => {
     const hour = Math.floor(i / 2).toString().padStart(2, '0');
     const minute = i % 2 === 0 ? '00' : '30';
@@ -74,21 +98,16 @@ export default function ScheduleManager() {
  
   const currentDaySlots = scheduleData[currentDateKey] || {};
  
-  // ─── 슬롯 토글 ───────────────────────────────────────────
   const toggleSlot = (time) => {
-    if (isSlotDisabled(time)) return; // 과거 슬롯은 조작 불가
+    if (isSlotDisabled(time)) return; 
     const rawStatus = currentDaySlots[time];
-    
-    // 💡 백엔드 대소문자 혼용 유연 방어 가드 탑재
     const status = rawStatus ? rawStatus.toString().toLowerCase().trim() : null;
  
-    // 1) 예약 확정 슬롯 → 취소 시 패널티 모달 가동
     if (status === 'booked' || status === SLOT_STATUS.BOOKED) {
       setPenaltyModal({ open: true, time, penaltyLoading: false });
       return;
     }
  
-    // 2) available 토글 (추가/제거)
     setScheduleData((prev) => {
       const day = { ...(prev[currentDateKey] || {}) };
       if (day[time]) {
@@ -100,11 +119,10 @@ export default function ScheduleManager() {
     });
   };
  
-  // ─── 패널티 확인 후 취소 ─────────────────────────────────
   const confirmPenaltyCancel = async () => {
     const { time } = penaltyModal;
-    let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id') || "13";
-    const cleanId = parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10);
+    const cleanId = getMyId();
+    if (!cleanId) return; // ID 방어
  
     setPenaltyModal((prev) => ({ ...prev, penaltyLoading: true }));
  
@@ -131,14 +149,14 @@ export default function ScheduleManager() {
     }
   };
  
-  // ─── 전체 저장 ───────────────────────────────────────────
   const handleSaveAll = async () => {
+    const cleanId = getMyId();
+    if (!cleanId) {
+        alert("로그인 정보가 없습니다.");
+        return;
+    }
+
     setLoading(true);
-    
-    let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id') || "13";
-    const cleanId = parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10);
-  
-    // 서버에는 오직 'available' 슬롯 목록만 골라서 전송
     const availableOnly = {};
     for (const [dateKey, slots] of Object.entries(scheduleData)) {
       const times = Object.entries(slots)
@@ -166,7 +184,6 @@ export default function ScheduleManager() {
     }
   };
  
-  // ─── [정밀 조율] 대소문자 혼용 통합 문자열 매핑 스타일러 분기 ───
   const getSlotStyle = (time) => {
     if (isSlotDisabled(time)) {
       return 'bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed line-through';
@@ -183,7 +200,6 @@ export default function ScheduleManager() {
     return 'bg-white text-gray-700 border-gray-300 hover:border-[#4a90e2] hover:bg-blue-50';
   };
  
-  // ─── 달력 작은 점 표시 가드 ───
   const tileContent = ({ date: tileDate }) => {
     const dateKey = formatDate(tileDate);
     const slots = scheduleData[dateKey] || {};
