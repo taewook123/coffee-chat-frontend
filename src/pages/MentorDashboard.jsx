@@ -12,7 +12,7 @@ import {
   Clock
 } from 'lucide-react';
 import ScheduleManager from './ScheduleManager';
-
+import BookingHistory from './BookingHistory';
 export default function MentorDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -163,7 +163,7 @@ export default function MentorDashboard() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('history')}
+              onClick={() => setActiveTab('history')} 
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition text-left ${
                 activeTab === 'history' ? 'bg-[#4a90e2] text-white' : 'hover:bg-[#2a3342] text-gray-300'
               }`}
@@ -197,7 +197,8 @@ export default function MentorDashboard() {
         <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'schedule' && <ScheduleManager />}
-          {activeTab === 'history' && <div>예약 내역 컴포넌트가 들어갈 자리입니다.</div>}
+          {activeTab === 'history' && <BookingHistory />}
+          
         </div>
       </main>
     </div>

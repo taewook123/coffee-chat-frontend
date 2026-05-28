@@ -1,3 +1,4 @@
+;
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Calendar as CalendarIcon, Clock, CreditCard, Coffee, Check } from 'lucide-react';
@@ -216,7 +217,7 @@ export default function BookingFlow() {
             time: selectedTime,
             questions: questions,
         });
-
+        
         alert('🎉 예약이 완료되었습니다! 호스트에게 요청 알림이 발송되었습니다.');
         navigate('/dashboard');
     } catch (err) {
