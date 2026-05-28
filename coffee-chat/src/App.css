@@ -1,0 +1,127 @@
+/* CoffeeChat.css */
+
+:root {
+  --deep-navy: #1A2A40;
+  --primary-blue: #3B82F6;
+  --bg-sand: #F3E9DC;
+  --text-white: #FFFFFF;
+  --text-gray: #6B7280;
+}
+
+body {
+  margin: 0;
+  font-family: 'Pretendard', sans-serif;
+  background-color: #f9fafb;
+}
+
+.container {
+  width: 100%;
+}
+
+/* Navbar */
+.navbar {
+  background-color: var(--deep-navy);
+  padding: 1rem 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-white);
+  
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-links li {
+  cursor: pointer;
+  font-size: 0.95rem;
+  opacity: 0.8;
+}
+
+.nav-links li:hover {
+  opacity: 1;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-register {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.btn-login {
+  background: var(--primary-blue);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+/* Hero Section */
+.hero-section {
+  background-color: var(--bg-sand);
+  padding: 4rem 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+}
+
+.hero-content h1 {
+  font-size: 2.5rem;
+  color: #1f2937;
+  line-height: 1.3;
+}
+
+.hero-content p {
+  color: #4b5563;
+  margin-bottom: 2rem;
+}
+
+/* Search Bar */
+.search-bar {
+  display: flex;
+  background: white;
+  padding: 8px;
+  border-radius: 30px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+}
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  padding: 10px 20px;
+  outline: none;
+  border-radius: 30px;
+}
+
+.search-icon-btn {
+  background-color: var(--primary-blue);
+  border: none;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
