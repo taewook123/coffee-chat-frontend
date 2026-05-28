@@ -122,7 +122,7 @@ const BookingHistory = () => {
                   className="w-14 h-14 rounded-full object-cover ring-4 ring-slate-50"
                 />
                 <div>
-                  <h4 className="font-bold text-gray-900 m-0 text-base">{booking.mentee_name} 크루</h4>
+                  <h4 className="font-bold text-gray-900 m-0 text-base">{booking.mentee_name}</h4>
                   <p className="text-xs text-slate-400 m-0 mt-1">커피챗 신청 유저</p>
                 </div>
               </div>
