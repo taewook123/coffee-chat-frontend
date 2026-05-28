@@ -177,37 +177,67 @@ export default function BookingFlow() {
 
   const handlePayment = async () => {
     if (isSubmitting) return;
-    const savedUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
-    if (!savedUserId) {
-      alert("로그인 정보가 없습니다. 다시 로그인해주세요!");
-      return;
+
+    // 💡 [핵심 교정 1] 아이디 복구 및 쓰레기값 완벽 차단
+    let finalUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
+
+    if (!finalUserId || finalUserId === 'null' || finalUserId === 'undefined') {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                finalUserId = payload.user_id;
+                if (finalUserId) localStorage.setItem('userId', finalUserId);
+            } catch (e) { console.error(e); }
+        }
     }
+
+    // 숫자가 아닌 문자열("undefined" 등)을 완벽하게 걸러내어 순수 숫자만 추출합니다.
+    const cleanUserId = parseInt(String(finalUserId).replace(/[^0-9]/g, ''), 10);
+
+    if (!cleanUserId || isNaN(cleanUserId)) {
+        alert("유효한 로그인 정보가 없습니다. 다시 로그인해주세요.");
+        navigate('/login');
+        return;
+    }
+
     setIsSubmitting(true);
     try {
-      const dateKey = [
-        selectedDate.getFullYear(),
-        String(selectedDate.getMonth() + 1).padStart(2, '0'),
-        String(selectedDate.getDate()).padStart(2, '0'),
-      ].join('-');
+        const dateKey = [
+            selectedDate.getFullYear(),
+            String(selectedDate.getMonth() + 1).padStart(2, '0'),
+            String(selectedDate.getDate()).padStart(2, '0'),
+        ].join('-');
 
-      await axios.post(`${BACKEND_URL}/api/booking/create`, {
-        mentorId: Number(mentorId),
-        date: dateKey,
-        time: selectedTime,
-        questions: questions,
-      });
+        await axios.post(`${BACKEND_URL}/api/booking/create`, {
+            mentorId: parseInt(mentorId, 10),
+            userId: cleanUserId, // 완벽하게 세척된 숫자형 ID 전송
+            date: dateKey,
+            time: selectedTime,
+            questions: questions,
+        });
 
-      alert('🎉 결제가 완료되었습니다! 호스트에게 요청 알림이 발송되었습니다.');
-      navigate('/dashboard');
+        alert('🎉 예약이 완료되었습니다! 호스트에게 요청 알림이 발송되었습니다.');
+        navigate('/dashboard');
     } catch (err) {
-      console.error('[예약 생성 실패]', err);
-      const msg = err.response?.data?.detail || '예약 중 오류가 발생했습니다.';
-      alert(msg);
+        console.error('[예약 생성 실패]', err);
+        
+        // 💡 [핵심 교정 2] 422 에러의 상세 원인을 [object Object]가 아니라 텍스트로 풀어줍니다.
+        const detail = err.response?.data?.detail;
+        let errorMsg = '예약 중 서버 오류가 발생했습니다.';
+        
+        if (Array.isArray(detail)) {
+            // FastAPI가 알려주는 422 유효성 검사 에러 배열을 보기 좋게 문자열로 변환
+            errorMsg = detail.map(d => `${d.loc.join(' -> ')}: ${d.msg}`).join('\n');
+        } else if (typeof detail === 'string') {
+            errorMsg = detail;
+        }
+
+        alert(`❌ 예약 실패 상세 원인:\n${errorMsg}`);
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="bg-white border-b border-gray-200 shadow-sm">
