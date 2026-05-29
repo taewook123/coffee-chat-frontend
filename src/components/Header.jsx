@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // 🌟 1. useLocation 추가
 import { Coffee, Bell } from 'lucide-react';
 import axios from 'axios';
 
 const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   const navigate = useNavigate();
+  const location = useLocation(); // 🌟 2. 현재 주소 감지용 변수 추가
   
   const [currentName, setCurrentName] = useState('회원');
   const [isMentor, setIsMentor] = useState(false); 
 
   const [notifications, setNotifications] = useState([]); 
   const [hasUnread, setHasUnread] = useState(false);       
-  const [isOpen, setIsOpen] = useState(false);             
+  const [isOpen, setIsOpen] = useState(false);             
 
   const BACKEND_URL = 'http://48.211.169.52:8000';
 
@@ -26,7 +27,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
       setCurrentName('회원'); 
     }
 
-    // ─── [보완 완료]호스트 권한 식별 기준 정밀 동기화 ───
+    // ─── [보완 완료] 멘토 권한 식별 기준 정밀 동기화 ───
     if (isLoggedIn) {
       const rawUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
       const cleanUserId = rawUserId ? parseInt(rawUserId.toString().replace(/[^0-9]/g, ''), 10) : null;
@@ -34,7 +35,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
       if (cleanUserId) {
         axios.get(`${BACKEND_URL}/api/mentors/list`)
           .then(response => {
-            // 💡 백엔드가 주는 진짜 외래키인 mentor.user_id가 현재 내 유저 PK와 같은지 정조준 대조합니다.
             const checkMentor = response.data.some(
               mentor => parseInt(mentor.id, 10) === cleanUserId || parseInt(mentor.user_id, 10) === cleanUserId
             );
@@ -47,7 +47,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     } else {
       setIsMentor(false);
     }
-  }, [userName, isLoggedIn]);
+  }, [userName, isLoggedIn, location.pathname]); // 🌟 3. 주소(location.pathname)가 바뀔 때마다 재검사!
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -94,7 +94,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   };
 
   const handleLogout = () => {
-    localStorage.clear(); // 💡 꼬여있던 세션 찌꺼기를 세탁하기 위해 전체 클리어 처리
+    localStorage.clear(); 
     setIsLoggedIn(false);
     setIsMentor(false);
     setNotifications([]); 
@@ -122,6 +122,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
         </ul>
 
         <div className="auth-buttons flex items-center gap-4">
+          {/* 🌟 4. 로그인 안 했거나, 멘토가 아닐 때만 버튼 표시 */}
           {(!isLoggedIn || !isMentor) && (
             <button 
               className="btn-register bg-transparent border border-white/30 hover:border-white px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer mr-2" 
