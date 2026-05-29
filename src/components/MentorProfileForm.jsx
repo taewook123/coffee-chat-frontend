@@ -7,6 +7,7 @@ export default function MentorProfileForm({
   tempCareer, setTempCareer,
   tempHashtag, setTempHashtag,
   tempLink, setTempLink,
+  tempKeyword, setTempKeyword,
   mentorResumeFile, setMentorResumeFile,
   handleMentorResumeUpload,
   handleKeyDownArray,
@@ -153,6 +154,7 @@ export default function MentorProfileForm({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
             className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-purple-500 transition text-sm bg-white"
             placeholder="호스트 활동 시 노출될 이름 혹은 닉네임"
           />
@@ -166,6 +168,7 @@ export default function MentorProfileForm({
             type="text"
             value={formData.mentor_job}
             onChange={(e) => setFormData({ ...formData, mentor_job: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
             className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-purple-500 transition text-sm bg-white"
             placeholder="예: 시니어 백엔드 엔지니어 (5년차)"
           />
@@ -228,17 +231,29 @@ export default function MentorProfileForm({
         <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-purple-600" /> 이런 주제로 편하게 이야기 걸어주세요
         </h3>
+
+      {/* 💡 단어는 '게스트'로 바꾸고, Enter 키 태그 기능은 완벽하게 유지한 블록입니다! */}
         <div>
-          <label className="block text-xs font-bold text-gray-600 mb-2">게스트가 선택할 수 있는 대화 키워드를 입력해 주세요.</label>
+          <label className="block text-xs font-bold text-gray-600 mb-2">게스트가 선택할 수 있는 대화 키워드를 입력해 주세요. <span className="text-gray-400 font-normal text-xs">(입력 후 Enter)</span></label>
           <input
             type="text"
-            value={formData.mentor_keywords}
-            onChange={(e) => setFormData({ ...formData, mentor_keywords: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-purple-500 transition text-sm bg-white"
-            placeholder="새로운 대화 주제 키워드 입력 (쉼표 구분)"
+            value={tempKeyword} // ProfileSetup에서 내려주는 임시 값 사용
+            onChange={(e) => setTempKeyword(e.target.value)}
+            onKeyDown={(e) => handleKeyDownArray(e, 'mentor_keywords', tempKeyword, setTempKeyword)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-purple-500 transition text-sm bg-white mb-3"
+            placeholder="예: 이력서첨삭, 면접준비 (입력 후 Enter를 쳐주세요!)"
           />
+          <div className="flex flex-wrap gap-2">
+            {(Array.isArray(formData.mentor_keywords) ? formData.mentor_keywords : []).map((kw, index) => (
+              <span key={index} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border border-green-100 rounded-lg text-xs font-semibold text-green-700">
+                {kw}
+                <X className="w-3 h-3 cursor-pointer text-green-400 hover:text-green-600" onClick={() => handleRemoveArrayItem('mentor_keywords', index)} />
+              </span>
+            ))}
+          </div>
         </div>
 
+        {/* MentorProfileForm.jsx 파일 내부의 경험 상세 설명 입력창 부분 */}
         <div>
           <label className="block text-xs font-bold text-gray-600 mb-2">이런 경험들을 공유해 드릴 수 있어요 <span className="text-gray-400 font-normal text-xs">(경험 상세 설명)</span></label>
           <div className="space-y-3">
@@ -248,6 +263,10 @@ export default function MentorProfileForm({
                   type="text"
                   value={exp.text}
                   onChange={(e) => handleExperienceChange(exp.id, e.target.value)}
+                  
+                  // 💡 [핵심 추가] 여기서 엔터를 쳐도 폼이 제출되어 일반 탭으로 튕기는 현상을 완벽 차단합니다!
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                  
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-purple-500 transition text-sm bg-white"
                   placeholder="초당 1,000만 개가 넘는 요청을 감당하기 위해 바닥부터 만든..."
                 />
@@ -263,6 +282,7 @@ export default function MentorProfileForm({
               </div>
             ))}
           </div>
+
           <button
             type="button"
             onClick={addExperienceField}
