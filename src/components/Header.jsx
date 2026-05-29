@@ -26,7 +26,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
       setCurrentName('회원'); 
     }
 
-    // ─── [보완 완료] 멘토 권한 식별 기준 정밀 동기화 ───
+    // ─── [보완 완료]호스트 권한 식별 기준 정밀 동기화 ───
     if (isLoggedIn) {
       const rawUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
       const cleanUserId = rawUserId ? parseInt(rawUserId.toString().replace(/[^0-9]/g, ''), 10) : null;
@@ -110,7 +110,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
         
         <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => navigate('/')}>
           <Coffee className="w-8 h-8 text-white" />
-          <span className="text-xl font-bold tracking-tight">Coffee Chat</span>
+          <span className="text-xl font-bold tracking-tight">TeaTimes</span>
         </div>
 
         <ul className="flex items-center gap-8 list-none m-0 p-0 text-sm font-medium">
@@ -127,7 +127,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
               className="btn-register bg-transparent border border-white/30 hover:border-white px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer mr-2" 
               onClick={() => navigate('/mentor-registration')}
             >
-              멘토 등록하기
+              호스트 등록하기
             </button>
           )}
           

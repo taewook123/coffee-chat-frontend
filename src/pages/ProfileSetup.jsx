@@ -26,7 +26,11 @@ export default function ProfileSetup() {
 
   const [formData, setFormData] = useState({
     name: '', bio: '', mbti: '', hashtags: '', experience: '', portfolio_url: '', help_provide: '', help_receive: '',
-    phone_number: '', profile_image: '', // 💡 [추가] 초기 상태값에 전화번호 필드 결합
+    phone_number: '', // 💡 [추가] 초기 상태값에 전화번호 필드 결합
+    main_category: '', 
+    sub_category: '',
+    status: '',
+    profile_image: '',
     mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', mentor_keywords: '',
     mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
   });
@@ -126,6 +130,9 @@ export default function ProfileSetup() {
         help_receive: formData.help_receive, 
         profile_image: formData.profile_image || "", 
         phone_number: formData.phone_number, // 💡 [추가] 백엔드 전송 페이로드에 전화번호 포함
+        main_category: formData.main_category,
+        sub_category: formData.sub_category,
+        status: formData.status,
 
         // 멘토 관련 데이터 이름 변경 
         job_title: formData.mentor_job || "", 
@@ -169,7 +176,7 @@ export default function ProfileSetup() {
         {/* 상단 스위치 탭바 */}
         <div className="flex border-b border-gray-200 mb-8 max-w-md mx-auto bg-white p-1.5 rounded-xl shadow-sm">
           <button type="button" onClick={() => setActiveTab('general')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>일반 프로필 설정</button>
-          <button type="button" onClick={() => setActiveTab('mentor')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>멘토 프로필 설정</button>
+          <button type="button" onClick={() => setActiveTab('mentor')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>호스트 프로필 설정</button>
         </div>
 
         <form onSubmit={handleSubmit}>

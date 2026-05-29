@@ -15,7 +15,7 @@ const Hero = () => {
             <span className="text-[#4a90e2]">커피 한 잔의 대화</span>를 나누세요
           </h1>
           <p className="text-lg text-gray-700 leading-relaxed m-0">
-            검증된 멘토들과 실시간으로 연결되어 커리어 고민을 해결하고, <br />
+            검증된 호스트들과 실시간으로 연결되어 커리어 고민을 해결하고, <br />
             나만을 위한 맞춤형 로드맵과 생생한 업계 정보를 가득 얻어가세요.
           </p>
 
@@ -43,7 +43,7 @@ const Hero = () => {
             <div className="absolute -inset-1 bg-gradient-to-r from-amber-200 to-amber-400 rounded-2xl blur opacity-20" />
             <img
               src="https://images.unsplash.com/photo-1604881988758-f76ad2f7aac1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxjb2ZmZWUlMjBtZWV0aW5nJTIwYnVzaW5lc3MlMjBwcm9mZXNzaW9uYWx8ZW58MXx8fHwxNzc4NzI2MjE3fDA&ixlib=rb-4.1.0&q=80&w=1080"
-              alt="Coffee chat meeting"
+              alt="TeeTimes"
               className="rounded-2xl shadow-2xl w-full object-cover h-96 relative z-10 border border-solid border-white/20"
             />
           </div>

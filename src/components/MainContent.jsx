@@ -41,7 +41,7 @@ export default function MainContent() {
         // 💡 상위 8명만 잘라서 보여줍니다.
         setMentors(formattedMentors.slice(0, 8)); 
       } catch (error) {
-        console.error("❌ 메인 화면 멘토 데이터 로딩 실패:", error);
+        console.error("❌ 메인 화면 호스트 데이터 로딩 실패:", error);
       } finally {
         setLoading(false);
       }
@@ -79,7 +79,7 @@ export default function MainContent() {
           <h2 className="text-3xl font-bold text-[#1a2332] mb-3 m-0">
             지금 주목받는 인기 호스트
           </h2>
-          <p className="text-gray-500 text-sm m-0 font-medium">목표하는 직무의 멘토를 탭을 통해 빠르게 만나보세요.</p>
+          <p className="text-gray-500 text-sm m-0 font-medium">목표하는 직무의 호스트를 탭을 통해 빠르게 만나보세요.</p>
         </div>
 
         {/* 탭 버튼 그룹 인터페이스 */}
@@ -135,11 +135,11 @@ export default function MainContent() {
                       <span className="px-2 py-0.5 bg-blue-50 text-[#4a90e2] text-[10px] font-bold rounded">
                         {host.category}
                       </span>
-                      {/* 백엔드에 회사 정보가 없어서 일단 멘토의 첫 번째 해시태그나 역할을 출력 */}
+                      {/* 백엔드에 회사 정보가 없어서 일단 호스트의 첫 번째 해시태그나 역할을 출력 */}
                       <span className="text-xs text-blue-600 font-bold">{host.job_title || '크루'}</span>
                     </div>
                     <h3 className="font-bold text-gray-900 text-base mb-1 m-0 group-hover:text-[#4a90e2] transition">
-                      {host.name} 멘토
+                      {host.name} 호스트
                     </h3>
                     <p className="text-xs text-gray-500 m-0 font-medium">{host.job_title || '커리어 가이드'}</p>
                     <p className="text-xs text-gray-400 mt-2 line-clamp-2 m-0 leading-relaxed font-medium">"{stripHTML(host.bio) || host.mentor_intro || '환영합니다! 함께 길을 찾아보아요.'}"</p>
@@ -162,13 +162,13 @@ export default function MainContent() {
           </div>
         )}
 
-        {/* 전체 멘토 페이지로 넘어가는 버튼 */}
+        {/* 전체 호스트 페이지로 넘어가는 버튼 */}
         <div className="text-center mt-12">
           <Link 
             to="/mentors" 
             className="inline-block px-8 py-3.5 bg-slate-800 text-white font-bold text-sm rounded-full hover:bg-blue-600 transition duration-300 shadow-md no-underline"
           >
-            멘토 전체보기 &rarr;
+            호스트 전체보기 &rarr;
           </Link>
         </div>
       </section>
@@ -210,7 +210,7 @@ export default function MainContent() {
               </div>
               <h3 className="text-lg font-bold text-slate-800 m-0">세션 예약하기</h3>
               <p className="text-gray-600 text-xs leading-relaxed max-w-xs mx-auto m-0 font-medium">
-                멘토의 오픈된 일정을 직관적으로 조율해 일대일 맞춤형 커피챗 세션을 간편하게 예약할 수 있습니다.
+                호스트의 오픈된 일정을 직관적으로 조율해 일대일 맞춤형 티타임 세션을 간편하게 예약할 수 있습니다.
               </p>
             </div>
 

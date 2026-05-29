@@ -14,7 +14,96 @@ export default function MentorProfileForm({
   handleExperienceChange,
   addExperienceField,
   removeExperienceField
-}) {
+}){
+
+  // 1. 카테고리 데이터를 여기서 정의하거나 별도 파일에서 import 하세요.
+  const categories = [
+    {
+      main: '개발/엔지니어링',
+      subs: [
+        '전체 개발', '프론트엔드', '백엔드', '풀스택', '인프라/DevOps',
+        '데이터 엔지니어', '머신러닝/AI', '모바일(iOS)', '모바일(Android)',
+        '임베디드/펌웨어', '게임 개발', 'QA/테스트', '보안', 'DBA',
+        '블록체인', 'AR/VR'
+      ]
+    },
+    {
+      main: '기획/PM',
+      subs: [
+        '전체 기획', '서비스 기획', '프로덕트 매니저(PM)', '콘텐츠 기획',
+        '게임 기획', '광고 기획', '이벤트 기획', 'MD/상품기획',
+        '전략기획', 'BM기획', '공연/전시 기획', 'IT컨설턴트'
+      ]
+    },
+    {
+      main: '디자인',
+      subs: [
+        '전체 디자인', 'UI/UX', '그래픽', '브랜드/BI',
+        '영상/모션', '3D/렌더링', '패션', '제품/산업',
+        '인테리어', '캐릭터/일러스트', '인쇄/출판', '광고디자인'
+      ]
+    },
+    {
+      main: '마케팅',
+      subs: [
+        '전체 마케팅', '디지털 마케팅', '퍼포먼스 마케팅', 'SNS/인플루언서',
+        '브랜드 마케팅', 'CRM/그로스', '콘텐츠 마케팅', 'PR/홍보',
+        'SEO/SEM', '이메일 마케팅', '제휴/파트너십', '데이터 분석'
+      ]
+    },
+    {
+      main: '경영/사무',
+      subs: [
+        '전체 경영', '경영기획', '인사/HR', '재무/회계',
+        '법무/컴플라이언스', '총무/운영', '구매/자재', '물류/SCM',
+        'IR/투자', '감사', '비서/어드민'
+      ]
+    },
+    {
+      main: '영업/CS',
+      subs: [
+        '전체 영업', 'B2B영업', 'B2C영업', '해외영업',
+        '기술영업', '영업관리', '고객성공(CS)', '콜센터',
+        '파트너/채널영업', '리테일/매장관리'
+      ]
+    },
+    {
+      main: '미디어/콘텐츠',
+      subs: [
+        '전체 미디어', '방송/PD', '작가/에디터', '포토그래퍼',
+        '유튜브/크리에이터', '번역/통역', '출판/편집', '음악/음향',
+        '스트리머', '기자/저널리스트', '웹툰/만화'
+      ]
+    },
+    {
+      main: '전문직',
+      subs: [
+        '전체 전문직', '변호사/법조', '의사/의료', '약사',
+        '공인회계사(CPA)', '세무사', '노무사', '변리사',
+        '건축사', '감정평가사', '금융(IB/PE/VC)', '컨설턴트(MBB)'
+      ]
+    },
+    {
+      main: '교육',
+      subs: [
+        '전체 교육', '학교교사', '학원강사', '온라인 강사',
+        '교육기획', '코치/멘토', '연구원', '에듀테크'
+      ]
+    },
+    {
+      main: '스타트업',
+      subs: [
+        '전체 스타트업', '창업자/CEO', 'CTO', 'COO',
+        '초기 멤버', '사이드프로젝트', '투자/VC', '액셀러레이터'
+      ]
+    },
+    {
+      main: '기타',
+      subs: ['기타']
+    }
+  ];
+  const statuses = ['현직자', '이직자', '프리랜서', '대학생', '취준생'];
+
   return (
     <div className="space-y-6 animate-fadeIn">
       
@@ -23,7 +112,41 @@ export default function MentorProfileForm({
         <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
           <Briefcase className="w-4 h-4 text-purple-600" /> 기본 정보 및 경력
         </h3>
-        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-2">현재 상태</label>
+            <select 
+              value={formData.status || '현직자'} 
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })} 
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm"
+            >
+              {statuses.map(st => <option key={st} value={st}>{st}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-2">주 직무</label>
+            <select 
+              value={formData.main_category || ''} 
+              onChange={(e) => setFormData({ ...formData, main_category: e.target.value, sub_category: '' })} 
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm"
+            >
+              <option value="">주 직무 선택</option>
+              {categories.map(c => <option key={c.main} value={c.main}>{c.main}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-2">세부 직무</label>
+            <select 
+              value={formData.sub_category || ''} 
+              onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })} 
+              disabled={!formData.main_category} 
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm disabled:bg-gray-100"
+            >
+              <option value="">세부 직무 선택</option>
+              {categories.find(c => c.main === formData.main_category)?.subs.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+            </select>
+          </div>
+        </div>
         <div>
           <label className="block text-xs font-bold text-gray-600 mb-2">이름 / 닉네임</label>
           <input
@@ -31,9 +154,11 @@ export default function MentorProfileForm({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-purple-500 transition text-sm bg-white"
-            placeholder="멘토 활동 시 노출될 이름 혹은 닉네임"
+            placeholder="호스트 활동 시 노출될 이름 혹은 닉네임"
           />
         </div>
+
+
 
         <div>
           <label className="block text-xs font-bold text-gray-600 mb-2">현재 직무 및 연차</label>
@@ -87,7 +212,7 @@ export default function MentorProfileForm({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-600 mb-2">멘토님의 성장 스토리 (자기소개)</label>
+          <label className="block text-xs font-bold text-gray-600 mb-2">호스트님의 성장 스토리 (자기소개)</label>
           <textarea
             value={formData.mentor_story}
             onChange={(e) => setFormData({ ...formData, mentor_story: e.target.value })}
@@ -104,7 +229,7 @@ export default function MentorProfileForm({
           <MessageSquare className="w-4 h-4 text-purple-600" /> 이런 주제로 편하게 이야기 걸어주세요
         </h3>
         <div>
-          <label className="block text-xs font-bold text-gray-600 mb-2">멘티가 선택할 수 있는 대화 키워드를 입력해 주세요.</label>
+          <label className="block text-xs font-bold text-gray-600 mb-2">게스트가 선택할 수 있는 대화 키워드를 입력해 주세요.</label>
           <input
             type="text"
             value={formData.mentor_keywords}

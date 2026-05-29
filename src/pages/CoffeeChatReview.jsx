@@ -28,13 +28,13 @@ export default function CoffeeChatReview() {
             <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-6">
               JS
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">커피챗이 종료되었습니다</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">티타임이 종료되었습니다</h1>
             <p className="text-gray-600">'상대방-수정필요' 님과의 세션이 완료되었습니다</p>
           </div>
 
           {/* 별점 평가 영역 (Rating Section) */}
           <div className="mb-8">
-            <h3 className="font-bold text-gray-900 mb-4 text-center">커피챗은 어떠셨나요?</h3>
+            <h3 className="font-bold text-gray-900 mb-4 text-center">티타임은 어떠셨나요?</h3>
 
             <div className="flex items-center justify-center gap-3 mb-8">
               {[1, 2, 3, 4, 5].map((star) => (
