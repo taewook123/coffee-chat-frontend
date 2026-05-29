@@ -12,11 +12,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
 
   const [notifications, setNotifications] = useState([]); 
   const [hasUnread, setHasUnread] = useState(false);       
-<<<<<<< HEAD
   const [isOpen, setIsOpen] = useState(false);             
-=======
-  const [isOpen, setIsOpen] = useState(false);
->>>>>>> eb27f3888963ddcec445f14e816eb2b9ff77044d
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
