@@ -1,3 +1,4 @@
+;
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Calendar as CalendarIcon, Clock, CreditCard, Coffee, Check } from 'lucide-react';
@@ -9,7 +10,7 @@ export default function BookingFlow() {
   const { mentorId } = useParams();
   const navigate = useNavigate();
 
-  const BACKEND_URL = "http://48.211.169.52:8000";
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   // 상태 선언
   const [mentor, setMentor] = useState(null);
@@ -216,7 +217,7 @@ export default function BookingFlow() {
             time: selectedTime,
             questions: questions,
         });
-
+        
         alert('🎉 예약이 완료되었습니다! 호스트에게 요청 알림이 발송되었습니다.');
         navigate('/dashboard');
     } catch (err) {

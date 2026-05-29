@@ -19,8 +19,8 @@ export default function Mentors() {
   const [selectedSubCategory, setSelectedSubCategory] = useState('전체');
   const [searchQuery, setSearchQuery] = useState('');
   const [openCategory, setOpenCategory] = useState(null);
-  
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  // 💡 [배포 고정] 대시보드와 동일한 클라우드 원격 서버 백엔드 주소 정의
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
     const fetchRealMentors = async () => {
@@ -294,7 +294,7 @@ export default function Mentors() {
                 <div>
                   <div className="flex flex-col items-center text-center mb-4">
                     <img
-                      src={mentor.avatar || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400'}
+                      src={mentor.profile_image || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400'}
                       alt={mentor.name}
                       className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300"
                     />

@@ -12,7 +12,7 @@ import {
   Clock
 } from 'lucide-react';
 import ScheduleManager from './ScheduleManager';
-
+import BookingHistory from './BookingHistory';
 export default function MentorDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -47,8 +47,10 @@ export default function MentorDashboard() {
             console.log("토큰 디코딩 에러, 기본 ID 혹은 스토리지 ID 사용");
           }
         }
+            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-        const response = await axios.get(`http://48.211.169.52:8000/api/mentor/dashboard/${currentUserId}`);
+            // 2. axios 요청에서 하드코딩된 주소를 BACKEND_URL 변수로 교체
+            const response = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${currentUserId}`);
         const { stats: backendStats, upcoming_chats } = response.data;
 
         if (backendStats && backendStats.name) {
@@ -166,7 +168,7 @@ export default function MentorDashboard() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('history')}
+              onClick={() => setActiveTab('history')} 
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition text-left ${
                 activeTab === 'history' ? 'bg-[#4a90e2] text-white' : 'hover:bg-[#2a3342] text-gray-300'
               }`}
@@ -200,7 +202,8 @@ export default function MentorDashboard() {
         <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'schedule' && <ScheduleManager />}
-          {activeTab === 'history' && <div>예약 내역 컴포넌트가 들어갈 자리입니다.</div>}
+          {activeTab === 'history' && <BookingHistory />}
+          
         </div>
       </main>
     </div>

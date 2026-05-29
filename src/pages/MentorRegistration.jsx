@@ -83,8 +83,8 @@ const MentorRegistration = () => {
   const [basicInfo, setBasicInfo] = useState({ 
   name: '', 
   job: '', 
-  mainCategory: '', 
-  subCategory: '',
+  main_category: '', 
+  sub_category: '',
   status: ''
 });
 
@@ -294,8 +294,11 @@ const MentorRegistration = () => {
     }
 
     const fetchSharedUserData = async () => {
-      try {
-        const response = await fetch(`http://48.211.169.52:8000/api/user/${userId}`);
+        try {
+          const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+
+            // 2. axios 요청에서 하드코딩된 주소를 BACKEND_URL 변수로 교체
+            const response = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${currentUserId}`);
         if (response.ok) {
           const userData = await response.json();
           setBasicInfo(prev => ({ ...prev, name: userData.name || '' }));
@@ -334,8 +337,8 @@ const MentorRegistration = () => {
     const submitData = {
       name: basicInfo.name,
       status: basicInfo.status,
-      main_category: basicInfo.mainCategory,
-      sub_category: basicInfo.subCategory,
+      main_category: basicInfo.main_category,
+      sub_category: basicInfo.sub_category,
       hashtags: hashtags.join(','),
       
       // 💡 컬럼 스펙에 100% 대응하도록 가방 래핑 수정 완료!
@@ -404,8 +407,8 @@ const MentorRegistration = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">주 직무</label>
                   <select 
-                    name="mainCategory" 
-                    value={basicInfo.mainCategory} 
+                    name="main_category" 
+                    value={basicInfo.main_category} 
                     onChange={handleBasicChange} 
                     className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -418,15 +421,15 @@ const MentorRegistration = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">세부 직무</label>
                   <select 
-                    name="subCategory" 
-                    value={basicInfo.subCategory} 
+                    name="sub_category" 
+                    value={basicInfo.sub_category} 
                     onChange={handleBasicChange}
-                    disabled={!basicInfo.mainCategory}
+                    disabled={!basicInfo.main_category}
                     className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   >
                     <option value="">세부 직무 선택</option>
                     {categories
-                      .find(c => c.main === basicInfo.mainCategory)?.subs
+                      .find(c => c.main === basicInfo.main_category)?.subs
                       .map(sub => <option key={sub} value={sub}>{sub}</option>)
                     }
                   </select>

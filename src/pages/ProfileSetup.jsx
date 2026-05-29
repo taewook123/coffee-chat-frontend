@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
-
-// 💡 [확장자 명시] Vite 번들 분석가 에러가 나지 않도록 수줍게 확장자 매핑
 import GeneralProfileForm from '../components/GeneralProfileForm.jsx';
 import MentorProfileForm from '../components/MentorProfileForm.jsx';
 
@@ -11,13 +9,12 @@ export default function ProfileSetup() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
   const signUpData = location.state?.signUpData;
   const token = searchParams.get('token');
   const userId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('general');
-  const [profileImage, setProfileImage] = useState(null);
   const [portfolioFile, setPortfolioFile] = useState(null);
   const [mentorResumeFile, setMentorResumeFile] = useState(null);
   const [dbEmail, setDbEmail] = useState('');
@@ -33,6 +30,7 @@ export default function ProfileSetup() {
     main_category: '', 
     sub_category: '',
     status: '',
+    profile_image: '',
     mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', mentor_keywords: '',
     mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
   });
@@ -73,6 +71,7 @@ export default function ProfileSetup() {
             mentor_hashtags: user.mentor_hashtags || [], mentor_story: user.mentor_story || '',
             mentor_keywords: user.mentor_keywords || '',
             mentor_experiences: user.mentor_experiences?.length ? user.mentor_experiences : [{ id: Date.now(), text: '' }],
+            profile_image: user.profile_image || '',
             mentor_links: user.mentor_links || []
           });
         }
@@ -86,14 +85,6 @@ export default function ProfileSetup() {
     fetchExistingProfile();
   }, [userId, token, searchParams, signUpData]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProfileImage(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleKeyDownArray = (e, field, value, setValue) => {
     if (e.key === 'Enter' && value.trim()) {
@@ -137,7 +128,7 @@ export default function ProfileSetup() {
         portfolio_url: formData.portfolio_url || '', 
         help_provide: formData.help_provide, 
         help_receive: formData.help_receive, 
-        profile_image: profileImage || "", 
+        profile_image: formData.profile_image || "", 
         phone_number: formData.phone_number, // 💡 [추가] 백엔드 전송 페이로드에 전화번호 포함
         main_category: formData.main_category,
         sub_category: formData.sub_category,
@@ -190,7 +181,7 @@ export default function ProfileSetup() {
 
         <form onSubmit={handleSubmit}>
           {activeTab === 'general' ? (
-            <GeneralProfileForm formData={formData} setFormData={setFormData} profileImage={profileImage} handleImageUpload={handleImageUpload} portfolioFile={portfolioFile} setPortfolioFile={setPortfolioFile} dbEmail={dbEmail} />
+            <GeneralProfileForm formData={formData} setFormData={setFormData} userId={userId} portfolioFile={portfolioFile} setPortfolioFile={setPortfolioFile} dbEmail={dbEmail} />
           ) : (
             <MentorProfileForm formData={formData} setFormData={setFormData} tempCareer={tempCareer} setTempCareer={setTempCareer} tempHashtag={tempHashtag} setTempHashtag={setTempHashtag} tempLink={tempLink} setTempLink={setTempLink} mentorResumeFile={mentorResumeFile} setMentorResumeFile={setMentorResumeFile} handleMentorResumeUpload={(e) => { if(e.target.files?.[0]) setMentorResumeFile(e.target.files[0]); }} handleKeyDownArray={handleKeyDownArray} handleRemoveArrayItem={handleRemoveArrayItem} handleExperienceChange={handleExperienceChange} addExperienceField={addExperienceField} removeExperienceField={removeExperienceField} />
           )}
