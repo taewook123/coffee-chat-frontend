@@ -120,12 +120,12 @@ export default function CoffeeChats() {
         )}
         {chat.tab_status === 'completed' && (
           <button 
-            onClick={() => handleJoinChat(chat.id)} // 👈 클릭 시 이동하도록 추가
+            onClick={() => navigate(`/coffee-chat-review/${chat.id}`)}
             className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition"
           >
             세부사항 보기
           </button>
-        )}
+)}
       </div>
     </div>
   );
