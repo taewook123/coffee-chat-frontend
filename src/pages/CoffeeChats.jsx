@@ -38,6 +38,7 @@ export default function CoffeeChats() {
     navigate(`/coffee-chat/${chatId}`);
   };
 
+  // 기존 handleJoinChat 함수 아래의 renderChatCard를 이 코드로 교체하세요!
   const renderChatCard = (chat) => (
     <div
       key={chat.id}
@@ -45,12 +46,13 @@ export default function CoffeeChats() {
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
+          {/* 동그란 아바타 영역 */}
           <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-            #{chat.mentor_id}
+            {chat.mentor_name ? chat.mentor_name.slice(0, 1) : '#'}
           </div>
           <div>
             <h3 className="font-bold text-gray-900 text-lg">
-              멘토 #{chat.mentor_id}
+              {chat.mentor_name ? `${chat.mentor_name} 멘토` : `멘토 #${chat.mentor_id}`}
             </h3>
             <p className="text-sm text-gray-600">
               {chat.questions?.slice(0, 50)}...
@@ -97,10 +99,13 @@ export default function CoffeeChats() {
         </div>
       )}
 
-      {/* 버튼 */}
+      {/* 🔴 버튼 구역 (onClick 이벤트 추가된 부분) */}
       <div className="flex gap-3">
         {chat.tab_status === 'upcoming' && (
-          <button className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition">
+          <button 
+            onClick={() => navigate(`/coffee-chat-detail/${chat.id}`)} // 👈 클릭 시 이동하도록 추가
+            className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition"
+          >
             세부사항 보기
           </button>
         )}
@@ -114,7 +119,10 @@ export default function CoffeeChats() {
           </button>
         )}
         {chat.tab_status === 'completed' && (
-          <button className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition">
+          <button 
+            onClick={() => handleJoinChat(chat.id)} // 👈 클릭 시 이동하도록 추가
+            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition"
+          >
             세부사항 보기
           </button>
         )}

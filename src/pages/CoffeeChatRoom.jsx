@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Mic, MicOff, Video, VideoOff, Phone, MessageSquare, Settings, Flag } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Phone, MessageSquare, Settings } from 'lucide-react';
+import axios from 'axios';
 
 export default function CoffeeChatRoom() {
   const { chatId } = useParams();
@@ -10,22 +11,59 @@ export default function CoffeeChatRoom() {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
+  // [추가] DB 연동 state
+  const [booking, setBooking] = useState(null);
+  const [session, setSession] = useState(null);
+  const [myName, setMyName] = useState('나');
+  const BACKEND_URL = 'http://localhost:8000';
+
+  // [추가] 예약 정보 + 세션 정보 가져오기
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    const userName = localStorage.getItem('userName') || '나';
+    setMyName(userName);
+
+    if (!userId) return;
+
+    // 예약 정보 가져오기
+    axios.get(`${BACKEND_URL}/api/bookings/${userId}`)
+      .then(res => {
+        const found = res.data.find(b => String(b.id) === String(chatId));
+        if (found) setBooking(found);
+      })
+      .catch(err => console.error(err));
+
+    // 세션 정보 가져오기
+    axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
+      .then(res => {
+        setSession(res.data);
+      })
+      .catch(err => console.error(err));
+  }, [chatId]);
+
+  // 타이머
   useEffect(() => {
     const timer = setInterval(() => {
       setDuration((prev) => prev + 1);
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-  // 💡 TypeScript 타입(seconds: number)을 제거한 일반 JavaScript 함수
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleEndCall = () => {
+  // [수정] 종료 버튼 - 세션 종료 API 호출
+  const handleEndCall = async () => {
+    try {
+      if (session && session.session_id) {
+        await axios.post(`${BACKEND_URL}/api/chat-session/end/${session.session_id}`);
+      }
+    } catch (err) {
+      console.error('세션 종료 실패:', err);
+    }
     navigate(`/coffee-chat-review/${chatId}`);
   };
 
@@ -36,10 +74,15 @@ export default function CoffeeChatRoom() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <span className="font-bold text-orange-600">용진</span>
+              <span className="font-bold text-orange-600 text-sm">
+                {booking?.mentor_name?.slice(0, 2) || '멘토'}
+              </span>
             </div>
             <div className="text-white">
-              <h2 className="font-bold">Yongjin</h2>
+              {/* [수정] DB에서 가져온 멘토 이름 */}
+              <h2 className="font-bold">
+                {booking?.mentor_name || '멘토'}
+              </h2>
               <p className="text-sm text-white/80">커피챗 진행중</p>
             </div>
           </div>
@@ -53,84 +96,64 @@ export default function CoffeeChatRoom() {
 
       {/* Main Video Area */}
       <div className="flex-1 flex items-center justify-center p-8">
-  <div className="w-full max-w-xl grid grid-cols-2 gap-6">
-    {/* Mentee Video */}
-    
-    {/* 💡 호스트 카드와 똑같이 h-32, p-5로 여백과 높이를 꽉 줄였습니다 */}
-    <div className="bg-black/40 backdrop-blur-sm rounded-2xl h-32 flex flex-row items-center justify-start p-5 gap-5 border-4 border-white/20 relative">
-      
-      {/* 💡 초상화 크기도 w-16 h-16으로 슬림하게 조정 */}
-      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0">
-        JS
-      </div>
-      
-      {/* 💡 이름과 신분 글씨 크기와 마진도 콤팩트하게 변경 */}
-      <div className="flex flex-col justify-center text-left">
-        <p className="text-white font-semibold text-lg mb-0.5">John Smith</p>
-        <p className="text-white/70 text-xs">게스트</p>
-      </div>
+        <div className="w-full max-w-xl grid grid-cols-2 gap-6">
+          {/* 멘티 카드 */}
+          <div className="bg-black/40 backdrop-blur-sm rounded-2xl h-32 flex flex-row items-center justify-start p-5 gap-5 border-4 border-white/20 relative">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0">
+              {/* [수정] 내 이름 첫 글자 */}
+              {myName.slice(0, 1)}
+            </div>
+            <div className="flex flex-col justify-center text-left">
+              {/* [수정] 내 이름 */}
+              <p className="text-white font-semibold text-lg mb-0.5">{myName} (나)</p>
+              <p className="text-white/70 text-xs">게스트</p>
+            </div>
+          </div>
 
-    </div>
-
-          {/* Mentor Video (You) */}
+          {/* 멘토 카드 */}
           <div className="bg-black/40 backdrop-blur-sm rounded-2xl h-32 flex flex-row items-center justify-start p-5 gap-5 border-4 border-yellow-400 relative overflow-hidden">
-  {/* 💡 우측 상단 배지 (박스가 슬림해졌으므로 간격을 top-3, right-3으로 살짝 조정) */}
-  <div>
-  </div>
-
-  {/* 💡 초상화 (왼쪽 고정, 박스 높이에 맞춰 w-16 h-16으로 최적화) */}
-  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0">
-    SC
-  </div>
-  
-  {/* 💡 이름과 신분 (초상화 오른쪽 배치, 왼쪽 정렬) */}
-  <div className="flex flex-col justify-center text-left">
-    <p className="text-white font-semibold text-lg mb-0.5">Sarah Chen (나)</p>
-    <p className="text-white/70 text-xs">호스트</p>
-  </div>
-</div>
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0">
+              {/* [수정] 멘토 이름 첫 글자 */}
+              {booking?.mentor_name?.slice(0, 1) || '멘'}
+            </div>
+            <div className="flex flex-col justify-center text-left">
+              {/* [수정] 멘토 이름 */}
+              <p className="text-white font-semibold text-lg mb-0.5">
+                {booking?.mentor_name || '멘토'} (호스트)
+              </p>
+              <p className="text-white/70 text-xs">호스트</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Question Section */}
-      <div className="max-w-6xl mx-auto w-full px- mb-6 flex flex-col gap-6">
-        {/* Question & Chat History Section */}
-{/* 💡 grid grid-cols-2 gap-6를 주어 두 박스가 가로로 반씩 정확하게 나뉩니다. 비어있던 px- 속성도 px-8로 보정했습니다. */}
-<div className="max-w-6xl mx-auto w-full px-8 mb-6 grid grid-cols-2 gap-6">
-  
-  {/* ◀ 왼쪽 박스: 추천 질문 */}
-  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl flex flex-col justify-between">
-    <div>
-      <h3 className="font-bold text-gray-900 mb-3">추천 질문</h3>
-      <div className="bg-gray-50 rounded-lg p-4">
-        <p className="text-gray-700 text-sm leading-relaxed">
-          {/* 여기에 추천 질문 내용이나 상태(State)가 들어갑니다 */}
-        </p>
-      </div>
-    </div>
-  </div>
-  
-  {/* ▶ 오른쪽 박스: 실시간 대화 내역 */}
-  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl flex flex-col justify-between">
-    <div>
-      <h3 className="font-bold text-gray-900 mb-3">질문지</h3>
-      <div className="bg-gray-50 rounded-lg p-4">
-        <p className="text-gray-700 text-sm leading-relaxed">
-          {/* 여기에 실시간 대화 내역 텍스트나 채팅 리스트가 들어갑니다 */}
-        </p>
-      </div>
-    </div>
-  </div>
-
-
+      <div className="max-w-6xl mx-auto w-full px-8 mb-6 grid grid-cols-2 gap-6">
+        {/* 추천 질문 */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
+          <h3 className="font-bold text-gray-900 mb-3">추천 질문</h3>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-gray-500 text-sm">AI 추천 질문이 여기에 표시돼요</p>
+          </div>
         </div>
-        
+
+        {/* [수정] 질문지 - DB에서 가져온 질문 */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
+          <h3 className="font-bold text-gray-900 mb-3">질문지</h3>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+              {booking?.questions || '작성된 질문이 없어요'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 실시간 대화 내역 */}
+      <div className="max-w-6xl mx-auto w-full px-8 mb-6">
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-2xl">
           <h3 className="font-bold text-gray-900 mb-3">실시간 대화 내역</h3>
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <p className="text-gray-700 text-sm leading-relaxed">
-              
-            </p>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-gray-500 text-sm">STT 대화 내역이 여기에 표시돼요</p>
           </div>
         </div>
       </div>
@@ -145,11 +168,7 @@ export default function CoffeeChatRoom() {
               isMuted ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30'
             }`}
           >
-            {isMuted ? (
-              <MicOff className="w-6 h-6 text-white" />
-            ) : (
-              <Mic className="w-6 h-6 text-white" />
-            )}
+            {isMuted ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
           </button>
 
           <button
@@ -159,13 +178,10 @@ export default function CoffeeChatRoom() {
               isVideoOff ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30'
             }`}
           >
-            {isVideoOff ? (
-              <VideoOff className="w-6 h-6 text-white" />
-            ) : (
-              <Video className="w-6 h-6 text-white" />
-            )}
+            {isVideoOff ? <VideoOff className="w-6 h-6 text-white" /> : <Video className="w-6 h-6 text-white" />}
           </button>
 
+          {/* [수정] 종료 버튼 - 세션 종료 API 호출 */}
           <button
             type="button"
             onClick={handleEndCall}
@@ -182,7 +198,10 @@ export default function CoffeeChatRoom() {
             <MessageSquare className="w-6 h-6 text-white" />
           </button>
 
-          <button type="button" className="w-14 h-14 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
+          <button
+            type="button"
+            className="w-14 h-14 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition"
+          >
             <Settings className="w-6 h-6 text-white" />
           </button>
         </div>
