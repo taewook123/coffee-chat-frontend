@@ -19,6 +19,7 @@ import KakaoCallback from './components/KakaoCallback';
 import MentorRegistration from './pages/MentorRegistration';
 import MainContent from './components/MainContent';
 import BookingHistory from './pages/BookingHistory';
+import ProfileImageUpload from './components/ProfileImageUpload';
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [userName, setUserName] = useState(localStorage.getItem('userName') || "회원");
@@ -94,6 +95,7 @@ const App = () => {
         <Route path="/login/kakao/callback" element={<KakaoCallback />} />
         <Route path="/mentor-registration" element={<MentorRegistration />} />
         <Route path="/booking-history" element={<BookingHistory />} />
+        <Route path="/profile-image-upload" element={<ProfileImageUpload />} />
       </Routes>
       <Footer />
     </Router>

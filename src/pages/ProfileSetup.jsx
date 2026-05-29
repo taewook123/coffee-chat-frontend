@@ -17,7 +17,6 @@ export default function ProfileSetup() {
   const userId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('general');
-  const [profileImage, setProfileImage] = useState(null);
   const [portfolioFile, setPortfolioFile] = useState(null);
   const [mentorResumeFile, setMentorResumeFile] = useState(null);
   const [dbEmail, setDbEmail] = useState('');
@@ -29,7 +28,7 @@ export default function ProfileSetup() {
 
   const [formData, setFormData] = useState({
     name: '', bio: '', mbti: '', hashtags: '', experience: '', portfolio_url: '', help_provide: '', help_receive: '',
-    phone_number: '', // 💡 [추가] 초기 상태값에 전화번호 필드 결합
+    phone_number: '', profile_image: '', // 💡 [추가] 초기 상태값에 전화번호 필드 결합
     mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', mentor_keywords: '',
     mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
   });
@@ -70,6 +69,7 @@ export default function ProfileSetup() {
             mentor_hashtags: user.mentor_hashtags || [], mentor_story: user.mentor_story || '',
             mentor_keywords: user.mentor_keywords || '',
             mentor_experiences: user.mentor_experiences?.length ? user.mentor_experiences : [{ id: Date.now(), text: '' }],
+            profile_image: user.profile_image || '',
             mentor_links: user.mentor_links || []
           });
         }
@@ -83,14 +83,6 @@ export default function ProfileSetup() {
     fetchExistingProfile();
   }, [userId, token, searchParams, signUpData]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProfileImage(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleKeyDownArray = (e, field, value, setValue) => {
     if (e.key === 'Enter' && value.trim()) {
@@ -134,7 +126,7 @@ export default function ProfileSetup() {
         portfolio_url: formData.portfolio_url || '', 
         help_provide: formData.help_provide, 
         help_receive: formData.help_receive, 
-        profile_image: profileImage || "", 
+        profile_image: formData.profile_image || "", 
         phone_number: formData.phone_number, // 💡 [추가] 백엔드 전송 페이로드에 전화번호 포함
 
         // 멘토 관련 데이터 이름 변경 
@@ -184,7 +176,7 @@ export default function ProfileSetup() {
 
         <form onSubmit={handleSubmit}>
           {activeTab === 'general' ? (
-            <GeneralProfileForm formData={formData} setFormData={setFormData} profileImage={profileImage} handleImageUpload={handleImageUpload} portfolioFile={portfolioFile} setPortfolioFile={setPortfolioFile} dbEmail={dbEmail} />
+            <GeneralProfileForm formData={formData} setFormData={setFormData} userId={userId} portfolioFile={portfolioFile} setPortfolioFile={setPortfolioFile} dbEmail={dbEmail} />
           ) : (
             <MentorProfileForm formData={formData} setFormData={setFormData} tempCareer={tempCareer} setTempCareer={setTempCareer} tempHashtag={tempHashtag} setTempHashtag={setTempHashtag} tempLink={tempLink} setTempLink={setTempLink} mentorResumeFile={mentorResumeFile} setMentorResumeFile={setMentorResumeFile} handleMentorResumeUpload={(e) => { if(e.target.files?.[0]) setMentorResumeFile(e.target.files[0]); }} handleKeyDownArray={handleKeyDownArray} handleRemoveArrayItem={handleRemoveArrayItem} handleExperienceChange={handleExperienceChange} addExperienceField={addExperienceField} removeExperienceField={removeExperienceField} />
           )}
