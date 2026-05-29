@@ -10,7 +10,8 @@ export default function BookingFlow() {
   const { mentorId } = useParams();
   const navigate = useNavigate();
 
-  const BACKEND_URL = "http://48.211.169.52:8000";
+  const BACKEND_URL = import.meta.env.BACKEND_URL || 'http://48.211.169.52:8000';
+
 
   // 상태 선언
   const [mentor, setMentor] = useState(null);

@@ -8,7 +8,8 @@ export default function MentorDetails() {
   const [isLoading, setIsLoading] = useState(true);
 
   // 💡 [배포 고정] 모든 환경에서 클라우드 원격 서버 API를 바라보도록 주소 고정
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.BACKEND_URL || 'http://48.211.169.52:8000';
+
 
   // 💡 [데이터 로드] 페이지 진입 시 해당 멘토의 상세 프로필 조회
   useEffect(() => {

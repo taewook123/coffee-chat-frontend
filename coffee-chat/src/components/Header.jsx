@@ -13,7 +13,8 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   const [hasUnread, setHasUnread] = useState(false);       
   const [isOpen, setIsOpen] = useState(false);             
 
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.BACKEND_URL || 'http://48.211.169.52:8000';
+
 
   useEffect(() => {
     const savedName = localStorage.getItem('userName');

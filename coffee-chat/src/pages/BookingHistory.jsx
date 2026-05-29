@@ -35,14 +35,19 @@ const BookingHistory = () => {
     
     const fetchBookings = async () => {
       setIsLoading(true);
-      
-      // 💡 [수정 1] 탭을 누르자마자 무조건 기존에 떠있던 데이터를 하얗게 지웁니다.
       setBookings([]); 
-
+      
+      // 💡 주소를 아예 통째로 하드코딩해서 테스트해보세요 (가장 확실함)
+      // 만약 이것도 404가 난다면 서버에 API가 정말 없는 것입니다.
+      const baseUrl = 'http://48.211.169.52:8003/api/booking';
+      
       try {
         const endpoint = activeTab === 'received' 
-          ? `http://48.211.169.52:8000/api/booking/mentor/${currentUserId}`
-          : `http://48.211.169.52:8000/api/booking/mentee/${currentUserId}`;
+          ? `${baseUrl}/mentor/${currentUserId}` 
+          : `${baseUrl}/mentee/${currentUserId}`;
+
+        console.log("요청 보내는 주소:", endpoint); // 💡 콘솔에서 이 주소를 꼭 확인하세요!
+
 
         const response = await fetch(endpoint);
         if (response.ok) {
@@ -65,7 +70,8 @@ const BookingHistory = () => {
   // 확정하기 버튼 로직
   const handleConfirm = async (bookingId) => {
     try {
-      const response = await fetch(`http://48.211.169.52:8000/api/bookings/confirm/${bookingId}`, {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+      const response = await fetch(`${BACKEND_URL}/api/bookings/confirm/${bookingId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

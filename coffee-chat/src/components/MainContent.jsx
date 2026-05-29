@@ -13,7 +13,8 @@ export default function MainContent() {
   const tabs = ['전체', '개발', '디자인', '기획'];
   const [activeTab, setActiveTab] = useState('전체');
 
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.BACKEND_URL || 'http://48.211.169.52:8000';
+
 
   useEffect(() => {
     const fetchMentors = async () => {

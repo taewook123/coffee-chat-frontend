@@ -11,7 +11,8 @@ export default function ProfileSetup() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.BACKEND_URL || 'http://48.211.169.52:8000';
+
   const signUpData = location.state?.signUpData;
   const token = searchParams.get('token');
   const userId = searchParams.get('id');
