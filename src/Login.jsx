@@ -6,16 +6,17 @@ import { Mail, Lock } from 'lucide-react';
 const Login = () => {
     const navigate = useNavigate();
     
-    // 💡 [배포 고정] 모든 환경에서 클라우드 서버 API를 바라보도록 주소 고정
-    const BACKEND_URL = 'http://48.211.169.52:8000';
+    
 
     const [credentials, setCredentials] = useState({
         email: '',
         password: ''
     });
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
+    
     const REST_API_KEY = "e2eb2fe1d550c2b3da05dcad347a4517";
-    const REDIRECT_URI = "http://48.211.169.52:8000/login/kakao/callback";
+    const REDIRECT_URI = `${BACKEND_URL}/login/kakao/callback`;
     const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code&prompt=select_account`;
     
     const handleChange = (e) => {

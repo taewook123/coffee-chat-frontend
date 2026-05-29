@@ -202,8 +202,11 @@ const MentorRegistration = () => {
     }
 
     const fetchSharedUserData = async () => {
-      try {
-        const response = await fetch(`http://48.211.169.52:8000/api/user/${userId}`);
+        try {
+          const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+
+            // 2. axios 요청에서 하드코딩된 주소를 BACKEND_URL 변수로 교체
+            const response = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${currentUserId}`);
         if (response.ok) {
           const userData = await response.json();
           setBasicInfo(prev => ({ ...prev, name: userData.name || '' }));

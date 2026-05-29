@@ -22,7 +22,7 @@ export default function Mentors() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // 💡 [배포 고정] 대시보드와 동일한 클라우드 원격 서버 백엔드 주소 정의
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   // 💡 [실시간 DB 연동] 컴포넌트 마운트 시 PostgreSQL에 적재된 진짜 멘토 크루 전체 데이터 로드
   useEffect(() => {

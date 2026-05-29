@@ -9,7 +9,7 @@ const ProfileImageUpload = ({ userId, currentImageUrl, onUploadSuccess }) => {
   // 숨겨진 파일 input을 클릭하기 위한 참조
   const fileInputRef = useRef(null);
 
-  const BACKEND_URL = 'http://48.211.169.52:8000'; // 배포된 서버 주소
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000'; // 배포된 서버 주소
 
   // 1. 이미지를 클릭했을 때 숨겨진 input을 대신 클릭해주는 함수
   const handleImageClick = () => {

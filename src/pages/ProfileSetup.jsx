@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
-
-// 💡 [확장자 명시] Vite 번들 분석가 에러가 나지 않도록 수줍게 확장자 매핑
 import GeneralProfileForm from '../components/GeneralProfileForm.jsx';
 import MentorProfileForm from '../components/MentorProfileForm.jsx';
 
@@ -11,7 +9,7 @@ export default function ProfileSetup() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const BACKEND_URL = 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
   const signUpData = location.state?.signUpData;
   const token = searchParams.get('token');
   const userId = searchParams.get('id');

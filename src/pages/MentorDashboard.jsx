@@ -47,8 +47,10 @@ export default function MentorDashboard() {
             console.log("토큰 디코딩 에러, 기본 ID 혹은 스토리지 ID 사용");
           }
         }
+            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-        const response = await axios.get(`http://48.211.169.52:8000/api/mentor/dashboard/${currentUserId}`);
+            // 2. axios 요청에서 하드코딩된 주소를 BACKEND_URL 변수로 교체
+            const response = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${currentUserId}`);
         const { stats: backendStats, upcoming_chats } = response.data;
 
         if (backendStats && backendStats.name) {
