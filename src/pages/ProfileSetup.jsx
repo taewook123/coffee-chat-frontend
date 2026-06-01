@@ -92,7 +92,9 @@ export default function ProfileSetup() {
             help_receive: user.help_receive || '', 
             phone_number: user.phone_number || '', 
             profile_image: user.profile_image || '',
-
+            main_category: user.main_category || '',
+            sub_category: user.sub_category || '',
+            status: user.status || '',
             // 👇 바로 이 부분! 호스트(멘토) 데이터를 올바르게 연결하고 해독합니다.
             mentor_job: user.job_title || '', 
             mentor_story: user.mentor_intro || '',
@@ -214,7 +216,13 @@ export default function ProfileSetup() {
           {/* 🚀 2. 속 썩이던 권한 검문소를 철거했습니다! 바로 클릭해서 넘어갑니다. */}
           <button 
             type="button" 
-            onClick={() => setActiveTab('mentor')} 
+            onClick={() => {
+              if (!isMentor) {
+                alert("⚠️ 호스트(멘토) 권한이 있는 회원만 접근할 수 있습니다.\n호스트 등록을 원하시면 고객센터로 문의해 주세요.");
+                return; // 👈 이 줄이 핵심! 알림창 띄우고 멈추게 합니다.
+              }
+              setActiveTab('mentor');
+            }} 
             className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}
           >
             호스트 프로필 설정

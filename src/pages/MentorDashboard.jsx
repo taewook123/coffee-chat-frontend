@@ -142,10 +142,7 @@ export default function MentorDashboard() {
       {/* 사이드바 영역 */}
       <aside className="w-64 bg-[#1a2332] text-white flex-shrink-0 relative z-10">
         <div className="p-6 sticky top-0">
-          <Link to="/" className="flex items-center gap-2 mb-8 no-underline text-white">
-            <Coffee className="w-8 h-8" />
-            <span className="text-xl font-semibold">TeeTimes</span>
-          </Link>
+          
           <nav className="space-y-2">
             <button
               type="button"
