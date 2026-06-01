@@ -7,6 +7,7 @@ const BookingHistory = () => {
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+  
   // ID 가져오기 로직
   let currentUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
 
@@ -25,7 +26,6 @@ const BookingHistory = () => {
     }
   }
 
-  
   useEffect(() => {
     if (!currentUserId) {
       setIsLoading(false); 
@@ -36,7 +36,6 @@ const BookingHistory = () => {
       setIsLoading(true);
       setBookings([]); 
       
-      
       const baseUrl = `${BACKEND_URL}/api/booking`;
       
       try {
@@ -44,19 +43,14 @@ const BookingHistory = () => {
           ? `${baseUrl}/mentor/${currentUserId}` 
           : `${baseUrl}/mentee/${currentUserId}`;
 
-        console.log("요청 보내는 주소:", endpoint); // 💡 콘솔에서 이 주소를 꼭 확인하세요!
-
-
         const response = await fetch(endpoint);
         if (response.ok) {
           const data = await response.json();
           setBookings(data);
         } else {
-          // 💡 [수정 2] 서버에서 404 에러를 보내면 빈 배열 상태를 유지합니다.
           console.log(`서버 응답 에러 (${response.status}): 백엔드에 API가 있는지 확인하세요.`);
         }
       } catch (error) {
-        // 💡 [수정 3] 통신 자체가 끊겨도 이전 탭의 잔상이 남지 않도록 막아줍니다.
         console.error("예약 내역 로드 중 에러 발생:", error);
       } finally {
         setIsLoading(false);
@@ -65,10 +59,10 @@ const BookingHistory = () => {
     
     fetchBookings();
   }, [currentUserId, activeTab]);
+
   // 확정하기 버튼 로직
   const handleConfirm = async (bookingId) => {
     try {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
       const response = await fetch(`${BACKEND_URL}/api/booking/confirm/${bookingId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
@@ -109,7 +103,7 @@ const BookingHistory = () => {
     <div className="font-sans">
       <div className="w-full">
         
-        {/* 💡 상단 탭 버튼 (보여주신 이미지 스타일 적용) */}
+        {/* 상단 탭 버튼 */}
         <div className="flex bg-gray-100 p-1.5 rounded-xl w-fit mb-6">
           <button
             onClick={() => setActiveTab('requested')}
@@ -129,7 +123,7 @@ const BookingHistory = () => {
           </button>
         </div>
 
-        {/* 상단 타이틀 (탭에 따라 문구 동적 변경) */}
+        {/* 상단 타이틀 */}
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-blue-600 text-white rounded-lg shadow-sm">
             <Calendar className="w-5 h-5" />
@@ -147,58 +141,64 @@ const BookingHistory = () => {
         </div>
 
         {/* 예약 카드 리스트 */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.isArray(bookings) && bookings.map((booking) => {
-            // 백엔드 API 종류에 따라 이름/이미지 키 값이 다름을 대응
             const displayName = booking.partner_name || booking.mentee_name || "알 수 없음";
-            const displayImage = booking.partner_image || booking.mentee_image || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100";
+            
+            // 💡 여기서 아줌마 사진 완벽 차단! 위키피디아 실루엣으로 통일!
+            const displayImage = booking.partner_image || booking.mentee_image || "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
             return (
               <div
                 key={booking.booking_id}
-                className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-all"
+                className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all"
               >
-                {/* 프로필 사진 */}
-                <img
-                  src={displayImage}
-                  alt={displayName}
-                  className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-50 flex-shrink-0"
-                />
+                
+                {/* 1. 프로필 정보 */}
+                <div className="flex items-center gap-4 min-w-[180px]">
+                  <img
+                    src={displayImage}
+                    onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
+                    alt={displayName}
+                    className="w-14 h-14 rounded-full object-cover ring-4 ring-slate-50 bg-gray-100 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-gray-900 text-base m-0 truncate">{displayName}</h4>
+                    <p className="text-xs text-slate-400 m-0 mt-1">커피챗 크루</p>
+                  </div>
+                </div>
 
-                {/* 중앙 텍스트 정보 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <h4 className="font-bold text-gray-900 text-sm m-0 truncate">{displayName}</h4>
-                    <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md whitespace-nowrap">
-                      <Clock className="w-3 h-3" />
-                      <span className="text-[11px] font-bold">
-                        {getDisplayDateTime(booking.booking_date, booking.booking_time, booking.candidate_times)}
-                      </span>
-                    </div>
+                {/* 2. 중앙 텍스트 정보 */}
+                <div className="flex-1 min-w-0 md:border-l md:border-r border-gray-100 md:px-6">
+                  <div className="flex items-center gap-2 mb-2 w-fit bg-blue-50/60 px-3 py-2 rounded-xl border border-blue-100/30">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-bold text-blue-600">
+                      {getDisplayDateTime(booking.booking_date, booking.booking_time, booking.candidate_times)}
+                    </span>
                   </div>
                   
-                  <div className="flex items-start gap-1.5 text-gray-600 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <div className="flex items-start gap-1.5 text-gray-600 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100/80">
                     <MessageSquare className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
                     <p className="m-0 text-slate-600 whitespace-pre-wrap line-clamp-2">Q. {booking.questions}</p>
                   </div>
                 </div>
 
-                {/* 우측 패널: 탭 상태에 따라 액션 버튼 or 상태 배지 노출 */}
-                <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0 pl-4 border-l border-gray-100">
+                {/* 3. 우측 액션 패널 */}
+                <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0 pl-2">
                   {activeTab === 'received' ? (
                     <>
-                      <button className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border-0 bg-transparent cursor-pointer whitespace-nowrap">
+                      <button className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border-0 bg-transparent cursor-pointer whitespace-nowrap">
                         거절
                       </button>
                       <button
                         onClick={() => handleConfirm(booking.booking_id)}
-                        className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm transition-all border-0 cursor-pointer whitespace-nowrap"
+                        className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all border-0 cursor-pointer whitespace-nowrap"
                       >
                         확정하기
                       </button>
                     </>
                   ) : (
-                    <div className="px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap flex flex-col items-center gap-1">
+                    <div className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap flex flex-col items-center gap-1">
                       {booking.status === "CONFIRMED" ? (
                          <span className="text-green-600 bg-green-50 px-3 py-1.5 rounded-md">예약 확정됨</span>
                       ) : (
@@ -214,7 +214,7 @@ const BookingHistory = () => {
 
           {/* 데이터가 없을 때의 공백 뷰 */}
           {bookings.length === 0 && (
-            <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200/60">
+            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200/60">
               <p className="text-slate-400 text-sm font-medium m-0">
                 {activeTab === 'received' 
                   ? '현재 새로 들어온 커피챗 예약 신청이 없습니다.' 

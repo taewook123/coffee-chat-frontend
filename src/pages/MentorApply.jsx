@@ -125,10 +125,11 @@ export default function MentorDetails() {
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 sticky top-8">
               <div className="mb-6">
                 <img
-                  src={mentorData.profile_image || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400'}
-                  alt={mentorData.name}
-                  className="w-full aspect-square object-cover rounded-2xl shadow-lg ring-4 ring-blue-100"
-                />
+                      src={mentor.profile_image || 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'}
+                      onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
+                      alt={mentor.name}
+                      className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300 bg-gray-100"
+                    />
               </div>
 
               <div className="mb-6 text-center">
