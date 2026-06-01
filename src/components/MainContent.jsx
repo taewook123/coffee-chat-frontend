@@ -120,10 +120,10 @@ export default function MainContent() {
                   <div className="w-full aspect-square overflow-hidden rounded-xl mb-4 bg-slate-50 relative">
                     <img
                       // 💡 마지막 남은 아줌마 사진 퇴출! 기본 실루엣으로 변경
-                      src={host.profile_image || 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'}
+                      src={host.profile_image || 'https://coffeechat.blob.core.windows.net/profiles/KakaoTalk_20260601_105227589.png'}
                       
                       // 💡 이미지 로드 실패 시 방어막 추가
-                      onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
+                      onError={(e) => { e.target.src = 'https://coffeechat.blob.core.windows.net/profiles/KakaoTalk_20260601_105227589.png'; }}
                       
                       alt={host.name}
                       className="w-full h-full object-cover group-hover:scale-103 transition duration-300 bg-gray-100"
