@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Coffee, Calendar, Clock, ChevronLeft } from 'lucide-react';
+import { Coffee, Calendar, Clock, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 
 export default function CoffeeChats() {
@@ -34,187 +34,205 @@ export default function CoffeeChats() {
   const ongoingChats = bookings.filter(b => b.tab_status === 'ongoing');
   const completedChats = bookings.filter(b => b.tab_status === 'completed');
 
-  const handleJoinChat = (chatId) => {
+  const handleJoinChat = (e, chatId) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 막기
     navigate(`/coffee-chat/${chatId}`);
   };
 
-  // 기존 handleJoinChat 함수 아래의 renderChatCard를 이 코드로 교체하세요!
+  // 💡 [추가됨] D-Day 자동 계산 함수
+  const getDDay = (dateString) => {
+    if (!dateString) return '';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(dateString);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = targetDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'D-Day';
+    if (diffDays > 0) return `D-${diffDays}`;
+    return `D+${Math.abs(diffDays)}`;
+  };
+
+  // 🚀 [디자인 대폭 수정됨] 세련된 카드 UI
   const renderChatCard = (chat) => (
     <div
       key={chat.id}
-      className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition"
+      onClick={() => {
+        if (chat.tab_status === 'upcoming') navigate(`/coffee-chat-detail/${chat.id}`);
+        if (chat.tab_status === 'completed') navigate(`/coffee-chat-review/${chat.id}`);
+      }}
+      className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[280px] cursor-pointer group"
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4">
-          {/* 동그란 아바타 영역 */}
-          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-            {chat.mentor_name ? chat.mentor_name.slice(0, 1) : '#'}
+      <div>
+        {/* 상단: 프로필 & 뱃지 */}
+        <div className="flex items-start justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner">
+              {chat.mentor_name ? chat.mentor_name.slice(0, 1) : '#'}
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 m-0">
+                {chat.mentor_name ? `${chat.mentor_name} 멘토` : `멘토 #${chat.mentor_id}`}
+              </h3>
+              {/* 진행 상태 뱃지 */}
+              <div className="mt-1">
+                {chat.tab_status === 'upcoming' && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">예정</span>}
+                {chat.tab_status === 'ongoing' && <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded text-[10px] font-bold animate-pulse">진행중</span>}
+                {chat.tab_status === 'completed' && <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">종료</span>}
+              </div>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-900 text-lg">
-              {chat.mentor_name ? `${chat.mentor_name} 멘토` : `멘토 #${chat.mentor_id}`}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {chat.questions?.slice(0, 50)}...
-            </p>
+          
+          {/* 디데이 뱃지 */}
+          <div className="flex flex-col items-end gap-1">
+            <span className={`text-xs font-black ${chat.tab_status === 'completed' ? 'text-gray-400' : 'text-red-500'}`}>
+              {getDDay(chat.booking_date)}
+            </span>
           </div>
         </div>
 
-        {/* 상태 뱃지 */}
-        {chat.tab_status === 'upcoming' && (
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-            예정
-          </span>
-        )}
-        {chat.tab_status === 'ongoing' && (
-          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-            진행중
-          </span>
-        )}
-        {chat.tab_status === 'completed' && (
-          <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
-            종료
-          </span>
-        )}
-      </div>
-
-      {/* 날짜 시간 */}
-      <div className="flex items-center gap-6 mb-4 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          <span>{chat.booking_date}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          <span>{chat.booking_time}</span>
-        </div>
-      </div>
-
-      {/* 진행중 안내 */}
-      {chat.tab_status === 'ongoing' && (
-        <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-sm text-green-700 font-medium">
-            🟢 지금 입장 가능해요!
+        {/* 중단: 작성한 사전 질문 (말풍선 스타일) */}
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-5 relative group-hover:bg-blue-50/30 transition-colors">
+          <MessageSquare className="w-4 h-4 text-gray-300 absolute top-4 right-4" />
+          <p className="text-xs text-gray-600 leading-relaxed line-clamp-3 m-0 font-medium pr-6">
+            {chat.questions || "작성된 사전 질문이 없습니다."}
           </p>
         </div>
-      )}
+      </div>
 
-      {/* 🔴 버튼 구역 (onClick 이벤트 추가된 부분) */}
-      <div className="flex gap-3">
-        {chat.tab_status === 'upcoming' && (
-          <button 
-            onClick={() => navigate(`/coffee-chat-detail/${chat.id}`)} // 👈 클릭 시 이동하도록 추가
-            className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition"
-          >
-            세부사항 보기
-          </button>
-        )}
+      {/* 하단: 날짜/시간 및 액션 버튼 */}
+      <div>
         {chat.tab_status === 'ongoing' && (
-          <button
-            onClick={() => handleJoinChat(chat.id)}
-            className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2"
-          >
-            <Coffee className="w-5 h-5" />
-            티타임 입장
-          </button>
+          <div className="mb-4">
+            <p className="text-xs text-green-600 font-bold bg-green-50 px-3 py-2 rounded-lg text-center m-0 border border-green-100">
+              🟢 지금 티타임 방에 입장해 주세요!
+            </p>
+          </div>
         )}
-        {chat.tab_status === 'completed' && (
-          <button 
-            onClick={() => navigate(`/coffee-chat-review/${chat.id}`)}
-            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition"
-          >
-            세부사항 보기
-          </button>
-)}
+
+        <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+          <div className="flex flex-col gap-1.5 text-xs text-gray-500 font-medium">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{chat.booking_date}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{chat.booking_time} (30분)</span>
+            </div>
+          </div>
+          
+          {/* 상태별 액션 버튼 처리 */}
+          {chat.tab_status === 'ongoing' ? (
+            <button
+              onClick={(e) => handleJoinChat(e, chat.id)}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
+            >
+              <Coffee className="w-3.5 h-3.5" /> 입장하기
+            </button>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors text-gray-400">
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fdfdfd]">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <Link
             to="/dashboard"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition no-underline font-medium text-sm"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
             대시보드로 돌아가기
           </Link>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          티타임 관리
-        </h1>
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 m-0 mb-2">
+              티타임 관리
+            </h1>
+            <p className="text-sm text-gray-500 m-0">신청한 커피챗 일정을 한눈에 확인하고 관리하세요.</p>
+          </div>
+        </div>
 
         {/* 로딩 중 */}
         {loading && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 animate-pulse">불러오는 중...</p>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-gray-500 font-medium">일정을 불러오는 중입니다...</p>
           </div>
         )}
 
         {!loading && (
           <>
             {/* 탭 버튼 */}
-            <div className="flex gap-2 mb-8">
+            <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200 pb-4">
               <button
                 onClick={() => setActiveTab('upcoming')}
-                className={`px-8 py-3 font-semibold rounded-lg transition ${
+                className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
                   activeTab === 'upcoming'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }`}
               >
-                예정 ({upcomingChats.length})
+                예정 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{upcomingChats.length}</span>
               </button>
               <button
                 onClick={() => setActiveTab('ongoing')}
-                className={`px-8 py-3 font-semibold rounded-lg transition ${
+                className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
                   activeTab === 'ongoing'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }`}
               >
-                진행중 ({ongoingChats.length})
+                진행중 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'ongoing' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{ongoingChats.length}</span>
               </button>
               <button
                 onClick={() => setActiveTab('completed')}
-                className={`px-8 py-3 font-semibold rounded-lg transition ${
+                className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
                   activeTab === 'completed'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }`}
               >
-                종료 ({completedChats.length})
+                종료 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'completed' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{completedChats.length}</span>
               </button>
             </div>
 
-            {/* 카드 목록 */}
-            <div className="grid gap-6">
+            {/* 🚀 카드 목록 (Grid 레이아웃 적용: 1열 -> 2열 -> 3열) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeTab === 'upcoming' && (
                 upcomingChats.length > 0
                   ? upcomingChats.map(renderChatCard)
-                  : <p className="text-center text-gray-500 py-12">
-                      예정된 티타임이 없어요
-                    </p>
+                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                      <p className="text-gray-500 font-medium">예정된 티타임이 없습니다.</p>
+                    </div>
               )}
               {activeTab === 'ongoing' && (
                 ongoingChats.length > 0
                   ? ongoingChats.map(renderChatCard)
-                  : <p className="text-center text-gray-500 py-12">
-                      진행중인 티타임이 없어요
-                    </p>
+                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                      <p className="text-gray-500 font-medium">현재 진행중인 티타임이 없습니다.</p>
+                    </div>
               )}
               {activeTab === 'completed' && (
                 completedChats.length > 0
                   ? completedChats.map(renderChatCard)
-                  : <p className="text-center text-gray-500 py-12">
-                      종료된 티타임이 없어요
-                    </p>
+                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                      <p className="text-gray-500 font-medium">종료된 티타임 기록이 없습니다.</p>
+                    </div>
               )}
             </div>
           </>
