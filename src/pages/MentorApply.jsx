@@ -125,11 +125,21 @@ export default function MentorDetails() {
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 sticky top-8">
               <div className="mb-6">
                 <img
-                      src={mentor.profile_image || 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'}
-                      onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
-                      alt={mentor.name}
-                      className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300 bg-gray-100"
-                    />
+                  src={
+                    mentorData.profile_image && 
+                    mentorData.profile_image !== 'null' && 
+                    mentorData.profile_image !== 'undefined' &&
+                    // 💡 [치트키] DB에 아주머니 주소가 들어있어도 강제로 차단하고 실루엣으로 보냅니다!
+                    !mentorData.profile_image.includes('photo-1573497019940') 
+                      ? (mentorData.profile_image.startsWith('http') || mentorData.profile_image.startsWith('data:')
+                          ? mentorData.profile_image
+                          : `data:image/jpeg;base64,${mentorData.profile_image}`)
+                      : 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'
+                  }
+                  onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
+                  alt={mentorData.name}
+                  className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300 bg-gray-100"
+                />
               </div>
 
               <div className="mb-6 text-center">
