@@ -25,11 +25,21 @@ export default function MentorDetails() {
       // 💡 핵심: 백엔드에서 이미 []를 보내주므로, 
       // 만약 데이터가 [ ] 배열이면 그냥 쓰고, 문자열이면 파싱합니다.
       const safeParse = (val) => {
-        if (Array.isArray(val)) return val;
-        if (typeof val === 'string') {
-          try { return JSON.parse(val); } catch { return []; }
+        let arr = [];
+        if (Array.isArray(val)) arr = val;
+        else if (typeof val === 'string') {
+          try { arr = JSON.parse(val); } catch { return []; }
         }
-        return [];
+        
+        // 💡 [무적 방어막] 배열 안에 단순 글자가 아니라 이상한 객체({text: '...'})가 들어있어도, 
+        // 화면이 뻗지 않도록 강제로 글자만 쏙쏙 뽑아냅니다!
+        return arr.map(item => {
+          if (typeof item === 'object' && item !== null) {
+            // 객체 안에 text나 value 값이 있으면 그걸 쓰고, 정 안되면 문자열로 강제 변환
+            return item.text || item.title || item.value || JSON.stringify(item);
+          }
+          return item;
+        });
       };
 
       setMentorData({
@@ -125,9 +135,20 @@ export default function MentorDetails() {
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 sticky top-8">
               <div className="mb-6">
                 <img
-                  src={mentorData.profile_image || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400'}
+                  src={
+                    mentorData.profile_image && 
+                    mentorData.profile_image !== 'null' && 
+                    mentorData.profile_image !== 'undefined' &&
+                    // 💡 [치트키] DB에 아주머니 주소가 들어있어도 강제로 차단하고 실루엣으로 보냅니다!
+                    !mentorData.profile_image.includes('photo-1573497019940') 
+                      ? (mentorData.profile_image.startsWith('http') || mentorData.profile_image.startsWith('data:')
+                          ? mentorData.profile_image
+                          : `data:image/jpeg;base64,${mentorData.profile_image}`)
+                      : 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'
+                  }
+                  onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
                   alt={mentorData.name}
-                  className="w-full aspect-square object-cover rounded-2xl shadow-lg ring-4 ring-blue-100"
+                  className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300 bg-gray-100"
                 />
               </div>
 

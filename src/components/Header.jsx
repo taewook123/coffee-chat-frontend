@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // 🌟 1. useLocation 추가
-import { Coffee, Bell } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Coffee, Bell, X } from 'lucide-react'; 
 import axios from 'axios';
 
 const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   const navigate = useNavigate();
-  const location = useLocation(); // 🌟 2. 현재 주소 감지용 변수 추가
+  const location = useLocation(); 
   
   const [currentName, setCurrentName] = useState('회원');
   const [isMentor, setIsMentor] = useState(false); 
@@ -14,7 +14,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   const [hasUnread, setHasUnread] = useState(false);       
   const [isOpen, setIsOpen] = useState(false);
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
   useEffect(() => {
     const savedName = localStorage.getItem('userName');
@@ -27,7 +27,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
       setCurrentName('회원'); 
     }
 
-    // ─── [보완 완료] 멘토 권한 식별 기준 정밀 동기화 ───
     if (isLoggedIn) {
       const rawUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
       const cleanUserId = rawUserId ? parseInt(rawUserId.toString().replace(/[^0-9]/g, ''), 10) : null;
@@ -47,7 +46,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     } else {
       setIsMentor(false);
     }
-  }, [userName, isLoggedIn, location.pathname]); // 🌟 3. 주소(location.pathname)가 바뀔 때마다 재검사!
+  }, [userName, isLoggedIn, location.pathname]); 
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -93,6 +92,56 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     }
   };
 
+  // 💡 [실전 기능 1] 개별 알림 삭제 (DB 연동)
+  const handleDeleteNotification = async (e, id) => {
+    e.stopPropagation(); 
+    
+    // 1. 화면에서 먼저 0.1초 만에 즉각 삭제 (버벅임 방지)
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    
+    // 2. 백엔드 DB에 영구 삭제 요청 보내기
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`서버 응답 에러 (${response.status}): 개별 삭제 실패`);
+      }
+    } catch (error) {
+      console.error("❌ 알림 영구 삭제 중 에러 발생:", error);
+    }
+  };
+
+  // 💡 [실전 기능 2] 알림 전체 삭제 (DB 연동)
+  const handleDeleteAll = async (e) => {
+    e.stopPropagation();
+    
+    // 1. 화면의 모든 알림 즉시 비우기
+    setNotifications([]);
+    
+    // 2. 백엔드 DB에 "내 알림 다 지워줘!" 요청 보내기
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BACKEND_URL}/api/notifications/all`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+
+      if (!response.ok) {
+        console.error(`서버 응답 에러 (${response.status}): 전체 삭제 실패`);
+      }
+    } catch (error) {
+      console.error("❌ 알림 전체 영구 삭제 중 에러 발생:", error);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.clear(); 
     setIsLoggedIn(false);
@@ -122,7 +171,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
         </ul>
 
         <div className="auth-buttons flex items-center gap-4">
-          {/* 🌟 4. 로그인 안 했거나, 멘토가 아닐 때만 버튼 표시 */}
           {(!isLoggedIn || !isMentor) && (
             <button 
               className="btn-register bg-transparent border border-white/30 hover:border-white px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer mr-2" 
@@ -143,20 +191,43 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
               </div>
 
               {isOpen && (
-                <div className="absolute right-24 top-10 w-72 bg-white text-gray-800 rounded-lg shadow-2xl border border-gray-200 py-2 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100 font-bold text-xs text-gray-500">실시간 알림</div>
+                <div className="absolute right-24 top-10 w-80 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
+                  
+                  {/* 💡 헤더 영역: 실시간 알림 타이틀 & 전체 삭제 버튼 */}
+                  <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                    <span className="font-bold text-xs text-gray-500">실시간 알림</span>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={handleDeleteAll}
+                        className="text-[10px] text-gray-400 hover:text-red-500 font-semibold bg-transparent border-0 cursor-pointer hover:underline"
+                      >
+                        전체 삭제
+                      </button>
+                    )}
+                  </div>
+
                   <div className="max-h-60 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-sm text-gray-400">새로운 알림이 없습니다.</div>
+                      <div className="px-4 py-8 text-center text-sm text-gray-400">새로운 알림이 없습니다.</div>
                     ) : (
                       notifications.map((notif) => (
                         <div 
                           key={notif.id}
                           onClick={() => handleNotificationClick(notif.id)}
-                          className={`px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50/60 font-semibold' : 'opacity-60'}`}
+                          // 💡 group 클래스를 추가하여 마우스 호버 이벤트를 감지
+                          className={`group relative px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50/60 font-semibold' : 'opacity-60'}`}
                         >
-                          <p className="m-0 text-gray-700">{notif.message}</p>
+                          <p className="m-0 text-gray-700 pr-6">{notif.message}</p>
                           <span className="text-[10px] text-gray-400 block mt-1">방금 전</span>
+
+                          {/* 💡 개별 삭제(X) 버튼 */}
+                          <button
+                            onClick={(e) => handleDeleteNotification(e, notif.id)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-transparent border-0 cursor-pointer"
+                            title="삭제"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))
                     )}

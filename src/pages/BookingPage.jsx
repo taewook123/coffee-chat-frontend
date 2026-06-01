@@ -13,7 +13,8 @@ export default function BookingPage() {
     name: 'Sarah Chen',
     company: 'Google',
     role: 'Senior Product Manager',
-    avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400',
+    // 💡 아줌마 사진 퇴출 -> 기본 실루엣으로 변경!
+    avatar: 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png',
     price: 89
   };
 
@@ -256,8 +257,9 @@ export default function BookingPage() {
               <div className="flex items-start gap-3 mb-6 pb-6 border-b border-gray-200">
                 <img
                   src={mentor.avatar}
+                  onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
                   alt={mentor.name}
-                  className="w-14 h-14 rounded-full object-cover"
+                  className="w-14 h-14 rounded-full object-cover bg-gray-100" // 배경색 살짝 추가
                 />
                 <div>
                   <h4 className="font-semibold text-[#1a2332]">{mentor.name}</h4>

@@ -288,9 +288,10 @@ export default function Mentors() {
                 <div>
                   <div className="flex flex-col items-center text-center mb-4">
                     <img
-                      src={mentor.profile_image || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400'}
+                      src={mentor.profile_image || 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'}
+                      onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
                       alt={mentor.name}
-                      className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300"
+                      className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300 bg-gray-100"
                     />
                     
                     <h4 className="font-bold text-base text-slate-800 group-hover:text-blue-600 transition m-0">

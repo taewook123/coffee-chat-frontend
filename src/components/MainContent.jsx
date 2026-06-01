@@ -119,9 +119,14 @@ export default function MainContent() {
                   {/* 둥근 사각형 프로필 박스 처리 */}
                   <div className="w-full aspect-square overflow-hidden rounded-xl mb-4 bg-slate-50 relative">
                     <img
-                      src={host.profile_image || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400'}
+                      // 💡 마지막 남은 아줌마 사진 퇴출! 기본 실루엣으로 변경
+                      src={host.profile_image || 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'}
+                      
+                      // 💡 이미지 로드 실패 시 방어막 추가
+                      onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
+                      
                       alt={host.name}
-                      className="w-full h-full object-cover group-hover:scale-103 transition duration-300"
+                      className="w-full h-full object-cover group-hover:scale-103 transition duration-300 bg-gray-100"
                     />
                     {host.isHonor && (
                       <span className="absolute top-2 left-2 bg-amber-400 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
