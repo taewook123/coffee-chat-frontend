@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
+
+// 💡 [확장자 명시] Vite 번들 분석가 에러가 나지 않도록 수줍게 확장자 매핑
 import GeneralProfileForm from '../components/GeneralProfileForm.jsx';
 import MentorProfileForm from '../components/MentorProfileForm.jsx';
 
@@ -15,6 +17,8 @@ export default function ProfileSetup() {
   const userId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('general');
+  const [isMentor, setIsMentor] = useState(false); 
+  
   const [portfolioFile, setPortfolioFile] = useState(null);
   const [mentorResumeFile, setMentorResumeFile] = useState(null);
   const [dbEmail, setDbEmail] = useState('');
@@ -26,7 +30,7 @@ export default function ProfileSetup() {
 
   const [formData, setFormData] = useState({
     name: '', bio: '', mbti: '', hashtags: '', experience: '', portfolio_url: '', help_provide: '', help_receive: '',
-    phone_number: '', // 💡 [추가] 초기 상태값에 전화번호 필드 결합
+    phone_number: '', 
     main_category: '', 
     sub_category: '',
     status: '',
@@ -37,12 +41,12 @@ export default function ProfileSetup() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    
+    // 💡 1. signUpData가 있더라도 여기서 return으로 끝내지 않고 아래의 백엔드 조회를 무조건 타도록 수정!
     if (signUpData) {
       setDbEmail(signUpData.email || '');
-      // 💡 [추가] 가입 데이터 유입 시 전화번호 매핑 추가
       setFormData(prev => ({ ...prev, name: signUpData.name || '', phone_number: signUpData.phone_number || '' }));
-      setIsLoading(false);
-      return; 
+      if (signUpData.role === 'mentor' || signUpData.role === 'host') setIsMentor(true);
     }
 
     if (token) localStorage.setItem('token', token);
@@ -59,20 +63,46 @@ export default function ProfileSetup() {
         const response = await axios.get(`${BACKEND_URL}/api/user/${activeUserId}`, {
           headers: { Authorization: `Bearer ${activeToken}` }
         });
+        
         if (response.data) {
           const user = response.data;
           setDbEmail(user.email || '');
+          setIsMentor(user.is_mentor || false); 
+
+          // 🌟 [핵심 수리] 문자열로 넘어온 배열(JSON)을 안전하게 진짜 배열로 바꿔주는 마법의 함수
+          const safeParse = (data, fallback) => {
+            if (!data) return fallback;
+            if (typeof data === 'string') {
+              try { return JSON.parse(data); } catch (e) { return fallback; }
+            }
+            return data;
+          };
+
+          // 🌟 [핵심 수리] 백엔드의 변수명(job_title 등)을 프론트엔드의 변수명(mentor_job 등)과 완벽하게 매핑
+          const parsedExperiences = safeParse(user.detailed_experience, []);
+
           setFormData({
-            name: user.name || '', bio: user.bio || '', mbti: user.mbti || '', hashtags: user.hashtags || '',
-            experience: user.experience || '', portfolio_url: user.portfolio_url || '',
-            help_provide: user.help_provide || '', help_receive: user.help_receive || '', 
-            phone_number: user.phone_number || '', // 💡 [추가] DB 데이터 로드 시 전화번호 매핑
-            mentor_job: user.mentor_job || '', mentor_careers: user.mentor_careers || [],
-            mentor_hashtags: user.mentor_hashtags || [], mentor_story: user.mentor_story || '',
-            mentor_keywords: user.mentor_keywords || '',
-            mentor_experiences: user.mentor_experiences?.length ? user.mentor_experiences : [{ id: Date.now(), text: '' }],
+            name: user.name || '', 
+            bio: user.bio || '', 
+            mbti: user.mbti || '', 
+            hashtags: user.hashtags || '',
+            experience: user.experience || '', 
+            portfolio_url: user.portfolio_url || '',
+            help_provide: user.help_provide || '', 
+            help_receive: user.help_receive || '', 
+            phone_number: user.phone_number || '', 
             profile_image: user.profile_image || '',
-            mentor_links: user.mentor_links || []
+
+            // 👇 바로 이 부분! 호스트(멘토) 데이터를 올바르게 연결하고 해독합니다.
+            mentor_job: user.job_title || '', 
+            mentor_story: user.mentor_intro || '',
+            mentor_careers: safeParse(user.career_history, []),
+            mentor_hashtags: safeParse(user.mentoring_topics, []),
+            mentor_keywords: user.mentor_keywords || '',
+            mentor_links: safeParse(user.mentor_links, []),
+            
+            // 경험 리스트가 비어있으면 쓸 수 있는 빈 칸을 하나 만들어줌
+            mentor_experiences: parsedExperiences.length > 0 ? parsedExperiences : [{ id: Date.now(), text: '' }]
           });
         }
       } catch (error) {
@@ -111,7 +141,6 @@ export default function ProfileSetup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // 💡 [추가] 빈칸 검증 구문에 !formData.phone_number.trim() 분기 결합
     if (!formData.name.trim() || !formData.bio.trim() || !formData.mbti.trim() || !formData.hashtags.trim() || !formData.experience.trim() || !formData.help_provide.trim() || !formData.help_receive.trim() || !formData.phone_number.trim()) {
       alert("⚠️ 필수 텍스트 항목을 채워주세요.");
       setActiveTab('general');
@@ -129,12 +158,11 @@ export default function ProfileSetup() {
         help_provide: formData.help_provide, 
         help_receive: formData.help_receive, 
         profile_image: formData.profile_image || "", 
-        phone_number: formData.phone_number, // 💡 [추가] 백엔드 전송 페이로드에 전화번호 포함
+        phone_number: formData.phone_number, 
         main_category: formData.main_category,
         sub_category: formData.sub_category,
         status: formData.status,
 
-        // 멘토 관련 데이터 이름 변경 
         job_title: formData.mentor_job || "", 
         career_history: JSON.stringify(formData.mentor_careers || []), 
         mentor_intro: formData.mentor_story || "", 
@@ -158,8 +186,8 @@ export default function ProfileSetup() {
           navigate('/dashboard');
         } 
         else {
-          alert('🎉 회원가입이 완료되었습니다! 가입하신 정보로 다시 로그인해 주세요.');
-          navigate('/login');
+          alert('🎉 프로필 정보가 성공적으로 업데이트되었습니다!');
+          navigate('/dashboard'); 
         }
       }
     } catch (error) {
@@ -175,8 +203,22 @@ export default function ProfileSetup() {
         
         {/* 상단 스위치 탭바 */}
         <div className="flex border-b border-gray-200 mb-8 max-w-md mx-auto bg-white p-1.5 rounded-xl shadow-sm">
-          <button type="button" onClick={() => setActiveTab('general')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>일반 프로필 설정</button>
-          <button type="button" onClick={() => setActiveTab('mentor')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>호스트 프로필 설정</button>
+          <button 
+            type="button" 
+            onClick={() => setActiveTab('general')} 
+            className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}
+          >
+            일반 프로필 설정
+          </button>
+          
+          {/* 🚀 2. 속 썩이던 권한 검문소를 철거했습니다! 바로 클릭해서 넘어갑니다. */}
+          <button 
+            type="button" 
+            onClick={() => setActiveTab('mentor')} 
+            className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}
+          >
+            호스트 프로필 설정
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>

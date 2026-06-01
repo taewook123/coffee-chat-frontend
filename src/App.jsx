@@ -13,6 +13,9 @@ import MentorApply from './pages/MentorApply';
 import BookingFlow from './pages/BookingFlow';
 import MentorDashboard from './pages/MentorDashboard';
 import CoffeeChats from './pages/CoffeeChats';
+import CoffeeChatDetail from './pages/CoffeeChatDetail';
+import CoffeeChatRoom from './pages/CoffeeChatRoom';
+import CoffeeChatReview from './pages/CoffeeChatReview';
 import SignUpPage from './pages/SignUpPages';
 import ProfileSetup from './pages/ProfileSetup';
 import KakaoCallback from './components/KakaoCallback';
@@ -42,6 +45,7 @@ const App = () => {
         decodedName = decodeURIComponent(nameParam);
         localStorage.setItem('userName', decodedName);
       }
+      if (idParam) localStorage.setItem('userId', idParam);
 
       setIsLoggedIn(true);
       setUserName(decodedName);
@@ -90,6 +94,9 @@ const App = () => {
         <Route path="/booking/:mentorId" element={<BookingFlow />} />
         <Route path="/dashboard" element={<MentorDashboard />} />
         <Route path="/coffee-chats" element={<CoffeeChats />} />
+        <Route path="/coffee-chat-detail/:id" element={<CoffeeChatDetail />} />
+        <Route path="/coffee-chat/:chatId" element={<CoffeeChatRoom />} />
+        <Route path="/coffee-chat-review/:chatId" element={<CoffeeChatReview />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="/login/kakao/callback" element={<KakaoCallback />} />

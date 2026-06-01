@@ -148,7 +148,7 @@ const BookingHistory = () => {
 
         {/* 예약 카드 리스트 */}
         <div className="space-y-3">
-          {bookings.map((booking) => {
+          {Array.isArray(bookings) && bookings.map((booking) => {
             // 백엔드 API 종류에 따라 이름/이미지 키 값이 다름을 대응
             const displayName = booking.partner_name || booking.mentee_name || "알 수 없음";
             const displayImage = booking.partner_image || booking.mentee_image || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100";

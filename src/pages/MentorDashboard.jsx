@@ -11,6 +11,7 @@ import {
   DollarSign,
   Clock
 } from 'lucide-react';
+
 import ScheduleManager from './ScheduleManager';
 import BookingHistory from './BookingHistory';
 export default function MentorDashboard() {

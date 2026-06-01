@@ -152,7 +152,6 @@ export default function Mentors() {
 
     // 3. 키워드 검색 (기존 로직 유지)
     const mentorName = mentor.name || '';
-    const mentorCompany = mentor.company || '🏢 크루 멤버';
     const mentorRole = mentor.job_title || '';
     const techStackArray = mentor.techStack || [];
 
@@ -192,9 +191,7 @@ export default function Mentors() {
               <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
                 <Sparkles className="w-5 h-5" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight m-0">
-                원하는 조건의 호스트 크루 찾기
-              </h2>
+              
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 grid lg:grid-cols-12 gap-6 items-center">
@@ -277,10 +274,7 @@ export default function Mentors() {
         {/* 멘토 리스트 그리드 세션 */}
         <div className="max-w-7xl mx-auto px-6 py-10">
           <div className="mb-8">
-            <h3 className="text-base font-bold text-slate-800 m-0">
-              {selectedStatus === '전체' ? '엄선된 추천' : selectedStatus} 매칭 크루 목록
-              <span className="text-xs text-slate-400 font-normal ml-2">({filteredMentors.length}명 검색됨)</span>
-            </h3>
+            
           </div>
 
           <div style={gridForcedStyles}>
@@ -298,9 +292,7 @@ export default function Mentors() {
                       alt={mentor.name}
                       className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300"
                     />
-                    <span className="px-2 py-0.5 bg-blue-50 text-[10px] font-bold text-blue-600 rounded-md mb-2">
-                      {mentor.company || '🏢 CoffeeChat 크루'}
-                    </span>
+                    
                     <h4 className="font-bold text-base text-slate-800 group-hover:text-blue-600 transition m-0">
                       {mentor.name} 호스트
                     </h4>
@@ -331,7 +323,6 @@ export default function Mentors() {
 
           {filteredMentors.length === 0 && (
             <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-              <p className="text-slate-400 text-sm font-medium m-0">조건에 일치하는 티타임 호스트 크루가 아직 없습니다.</p>
               <button
                 onClick={() => { setSelectedStatus('전체'); setSelectedSubCategory('전체'); setSearchQuery(''); }}
                 className="mt-3 text-xs bg-white text-slate-600 px-4 py-2 rounded-xl border border-slate-200 font-semibold cursor-pointer hover:bg-slate-50"
@@ -343,11 +334,7 @@ export default function Mentors() {
         </div> {/* ✅ 멘토 리스트 닫힘 */}
       </div> {/* ✅ 최상위 div 닫힘 */}
 
-      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-6">
-          © 2026 TeeTimes 크루. 우리들의 평등하고 편안한 대화 공간.
-        </div>
-      </footer>
+      
     </div>
   );
 }
