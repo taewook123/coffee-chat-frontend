@@ -5,7 +5,7 @@ import {
   Settings, ChevronRight, Sparkles, Clock, Sun, Moon, Send, X, Volume2 
 } from 'lucide-react';
 import axios from 'axios';
-import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC"; // ✅ 추가
+import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC"; 
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
@@ -52,7 +52,7 @@ export default function CoffeeChatRoom() {
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
   const [myName, setMyName] = useState('나');
-  const [userId, setUserId] = useState(null); // ✅ 추가
+  const [userId, setUserId] = useState(null); 
   const [activeQuestion, setActiveQuestion] = useState(0);
 
   // 스크롤 참조
@@ -63,13 +63,18 @@ export default function CoffeeChatRoom() {
     const id = localStorage.getItem('userId');
     const userName = localStorage.getItem('userName') || '나';
     setMyName(userName);
-    setUserId(id ? Number(id) : null); // ✅ 추가
+    setUserId(id ? Number(id) : null); 
     if (!id) return;
 
-    axios.get(`${BACKEND_URL}/api/bookings/${id}`)
+    axios.get(`${BACKEND_URL}/api/bookings/${chatId}`)
       .then(res => {
-        const found = res.data.find(b => String(b.id) === String(chatId));
-        if (found) setBooking(found);
+        // 💡 [디버깅 로그] 콘솔창에서 백엔드가 주는 진짜 데이터 구조를 확인합니다.
+        console.log("=== [☕ 디버깅] 백엔드 응답 Booking 데이터 원본 ===");
+        console.log(res.data);
+        console.log("현재 로그인한 내 userId (로컬스토리지):", id, " (타입:", typeof id, ")");
+        console.log("=================================================");
+        
+        setBooking(res.data); 
       }).catch(err => console.error('[예약 정보 로드 실패]', err));
 
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
@@ -90,6 +95,19 @@ export default function CoffeeChatRoom() {
     if (llmScrollRef.current) llmScrollRef.current.scrollTop = llmScrollRef.current.scrollHeight;
   }, [llmMessages]);
 
+  // 💡 [역할 판별 초강력 방어 로직] 
+  // 내 ID가 백엔드가 준 데이터의 mentor_id 혹은 mentorId와 일치하는지 판별합니다.
+  // Number()로 감싸서 문자열과 숫자가 다치지 않게 완벽하게 통일합니다.
+  const isMentor = booking && userId 
+    ? (Number(userId) === Number(booking.mentor_id) || Number(userId) === Number(booking.mentorId))
+    : false;
+
+  // 상대방 이름 설정 (내가 멘토면 멘티 이름, 내가 멘티면 멘토 이름)
+  // 백엔드가 준 필드명이 snake_case든 camelCase든 둘 다 방어하도록 설계했습니다.
+  const opponentName = isMentor 
+    ? (booking?.user_name || booking?.userName || '멘티 회원') 
+    : (booking?.mentor_name || booking?.mentorName || '멘토 호스트');
+
   // ✅ WebRTC + STT + LLM 훅 연결
   const {
     localVideoRef,
@@ -106,7 +124,6 @@ export default function CoffeeChatRoom() {
     questions: booking?.questions,
   });
 
-  // ✅ LLM 스트리밍 완료 시 메시지 목록에 추가
   useEffect(() => {
     if (!llmStreaming && llmBuffer) {
       setLlmMessages(prev => [...prev, { sender: 'ai', text: llmBuffer }]);
@@ -119,7 +136,6 @@ export default function CoffeeChatRoom() {
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  // ✅ hangUp() 추가하여 STT 저장 + WebRTC 정리 후 이동
   const handleEndCall = async () => {
     await hangUp();
     try {
@@ -191,9 +207,14 @@ export default function CoffeeChatRoom() {
           <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full hover:bg-black/10 transition-colors" style={{ color: 'var(--text-main)' }}>
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          {booking?.mentor_name && (
-            <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{booking.mentor_name} 호스트</span>
+          
+          {/* 헤더 타이틀 동적 변경 */}
+          {booking && (
+            <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+              {isMentor ? `${opponentName}님과의 코칭 세션` : `${opponentName} 호스트 세션`}
+            </span>
           )}
+          
           <div className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
             <Clock className="w-4 h-4" style={{ color: 'var(--text-main)' }} />
             <span className="font-mono font-semibold text-sm" style={{ color: 'var(--text-main)' }}>{formatDuration(duration)}</span>
@@ -209,10 +230,9 @@ export default function CoffeeChatRoom() {
           
           <div className={`flex gap-4 transition-all duration-500 ease-in-out ${isSTTExpanded ? 'h-40' : 'flex-1'}`}>
             
-            {/* 멘티 (나) - ✅ localVideoRef 연결 */}
+            {/* [나 - Local Video] 내가 멘토면 멘토, 멘티면 멘티 표시 */}
             <div className={`flex-1 relative rounded-3xl overflow-hidden flex flex-col items-center justify-center transition-all shadow-lg`}
                  style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}>
-              {/* 실제 카메라가 있으면 video 태그, 없으면 아바타 */}
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -223,13 +243,15 @@ export default function CoffeeChatRoom() {
               />
               {isVideoOff && (
                 <div className="flex flex-col items-center gap-3">
-                  <div className={`rounded-2xl flex items-center justify-center text-white font-bold bg-gradient-to-br from-blue-500 to-indigo-600 ${isSTTExpanded ? 'w-16 h-16 text-xl' : 'w-24 h-24 text-3xl shadow-xl'}`}>
+                  <div className={`rounded-2xl flex items-center justify-center text-white font-bold bg-gradient-to-br ${isMentor ? 'from-amber-500 to-red-500' : 'from-blue-500 to-indigo-600'} ${isSTTExpanded ? 'w-16 h-16 text-xl' : 'w-24 h-24 text-3xl shadow-xl'}`}>
                     {getInitials(myName)}
                   </div>
                   {!isSTTExpanded && (
                     <div className="text-center">
                       <p className="font-semibold text-lg" style={{ color: 'var(--text-main)' }}>{myName}</p>
-                      <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-500/10 text-blue-500 mt-1 inline-block">멘티</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-500'}`}>
+                        {isMentor ? '멘토 (나)' : '멘티 (나)'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -238,11 +260,11 @@ export default function CoffeeChatRoom() {
                 {isMuted
                   ? <MicOff className="w-3 h-3 text-red-400" />
                   : <Mic className="w-3 h-3 text-white/70" />}
-                <span className="text-xs text-white/70">{isMuted ? '음소거' : myName}</span>
+                <span className="text-xs text-white/70">{isMuted ? '음소거' : `${myName} (${isMentor ? '멘토' : '멘티'})`}</span>
               </div>
             </div>
 
-            {/* 멘토 - ✅ remoteVideoRef 연결 */}
+            {/* [상대방 - Remote Video] 내가 멘토면 상대방은 멘티, 내가 멘티면 상대방은 멘토 */}
             <div className={`flex-1 relative rounded-3xl overflow-hidden flex flex-col items-center justify-center transition-all shadow-lg`}
                  style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}>
               <video
@@ -251,15 +273,16 @@ export default function CoffeeChatRoom() {
                 playsInline
                 className="absolute inset-0 w-full h-full object-cover rounded-3xl"
               />
-              {/* 상대방 영상이 없을 때 아바타 표시 */}
               <div className="flex flex-col items-center gap-3">
-                <div className={`rounded-2xl flex items-center justify-center text-white font-bold bg-gradient-to-br from-amber-500 to-red-500 ${isSTTExpanded ? 'w-16 h-16 text-xl' : 'w-24 h-24 text-3xl shadow-xl'}`}>
-                  {getInitials(booking?.mentor_name || '멘토')}
+                <div className={`rounded-2xl flex items-center justify-center text-white font-bold bg-gradient-to-br ${isMentor ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-red-500'} ${isSTTExpanded ? 'w-16 h-16 text-xl' : 'w-24 h-24 text-3xl shadow-xl'}`}>
+                  {getInitials(opponentName)}
                 </div>
                 {!isSTTExpanded && (
                   <div className="text-center">
-                    <p className="font-semibold text-lg" style={{ color: 'var(--text-main)' }}>{booking?.mentor_name || '멘토'}</p>
-                    <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-500/10 text-amber-600 mt-1 inline-block">호스트</span>
+                    <p className="font-semibold text-lg" style={{ color: 'var(--text-main)' }}>{opponentName}</p>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-600'}`}>
+                      {isMentor ? '멘티 회원' : '호스트 (멘토)'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -317,7 +340,6 @@ export default function CoffeeChatRoom() {
               
               <div className="w-px h-8 mx-1" style={{ background: 'var(--panel-border)' }} />
               
-              {/* ✅ hangUp() 포함 */}
               <button onClick={handleEndCall} className="flex flex-col items-center gap-1 group">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 shadow-xl bg-gradient-to-br from-red-500 to-red-700">
                   <PhoneOff className="w-6 h-6 text-white" />
@@ -362,7 +384,7 @@ export default function CoffeeChatRoom() {
             </div>
           </div>
 
-          {/* LLM 어시스턴트 - ✅ sendLLMQuestion 연결 */}
+          {/* LLM 어시스턴트 */}
           <div className={`flex flex-col rounded-2xl p-4 shadow-md transition-all duration-500 border border-blue-500/30 bg-blue-500/5 ${showChat ? 'h-40' : 'flex-[1.2]'}`}>
             <div className="flex items-center gap-2 mb-3 flex-shrink-0">
               <Sparkles className="w-4 h-4 text-blue-500" />
@@ -377,7 +399,6 @@ export default function CoffeeChatRoom() {
                   {m.text}
                 </div>
               ))}
-              {/* ✅ 스트리밍 중 실시간 텍스트 미리 보여주기 */}
               {llmStreaming && llmBuffer && (
                 <div className="p-2.5 rounded-xl text-xs max-w-[85%] bg-black/10 self-start rounded-tl-sm opacity-70" style={{ color: 'var(--text-main)' }}>
                   {llmBuffer}
@@ -385,7 +406,6 @@ export default function CoffeeChatRoom() {
                 </div>
               )}
             </div>
-            {/* ✅ handleSendLLM으로 통일 */}
             <form onSubmit={(e) => {
               e.preventDefault();
               if (!llmInput.trim()) return;
