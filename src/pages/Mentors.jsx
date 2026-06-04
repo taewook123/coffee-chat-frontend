@@ -264,14 +264,12 @@ export default function Mentors() {
 
                   <div className="flex flex-wrap gap-1 justify-center mt-3">
                     {(() => {
-                        const tags = mentor.mentor_keywords
-                          ? (Array.isArray(mentor.mentor_keywords)
-                              ? mentor.mentor_keywords
-                              : JSON.parse(mentor.mentor_keywords || '[]'))
+                        const tags = (mentor.techStack && mentor.techStack.length > 0)
+                          ? mentor.techStack
+                          : mentor.mentor_keywords
+                          ? (Array.isArray(mentor.mentor_keywords) ? mentor.mentor_keywords : JSON.parse(mentor.mentor_keywords || '[]'))
                           : mentor.hashtags
-                          ? (Array.isArray(mentor.hashtags)
-                              ? mentor.hashtags
-                              : mentor.hashtags.split(',').map(s => s.trim()))
+                          ? (Array.isArray(mentor.hashtags) ? mentor.hashtags : mentor.hashtags.split(',').map(s => s.trim()))
                           : ['커리어'];
                         return tags.slice(0, 4).map((tag, idx) => (
                           <span key={idx} className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">
