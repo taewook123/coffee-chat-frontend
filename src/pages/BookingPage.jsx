@@ -43,7 +43,7 @@ export default function BookingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <Coffee className="w-8 h-8" />
-            <span className="text-xl font-semibold">커피챗</span>
+            <span className="text-xl font-semibold">티타임</span>
           </Link>
           <Link to="/mentors" className="flex items-center gap-2 hover:text-blue-300 transition">
             <ChevronLeft className="w-5 h-5" />
@@ -142,12 +142,12 @@ export default function BookingPage() {
                 {/* 사전 질문 입력 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    멘토에게 물어보고 싶은 질문 (선택 사항)
+                    호스트에게 물어보고 싶은 질문 (선택 사항)
                   </label>
                   <textarea
                     value={questions}
                     onChange={(e) => setQuestions(e.target.value)}
-                    placeholder="커피챗에서 나누고 싶은 주제나 질문을 적어주세요..."
+                    placeholder="티타임에서 나누고 싶은 주제나 질문을 적어주세요..."
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:border-[#4a90e2] resize-none"
                   />
@@ -287,7 +287,7 @@ export default function BookingPage() {
 
               <div className="pt-4 border-t border-gray-200">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">멘토링 비용</span>
+                  <span className="text-gray-600">티타임 비용</span>
                   <span className="font-semibold">${mentor.price}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">

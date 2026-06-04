@@ -66,7 +66,7 @@ export default function SignUpPage() {
       <div className="relative w-full h-full min-h-screen bg-gray-100">
         <img
           src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1000&q=80"
-          alt="Coffee chat lifestyle"
+          alt="TeeTimes lifestyle"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
@@ -77,7 +77,7 @@ export default function SignUpPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-[#1a2332] mb-2 m-0">
-              Coffee Chat 시작하기
+              TeeTimes 시작하기
             </h1>
             <p className="text-sm text-gray-500 mt-1">
               멘토 또는 멘티로 가입하세요

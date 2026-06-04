@@ -1,3 +1,4 @@
+;
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Calendar as CalendarIcon, Clock, CreditCard, Coffee, Check } from 'lucide-react';
@@ -9,7 +10,7 @@ export default function BookingFlow() {
   const { mentorId } = useParams();
   const navigate = useNavigate();
 
-  const BACKEND_URL = "http://48.211.169.52:8000";
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   // 상태 선언
   const [mentor, setMentor] = useState(null);
@@ -216,7 +217,7 @@ export default function BookingFlow() {
             time: selectedTime,
             questions: questions,
         });
-
+        
         alert('🎉 예약이 완료되었습니다! 호스트에게 요청 알림이 발송되었습니다.');
         navigate('/dashboard');
     } catch (err) {
@@ -483,12 +484,12 @@ export default function BookingFlow() {
                 <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 ring-2 ring-blue-100">
                   <img 
                     src={mentor?.profile_image ? `data:image/jpeg;base64,${mentor.profile_image}` : "/default-profile.png"} 
-                    alt={mentor?.name || "멘토"} 
+                    alt={mentor?.name || "호스트"} 
                     className="w-full h-full object-cover" 
                   />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900">{mentor?.name || '멘토를 선택해주세요'}</h4>
+                  <h4 className="font-semibold text-gray-900">{mentor?.name || '호스트를 선택해주세요'}</h4>
                   <p className="text-sm text-gray-600">{mentor?.job_title || '직함 없음'}</p>
                 </div>
               </div>

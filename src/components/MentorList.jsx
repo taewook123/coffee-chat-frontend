@@ -49,7 +49,7 @@ const MentorList = () => {
           <h2 className="text-3xl font-bold text-[#1a2332] mb-3 m-0">
             지금 주목받는 인기 호스트
           </h2>
-          <p className="text-gray-500 text-sm m-0 font-medium">목표하는 직무의 멘토를 탭을 통해 빠르게 만나보세요.</p>
+          <p className="text-gray-500 text-sm m-0 font-medium">목표하는 직무의 호스트를 탭을 통해 빠르게 만나보세요.</p>
         </div>
 
         {/* 전자의 트렌디한 탭 버튼 그룹 인터페이스 매칭 */}
@@ -103,7 +103,7 @@ const MentorList = () => {
                     <span className="text-xs text-blue-600 font-bold">{host.company}</span>
                   </div>
                   <h3 className="font-bold text-gray-900 text-base mb-1 m-0 group-hover:text-[#4a90e2] transition">
-                    {host.name} 멘토
+                    {host.name} 호스트
                   </h3>
                   <p className="text-xs text-gray-500 m-0 font-medium">{host.role}</p>
                   <p className="text-xs text-gray-400 mt-2 line-clamp-2 m-0 leading-relaxed font-medium">"{host.bio}"</p>
@@ -164,7 +164,7 @@ const MentorList = () => {
               </div>
               <h3 className="text-lg font-bold text-slate-800 m-0">세션 예약하기</h3>
               <p className="text-gray-600 text-xs leading-relaxed max-w-xs mx-auto m-0 font-medium">
-                멘토의 오픈된 일정을 직관적으로 조율해 일대일 맞춤형 커피챗 세션을 간편하게 예약할 수 있습니다.
+                호스트의 오픈된 일정을 직관적으로 조율해 일대일 맞춤형 커피챗 세션을 간편하게 예약할 수 있습니다.
               </p>
             </div>
 

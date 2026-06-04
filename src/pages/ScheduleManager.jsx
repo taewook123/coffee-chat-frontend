@@ -229,7 +229,7 @@ export default function ScheduleManager() {
  
   return (
     <div className="w-full bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-      <h2 className="text-2xl font-bold text-[#1a2332] mb-2">멘토링 일정 관리</h2>
+      <h2 className="text-2xl font-bold text-[#1a2332] mb-2">티타임 일정 관리</h2>
  
       <div className="flex gap-4 mb-6 text-sm">
         <span className="flex items-center gap-1.5">
