@@ -16,7 +16,7 @@ export default function CoffeeChatDetail() {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
 
-    axios.get(`${BACKEND_URL}/api/bookings/${userId}`)
+    axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
       .then(res => {
         const found = res.data.find(b => String(b.id) === String(id));
         setBooking(found);

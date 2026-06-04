@@ -18,7 +18,7 @@ export default function CoffeeChatReview() {
     if (!userId) return;
 
     // 예약 정보 가져오기
-    axios.get(`${BACKEND_URL}/api/bookings/${userId}`)
+    axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
       .then(res => {
         const found = res.data.find(b => String(b.id) === String(chatId));
         if (found) setBooking(found);
