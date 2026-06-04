@@ -33,21 +33,34 @@ export default function Mentors() {
   }, [searchParams]);
 
   useEffect(() => {
-    const fetchRealMentors = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`${BACKEND_URL}/api/mentors`);
-        if (response.ok) {
-          const data = await response.json();
-          setMentorsList(data);
-        }
-      } catch (error) {
-        console.error("❌ 호스트 실시간 목록 수신 실패:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRealMentors();
+   const fetchMentors = async () => {
+  try {
+    setLoading(true);
+    const userId = localStorage.getItem('userId');
+    
+    // 백엔드 라우터와 일치하도록 명확히 작성
+    const url = userId
+      ? `${BACKEND_URL}/api/mentors/recommended?user_id=${userId}`
+      : `${BACKEND_URL}/api/mentors`;
+
+    console.log("요청 URL:", url); // 디버깅용 로그
+
+    const response = await fetch(url);
+    if (!response.ok) {
+       // 500 에러 시 서버에서 상세 메시지를 받아올 수 있도록 확인
+       const errorData = await response.text();
+       console.error("서버 에러 응답:", errorData);
+       throw new Error(`Server returned ${response.status}`);
+    }
+    const data = await response.json();
+    setMentorsList(data);
+  } catch (error) {
+    console.error("❌ 호스트 목록 수신 실패:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+    fetchMentors();
   }, [BACKEND_URL]);
 
   const statuses = ['전체', '현직자', '이직자', '프리랜서', '대학생', '취준생'];
@@ -59,7 +72,7 @@ export default function Mentors() {
     { main: '마케팅', subs: ['전체 마케팅', '디지털 마케팅', '퍼포먼스 마케팅', 'SNS/인플루언서', '브랜드 마케팅', 'CRM/그로스', '콘텐츠 마케팅', 'PR/홍보', 'SEO/SEM', '이메일 마케팅', '제휴/파트너십', '데이터 분석'] },
     { main: '경영/사무', subs: ['전체 경영', '경영기획', '인사/HR', '재무/회계', '법무/컴플라이언스', '총무/운영', '구매/자재', '물류/SCM', 'IR/투자', '감사', '비서/어드민'] },
     { main: '영업/CS', subs: ['전체 영업', 'B2B영업', 'B2C영업', '해외영업', '기술영업', '영업관리', '고객성공(CS)', '콜센터', '파트너/채널영업', '리테일/매장관리'] },
-    { main: '미디어/콘텐츠', subs: ['전체 미디어', '방송/PD', '작가/에디터', '포토그래퍼', '유튜브/크리에이터', '번역/통역', '출판/편집', '음악/음향', '스트리머', '기자/저널리스트', '웹툰/만화'] },
+    { main: '미디어/콘텐츠', subs: ['전체 미디어', '방송/PD', '작가/에디터' , '포토그래퍼', '유튜브/크리에이터', '번역/통역', '출판/편집', '음악/음향', '스트리머', '기자/저널리스트', '웹툰/만화'] },
     { main: '전문직', subs: ['전체 전문직', '변호사/법조', '의사/의료', '약사', '공인회계사(CPA)', '세무사', '노무사', '변리사', '건축사', '감정평가사', '금융(IB/PE/VC)', '컨설턴트(MBB)'] },
     { main: '교육', subs: ['전체 교육', '학교교사', '학원강사', '온라인 강사', '교육기획', '코치/멘토', '연구원', '에듀테크'] },
     { main: '스타트업', subs: ['전체 스타트업', '창업자/CEO', 'CTO', 'COO', '초기 멤버', '사이드프로젝트', '투자/VC', '액셀러레이터'] },
@@ -217,6 +230,11 @@ export default function Mentors() {
               >
                 <div>
                   <div className="flex flex-col items-center text-center mb-4">
+                    {mentor.match_score > 0 && (
+                        <span className="mb-2 text-[10px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-bold border border-blue-100">
+                          ✨ 매칭도 {mentor.match_score}점
+                        </span>
+                      )}
                     <img
                       src={mentor.profile_image || 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'}
                       onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
@@ -229,6 +247,15 @@ export default function Mentors() {
                     <p className="text-xs text-slate-500 mt-1 font-semibold m-0">
                       {mentor.job_title || '커리어 가이드'}
                     </p>
+                    {mentor.match_reasons?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 justify-center mt-1.5">
+                          {mentor.match_reasons.slice(0, 2).map((reason, i) => (
+                            <span key={i} className="text-[9px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full border border-amber-100 font-medium">
+                              {reason.split(':')[0]}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                   </div>
 
                   <p className="text-xs text-slate-600 text-center leading-relaxed line-clamp-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-100 m-0 font-medium min-h-[48px] flex items-center justify-center">
@@ -236,11 +263,22 @@ export default function Mentors() {
                   </p>
 
                   <div className="flex flex-wrap gap-1 justify-center mt-3">
-                    {(mentor.techStack || ['백엔드', '커리어']).map((tech, idx) => (
-                      <span key={idx} className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">
-                        #{tech}
-                      </span>
-                    ))}
+                    {(() => {
+                        const tags = mentor.mentor_keywords
+                          ? (Array.isArray(mentor.mentor_keywords)
+                              ? mentor.mentor_keywords
+                              : JSON.parse(mentor.mentor_keywords || '[]'))
+                          : mentor.hashtags
+                          ? (Array.isArray(mentor.hashtags)
+                              ? mentor.hashtags
+                              : mentor.hashtags.split(',').map(s => s.trim()))
+                          : ['커리어'];
+                        return tags.slice(0, 4).map((tag, idx) => (
+                          <span key={idx} className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">
+                            #{tag}
+                          </span>
+                        ));
+                      })()}
                   </div>
                 </div>
 

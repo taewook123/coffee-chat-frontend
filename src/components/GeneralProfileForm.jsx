@@ -1,16 +1,18 @@
 import React from 'react';
 import { Upload, User as UserIcon, Link2, Sparkles, Award, FileText, X } from 'lucide-react';
-// 💡 어제 만든 실시간 업로드 컴포넌트 불러오기
 import ProfileImageUpload from './ProfileImageUpload';
+import TagInput from './TagInput';
 
 export default function GeneralProfileForm({
   formData,
   setFormData,
-  userId, // 💡 부모에게서 받아온 유저 ID
+  userId,
   portfolioFile,
   setPortfolioFile,
   handlePortfolioFileUpload,
-  dbEmail
+  dbEmail,
+  handleAddArrayItem,
+  handleRemoveArrayItem
 }) {
   return (
     <div className="grid md:grid-cols-3 gap-8 items-start animate-fadeIn">
@@ -19,7 +21,6 @@ export default function GeneralProfileForm({
       <div className="md:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center sticky top-24">
         <label className="block text-sm font-bold text-gray-700 mb-4 text-left">프로필 이미지 <span className="text-gray-400 font-normal text-xs">(선택)</span></label>
         
-        {/* 🚀 [핵심 교체] 낡은 input 대신 우리가 만든 Azure 업로드 컴포넌트 장착 */}
         <ProfileImageUpload 
           userId={userId} 
           currentImageUrl={formData.profile_image} 
@@ -53,7 +54,7 @@ export default function GeneralProfileForm({
               required
             />
           </div>
-          <div className="mb-6">
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               📱 휴대폰 번호 <span className="text-red-500">*</span>
             </label>
@@ -105,50 +106,42 @@ export default function GeneralProfileForm({
         </div>
 
         {/* 경력 및 보유 기술 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-6">
           <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
             <Award className="w-4 h-4 text-purple-600" /> 경력 및 보유 기술
           </h3>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-2">주요 이력 및 경력 사항 <span className="text-red-500">*</span></label>
-            <textarea
-              value={formData.experience || ''}
-              onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-blue-500 transition text-sm resize-none bg-white"
-              placeholder="담당 직무, 프로젝트 기술 스택 등을 상세하게 요약해 주세요."
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-2">내가 확실히 도움을 줄 수 있는 분야 <span className="text-red-500">*</span></label>
-            <textarea
-              value={formData.help_provide || ''}
-              onChange={(e) => setFormData({ ...formData, help_provide: e.target.value })}
-              rows={2}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-blue-500 transition text-sm resize-none bg-white"
-              placeholder="예: Spring Boot JPA 구조 고도화, 실시간 2-way 웹소켓 동기화"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-2">배우고 싶은 분야 <span className="text-red-500">*</span></label>
-            <textarea
-              value={formData.help_receive || ''}
-              onChange={(e) => setFormData({ ...formData, help_receive: e.target.value })}
-              rows={2}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-blue-500 transition text-sm resize-none bg-white"
-              placeholder="예: 대용량 데이터 분산 인프라 아키텍처"
-              required
-            />
-          </div>
+          
+          <TagInput 
+            label={<>주요 이력 및 경력 사항 <span className="text-red-500">*</span></>} 
+            placeholder="예: 우아한형제들 백엔드 인턴 (입력 후 Enter)" 
+            tags={formData.experience} 
+            onAdd={(val) => handleAddArrayItem('experience', val)} 
+            onRemove={(idx) => handleRemoveArrayItem('experience', idx)} 
+          />
+
+          <TagInput 
+            label={<>내가 확실히 도움을 줄 수 있는 분야 <span className="text-red-500">*</span></>} 
+            placeholder="예: Spring Boot JPA 구조 고도화 (입력 후 Enter)" 
+            tags={formData.help_provide} 
+            onAdd={(val) => handleAddArrayItem('help_provide', val)} 
+            onRemove={(idx) => handleRemoveArrayItem('help_provide', idx)} 
+          />
+
+          <TagInput 
+            label={<>배우고 싶은 분야 <span className="text-red-500">*</span></>} 
+            placeholder="예: 대용량 데이터 분산 처리 아키텍처 (입력 후 Enter)" 
+            tags={formData.help_receive} 
+            onAdd={(val) => handleAddArrayItem('help_receive', val)} 
+            onRemove={(idx) => handleRemoveArrayItem('help_receive', idx)} 
+          />
         </div>
 
         {/* 자기소개 및 성향 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-6">
           <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" /> 자기소개 및 성향
           </h3>
+          
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-2">한 줄 자기소개 <span className="text-red-500">*</span></label>
             <textarea
@@ -160,7 +153,9 @@ export default function GeneralProfileForm({
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* 💡 [정렬 핵심 교체] 무조건 태그가 한 줄 깔려있다고 가정하고 grid 정렬 기준을 바닥(items-end)으로 락(Lock)을 겁니다. */}
+          <div className="grid md:grid-cols-2 gap-4 items-end">
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-2">MBTI <span className="text-red-500">*</span></label>
               <input
@@ -173,18 +168,16 @@ export default function GeneralProfileForm({
                 required
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-2">관심 해시태그 <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={formData.hashtags || ''}
-                onChange={(e) => setFormData({ ...formData, hashtags: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-blue-500 transition text-sm bg-white"
-                placeholder="#백엔드 #FastAPI #리액트"
-                required
-              />
-            </div>
+            
+            <TagInput 
+              label={<>관심 해시태그 <span className="text-red-500">*</span></>} 
+              placeholder="#백엔드 #FastAPI (Enter)" 
+              tags={formData.hashtags} 
+              onAdd={(val) => handleAddArrayItem('hashtags', val)} 
+              onRemove={(idx) => handleRemoveArrayItem('hashtags', idx)} 
+            />
           </div>
+
         </div>
 
       </div>

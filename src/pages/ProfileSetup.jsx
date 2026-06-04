@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
-// 💡 [확장자 명시] Vite 번들 분석가 에러가 나지 않도록 수줍게 확장자 매핑
 import GeneralProfileForm from '../components/GeneralProfileForm.jsx';
 import MentorProfileForm from '../components/MentorProfileForm.jsx';
 
@@ -24,25 +23,18 @@ export default function ProfileSetup() {
   const [dbEmail, setDbEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const [tempCareer, setTempCareer] = useState('');
-  const [tempHashtag, setTempHashtag] = useState('');
-  const [tempLink, setTempLink] = useState('');
-
   const [formData, setFormData] = useState({
-    name: '', bio: '', mbti: '', hashtags: '', experience: '', portfolio_url: '', help_provide: '', help_receive: '',
-    phone_number: '', 
-    main_category: '', 
-    sub_category: '',
-    status: '',
-    profile_image: '',
-    mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', mentor_keywords: '',
-    mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
+    name: '', bio: '', mbti: '', portfolio_url: '', phone_number: '', 
+    main_category: '', sub_category: '', status: '', profile_image: '',
+    portfolio_file_path: '', // 🚀 이력서 파일 저장용 컬럼 추가
+    hashtags: [], experience: [], help_provide: [], help_receive: [], 
+    mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', 
+    mentor_keywords: [], mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
   });
 
   useEffect(() => {
     window.scrollTo(0, 0);
     
-    // 💡 1. signUpData가 있더라도 여기서 return으로 끝내지 않고 아래의 백엔드 조회를 무조건 타도록 수정!
     if (signUpData) {
       setDbEmail(signUpData.email || '');
       setFormData(prev => ({ ...prev, name: signUpData.name || '', phone_number: signUpData.phone_number || '' }));
@@ -69,47 +61,61 @@ export default function ProfileSetup() {
           setDbEmail(user.email || '');
           setIsMentor(user.is_mentor || false); 
 
-          // 🌟 [핵심 수리] 문자열로 넘어온 배열(JSON)을 안전하게 진짜 배열로 바꿔주는 마법의 함수
           const safeParse = (data, fallback) => {
             if (!data) return fallback;
             if (typeof data === 'string') {
-              try { return JSON.parse(data); } catch (e) { return fallback; }
+              try { 
+                const parsed = JSON.parse(data);
+                if (Array.isArray(fallback) && !Array.isArray(parsed)) return [String(parsed)];
+                return parsed;
+              } catch (e) { return fallback; }
             }
-            return data;
+            return Array.isArray(fallback) && !Array.isArray(data) ? [String(data)] : data;
           };
 
-          // 🌟 [핵심 수리] 백엔드의 변수명(job_title 등)을 프론트엔드의 변수명(mentor_job 등)과 완벽하게 매핑
+          const parseToTags = (data) => {
+            if (!data) return [];
+            if (Array.isArray(data)) return data.map(String);
+            if (typeof data === 'string') {
+              try { 
+                const parsed = JSON.parse(data); 
+                if (Array.isArray(parsed)) return parsed.map(String);
+              } catch (e) {}
+              return data.split(',').map(s => String(s).trim()).filter(Boolean);
+            }
+            return [String(data)];
+          };
+
           const parsedExperiences = safeParse(user.detailed_experience, []);
 
           setFormData({
             name: user.name || '', 
             bio: user.bio || '', 
             mbti: user.mbti || '', 
-            hashtags: user.hashtags || '',
-            experience: user.experience || '', 
             portfolio_url: user.portfolio_url || '',
-            help_provide: user.help_provide || '', 
-            help_receive: user.help_receive || '', 
+            portfolio_file_path: user.portfolio_file_path || '', // 🚀 이력서/포트폴리오 경로 로딩
             phone_number: user.phone_number || '', 
             profile_image: user.profile_image || '',
             main_category: user.main_category || '',
             sub_category: user.sub_category || '',
             status: user.status || '',
-            // 👇 바로 이 부분! 호스트(멘토) 데이터를 올바르게 연결하고 해독합니다.
+            
+            hashtags: parseToTags(user.hashtags),
+            experience: parseToTags(user.experience),
+            help_provide: parseToTags(user.help_provide),
+            help_receive: parseToTags(user.help_receive),
+
             mentor_job: user.job_title || '', 
             mentor_story: user.mentor_intro || '',
             mentor_careers: safeParse(user.career_history, []),
             mentor_hashtags: safeParse(user.mentoring_topics, []),
-            mentor_keywords: user.mentor_keywords || '',
+            mentor_keywords: parseToTags(user.mentor_keywords),
             mentor_links: safeParse(user.mentor_links, []),
-            
-            // 경험 리스트가 비어있으면 쓸 수 있는 빈 칸을 하나 만들어줌
             mentor_experiences: parsedExperiences.length > 0 ? parsedExperiences : [{ id: Date.now(), text: '' }]
           });
         }
       } catch (error) {
-        setDbEmail(searchParams.get('email') ? decodeURIComponent(searchParams.get('email')) : "sjlee5125@gmail.com");
-        if (searchParams.get('name')) setFormData(prev => ({ ...prev, name: decodeURIComponent(searchParams.get('name')) }));
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
@@ -117,59 +123,67 @@ export default function ProfileSetup() {
     fetchExistingProfile();
   }, [userId, token, searchParams, signUpData]);
 
-
-  const handleKeyDownArray = (e, field, value, setValue) => {
-    if (e.key === 'Enter' && value.trim()) {
-      e.preventDefault();
-      if (!formData[field].includes(value.trim())) {
-        setFormData({ ...formData, [field]: [...formData[field], value.trim()] });
-      }
-      setValue('');
-    }
+  // 🚀 태그 스위치 함수
+  const handleAddArrayItem = (field, value) => {
+    setFormData(prev => {
+      const currentList = Array.isArray(prev[field]) ? prev[field] : [];
+      return { ...prev, [field]: [...currentList, value] };
+    });
   };
 
   const handleRemoveArrayItem = (field, index) => {
-    const updated = [...formData[field]];
-    updated.splice(index, 1);
-    setFormData({ ...formData, [field]: updated });
+    setFormData(prev => {
+      const currentList = Array.isArray(prev[field]) ? prev[field] : [];
+      const updated = [...currentList];
+      updated.splice(index, 1);
+      return { ...prev, [field]: updated };
+    });
   };
-
-  const handleExperienceChange = (id, text) => {
-    setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.map(item => item.id === id ? { ...item, text } : item) });
-  };
-
-  const addExperienceField = () => setFormData({ ...formData, mentor_experiences: [...formData.mentor_experiences, { id: Date.now(), text: '' }] });
-  const removeExperienceField = (id) => setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.filter(item => item.id !== id) });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.bio.trim() || !formData.mbti.trim() || !formData.hashtags.trim() || !formData.experience.trim() || !formData.help_provide.trim() || !formData.help_receive.trim() || !formData.phone_number.trim()) {
+    if (!formData.name.trim() || !formData.phone_number.trim()) {
       alert("⚠️ 필수 텍스트 항목을 채워주세요.");
       setActiveTab('general');
       return;
     }
     try {
       const activeToken = token || localStorage.getItem('token');
-      const commonPayload = {
-        name: formData.name, 
-        bio: formData.bio, 
-        mbti: formData.mbti, 
-        hashtags: formData.hashtags, 
-        experience: formData.experience,
-        portfolio_url: formData.portfolio_url || '', 
-        help_provide: formData.help_provide, 
-        help_receive: formData.help_receive, 
-        profile_image: formData.profile_image || "", 
-        phone_number: formData.phone_number, 
-        main_category: formData.main_category,
-        sub_category: formData.sub_category,
-        status: formData.status,
+      
+      const formatString = (val) => {
+        if (Array.isArray(val)) return val.join(', ');
+        return val != null ? String(val) : "";
+      };
 
-        job_title: formData.mentor_job || "", 
-        career_history: JSON.stringify(formData.mentor_careers || []), 
-        mentor_intro: formData.mentor_story || "", 
-        mentoring_topics: JSON.stringify(formData.mentor_hashtags || []), 
-        detailed_experience: JSON.stringify(formData.mentor_experiences || [])
+      const commonPayload = {
+        name: String(formData.name || ""), 
+        bio: String(formData.bio || ""), 
+        mbti: String(formData.mbti || ""), 
+        portfolio_url: String(formData.portfolio_url || ""), 
+        
+        // 🚀 이력서 파일(멘토 폼)이나 포트폴리오 파일(일반 폼)이 있으면 파일 이름을 저장
+        portfolio_file_path: mentorResumeFile ? mentorResumeFile.name : (portfolioFile ? portfolioFile.name : formData.portfolio_file_path || ""),
+        
+        profile_image: String(formData.profile_image || ""), 
+        phone_number: String(formData.phone_number || ""), 
+        main_category: String(formData.main_category || ""),
+        sub_category: String(formData.sub_category || ""),
+        status: String(formData.status || ""),
+
+        hashtags: formatString(formData.hashtags),
+        experience: formatString(formData.experience),
+        help_provide: formatString(formData.help_provide),
+        help_receive: formatString(formData.help_receive),
+
+        job_title: String(formData.sub_category || "직무 미정"), 
+        career_history: JSON.stringify(formData.experience || []), 
+        mentor_intro: String(formData.mentor_story || formData.bio || ""), 
+        mentoring_topics: JSON.stringify(formData.hashtags || []), 
+        detailed_experience: JSON.stringify(
+          (formData.mentor_experiences || []).filter(exp => exp.text && String(exp.text).trim() !== '')
+        ),
+        mentor_keywords: JSON.stringify(formData.mentor_keywords || []),
+        mentor_links: JSON.stringify(formData.mentor_links || [])
       };
 
       let response;
@@ -185,55 +199,61 @@ export default function ProfileSetup() {
           localStorage.setItem('token', response.data.access_token);
           localStorage.setItem('userId', response.data.user_id || response.data.id || '');
           alert('🎉 회원가입 완료! 자동으로 로그인되었습니다.');
-          navigate('/dashboard');
-        } 
-        else {
+        } else {
           alert('🎉 프로필 정보가 성공적으로 업데이트되었습니다!');
-          navigate('/dashboard'); 
         }
+        navigate('/dashboard'); 
       }
     } catch (error) {
       alert(`❌ DB 업데이트 실패: ${error.message}`);
     }
   };
 
+  const handleExperienceChange = (id, text) => setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.map(item => item.id === id ? { ...item, text } : item) });
+  const addExperienceField = () => setFormData({ ...formData, mentor_experiences: [...formData.mentor_experiences, { id: Date.now(), text: '' }] });
+  const removeExperienceField = (id) => setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.filter(item => item.id !== id) });
+
   if (isLoading) return <div className="text-center pt-20">데이터 가드 가동 중...</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 pb-16">
       <div className="max-w-4xl mx-auto px-6 pt-12">
-        
-        {/* 상단 스위치 탭바 */}
         <div className="flex border-b border-gray-200 mb-8 max-w-md mx-auto bg-white p-1.5 rounded-xl shadow-sm">
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('general')} 
-            className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}
-          >
-            일반 프로필 설정
-          </button>
-          
-          {/* 🚀 2. 속 썩이던 권한 검문소를 철거했습니다! 바로 클릭해서 넘어갑니다. */}
-          <button 
-            type="button" 
-            onClick={() => {
-              if (!isMentor) {
-                alert("⚠️ 호스트(멘토) 권한이 있는 회원만 접근할 수 있습니다.\n호스트 등록을 원하시면 고객센터로 문의해 주세요.");
-                return; // 👈 이 줄이 핵심! 알림창 띄우고 멈추게 합니다.
-              }
-              setActiveTab('mentor');
-            }} 
-            className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}
-          >
-            호스트 프로필 설정
-          </button>
+          <button type="button" onClick={() => setActiveTab('general')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>일반 프로필 설정</button>
+          <button type="button" onClick={() => { if (!isMentor) { alert("⚠️ 호스트 권한이 있는 회원만 접근할 수 있습니다."); return; } setActiveTab('mentor'); }} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>호스트 프로필 설정</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           {activeTab === 'general' ? (
-            <GeneralProfileForm formData={formData} setFormData={setFormData} userId={userId} portfolioFile={portfolioFile} setPortfolioFile={setPortfolioFile} dbEmail={dbEmail} />
+            <GeneralProfileForm 
+              formData={formData} 
+              setFormData={setFormData} 
+              userId={userId} 
+              dbEmail={dbEmail} 
+              portfolioFile={portfolioFile}
+              setPortfolioFile={setPortfolioFile}
+              handlePortfolioFileUpload={(e) => { if(e.target.files?.[0]) setPortfolioFile(e.target.files[0]); }}
+              handleAddArrayItem={handleAddArrayItem}
+              handleRemoveArrayItem={handleRemoveArrayItem}
+            />
           ) : (
-            <MentorProfileForm formData={formData} setFormData={setFormData} tempCareer={tempCareer} setTempCareer={setTempCareer} tempHashtag={tempHashtag} setTempHashtag={setTempHashtag} tempLink={tempLink} setTempLink={setTempLink} mentorResumeFile={mentorResumeFile} setMentorResumeFile={setMentorResumeFile} handleMentorResumeUpload={(e) => { if(e.target.files?.[0]) setMentorResumeFile(e.target.files[0]); }} handleKeyDownArray={handleKeyDownArray} handleRemoveArrayItem={handleRemoveArrayItem} handleExperienceChange={handleExperienceChange} addExperienceField={addExperienceField} removeExperienceField={removeExperienceField} />
+            <MentorProfileForm 
+              formData={formData} 
+              setFormData={setFormData} 
+              userId={userId || localStorage.getItem('userId')}
+              dbEmail={dbEmail}
+              mentorResumeFile={mentorResumeFile} 
+              setMentorResumeFile={setMentorResumeFile} 
+              handleMentorResumeUpload={(e) => { if(e.target.files?.[0]) setMentorResumeFile(e.target.files[0]); }} 
+              
+              // 🚀 깜빡하고 안 넘겨줬던 스위치를 드디어 멘토 폼에도 장착 완료!!
+              handleAddArrayItem={handleAddArrayItem}
+              handleRemoveArrayItem={handleRemoveArrayItem}
+              
+              handleExperienceChange={handleExperienceChange} 
+              addExperienceField={addExperienceField} 
+              removeExperienceField={removeExperienceField} 
+            />
           )}
 
           <div className="text-center pt-8">
@@ -242,7 +262,6 @@ export default function ProfileSetup() {
             </button>
           </div>
         </form>
-
       </div>
     </div>
   );
