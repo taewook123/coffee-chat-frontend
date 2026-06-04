@@ -4,6 +4,7 @@ import { Camera } from 'lucide-react';
 
 const ProfileImageUpload = ({ userId, currentImageUrl, onUploadSuccess }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const DEFAULT_IMAGE = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png';
   const [preview, setPreview] = useState(currentImageUrl || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400');
   
   // 숨겨진 파일 input을 클릭하기 위한 참조

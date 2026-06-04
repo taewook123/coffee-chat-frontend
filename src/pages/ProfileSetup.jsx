@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
+
 import GeneralProfileForm from '../components/GeneralProfileForm.jsx';
 import MentorProfileForm from '../components/MentorProfileForm.jsx';
 
@@ -15,6 +16,8 @@ export default function ProfileSetup() {
   const userId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('general');
+  const [isMentor, setIsMentor] = useState(false); 
+  
   const [portfolioFile, setPortfolioFile] = useState(null);
   const [mentorResumeFile, setMentorResumeFile] = useState(null);
   const [dbEmail, setDbEmail] = useState('');
@@ -50,11 +53,11 @@ export default function ProfileSetup() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    
     if (signUpData) {
       setDbEmail(signUpData.email || '');
       setFormData(prev => ({ ...prev, name: signUpData.name || '', phone_number: signUpData.phone_number || '' }));
-      setIsLoading(false);
-      return; 
+      if (signUpData.role === 'mentor' || signUpData.role === 'host') setIsMentor(true);
     }
 
     if (token) localStorage.setItem('token', token);
@@ -68,6 +71,7 @@ export default function ProfileSetup() {
         const response = await axios.get(`${BACKEND_URL}/api/user/${activeUserId}`, {
           headers: { Authorization: `Bearer ${activeToken}` }
         });
+        
         
         if (response.data) {
           const user = response.data;
@@ -99,8 +103,7 @@ export default function ProfileSetup() {
           });
         }
       } catch (error) {
-        setDbEmail(searchParams.get('email') ? decodeURIComponent(searchParams.get('email')) : "sjlee5125@gmail.com");
-        if (searchParams.get('name')) setFormData(prev => ({ ...prev, name: decodeURIComponent(searchParams.get('name')) }));
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
@@ -122,17 +125,13 @@ export default function ProfileSetup() {
   };
 
   const handleRemoveArrayItem = (field, index) => {
-    const updated = [...formData[field]];
-    updated.splice(index, 1);
-    setFormData({ ...formData, [field]: updated });
+    setFormData(prev => {
+      const currentList = Array.isArray(prev[field]) ? prev[field] : [];
+      const updated = [...currentList];
+      updated.splice(index, 1);
+      return { ...prev, [field]: updated };
+    });
   };
-
-  const handleExperienceChange = (id, text) => {
-    setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.map(item => item.id === id ? { ...item, text } : item) });
-  };
-
-  const addExperienceField = () => setFormData({ ...formData, mentor_experiences: [...formData.mentor_experiences, { id: Date.now(), text: '' }] });
-  const removeExperienceField = (id) => setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.filter(item => item.id !== id) });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -143,6 +142,12 @@ export default function ProfileSetup() {
     }
     try {
       const activeToken = token || localStorage.getItem('token');
+      
+      const formatString = (val) => {
+        if (Array.isArray(val)) return val.join(', ');
+        return val != null ? String(val) : "";
+      };
+
       const commonPayload = {
         name: formData.name, bio: formData.bio, mbti: formData.mbti, hashtags: formData.hashtags, experience: formData.experience,
         portfolio_url: formData.portfolio_url || (formData.mentor_links?.[0] || ''), // 💡 포트폴리오 링크도 양방향 연동!
@@ -182,6 +187,10 @@ export default function ProfileSetup() {
     }
   };
 
+  const handleExperienceChange = (id, text) => setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.map(item => item.id === id ? { ...item, text } : item) });
+  const addExperienceField = () => setFormData({ ...formData, mentor_experiences: [...formData.mentor_experiences, { id: Date.now(), text: '' }] });
+  const removeExperienceField = (id) => setFormData({ ...formData, mentor_experiences: formData.mentor_experiences.filter(item => item.id !== id) });
+
   if (isLoading) return <div className="text-center pt-20">데이터 가드 가동 중...</div>;
 
   return (
@@ -189,12 +198,22 @@ export default function ProfileSetup() {
       <div className="max-w-4xl mx-auto px-6 pt-12">
         <div className="flex border-b border-gray-200 mb-8 max-w-md mx-auto bg-white p-1.5 rounded-xl shadow-sm">
           <button type="button" onClick={() => setActiveTab('general')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>일반 프로필 설정</button>
-          <button type="button" onClick={() => setActiveTab('mentor')} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>호스트 프로필 설정</button>
+          <button type="button" onClick={() => { if (!isMentor) { alert("⚠️ 호스트 권한이 있는 회원만 접근할 수 있습니다."); return; } setActiveTab('mentor'); }} className={`flex-1 py-2.5 text-center font-bold text-sm border-0 rounded-lg cursor-pointer transition ${activeTab === 'mentor' ? 'bg-purple-600 text-white shadow-sm' : 'bg-transparent text-gray-500'}`}>호스트 프로필 설정</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           {activeTab === 'general' ? (
-            <GeneralProfileForm formData={formData} setFormData={setFormData} userId={userId} portfolioFile={portfolioFile} setPortfolioFile={setPortfolioFile} dbEmail={dbEmail} />
+            <GeneralProfileForm 
+              formData={formData} 
+              setFormData={setFormData} 
+              userId={userId} 
+              dbEmail={dbEmail} 
+              portfolioFile={portfolioFile}
+              setPortfolioFile={setPortfolioFile}
+              handlePortfolioFileUpload={(e) => { if(e.target.files?.[0]) setPortfolioFile(e.target.files[0]); }}
+              handleAddArrayItem={handleAddArrayItem}
+              handleRemoveArrayItem={handleRemoveArrayItem}
+            />
           ) : (
             // 💡 [추가] tempKeyword와 setTempKeyword를 자식 컴포넌트로 전달합니다!
             <MentorProfileForm 

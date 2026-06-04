@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Coffee, Calendar, Clock, ChevronLeft } from 'lucide-react';
+import { Coffee, Calendar, Clock, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 
 export default function CoffeeChats() {
@@ -8,7 +8,7 @@ export default function CoffeeChats() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const BACKEND_URL = 'http://localhost:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -143,70 +143,76 @@ export default function CoffeeChats() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fdfdfd]">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <Link
             to="/dashboard"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition no-underline font-medium text-sm"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
             대시보드로 돌아가기
           </Link>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          티타임 관리
-        </h1>
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 m-0 mb-2">
+              티타임 관리
+            </h1>
+            <p className="text-sm text-gray-500 m-0">신청한 커피챗 일정을 한눈에 확인하고 관리하세요.</p>
+          </div>
+        </div>
 
         {/* 로딩 중 */}
         {loading && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 animate-pulse">불러오는 중...</p>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-gray-500 font-medium">일정을 불러오는 중입니다...</p>
           </div>
         )}
 
         {!loading && (
           <>
             {/* 탭 버튼 */}
-            <div className="flex gap-2 mb-8">
+            <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200 pb-4">
               <button
                 onClick={() => setActiveTab('upcoming')}
-                className={`px-8 py-3 font-semibold rounded-lg transition ${
+                className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
                   activeTab === 'upcoming'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }`}
               >
-                예정 ({upcomingChats.length})
+                예정 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{upcomingChats.length}</span>
               </button>
               <button
                 onClick={() => setActiveTab('ongoing')}
-                className={`px-8 py-3 font-semibold rounded-lg transition ${
+                className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
                   activeTab === 'ongoing'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }`}
               >
-                진행중 ({ongoingChats.length})
+                진행중 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'ongoing' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{ongoingChats.length}</span>
               </button>
               <button
                 onClick={() => setActiveTab('completed')}
-                className={`px-8 py-3 font-semibold rounded-lg transition ${
+                className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
                   activeTab === 'completed'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }`}
               >
-                종료 ({completedChats.length})
+                종료 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'completed' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{completedChats.length}</span>
               </button>
             </div>
 
-            {/* 카드 목록 */}
-            <div className="grid gap-6">
+            {/* 🚀 카드 목록 (Grid 레이아웃 적용: 1열 -> 2열 -> 3열) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeTab === 'upcoming' && (
                 upcomingChats.length > 0
                   ? upcomingChats.map(renderChatCard)

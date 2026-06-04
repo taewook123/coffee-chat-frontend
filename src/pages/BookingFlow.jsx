@@ -483,7 +483,11 @@ export default function BookingFlow() {
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
                 <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 ring-2 ring-blue-100">
                   <img 
-                    src={mentor?.profile_image ? `data:image/jpeg;base64,${mentor.profile_image}` : "/default-profile.png"} 
+                    // 💡 기본 프로필 이미지를 회색 실루엣 링크로 변경!
+                    src={mentor?.profile_image ? `data:image/jpeg;base64,${mentor.profile_image}` : "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"} 
+                    
+                    // 💡 Base64 이미지가 깨지거나 불러오기 실패 시 실루엣으로 복구하는 방어막
+                    onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
                     alt={mentor?.name || "호스트"} 
                     className="w-full h-full object-cover" 
                   />

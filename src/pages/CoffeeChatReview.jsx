@@ -11,7 +11,7 @@ export default function CoffeeChatReview() {
   const [review, setReview] = useState('');
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
-  const BACKEND_URL = 'http://localhost:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
