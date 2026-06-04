@@ -66,7 +66,7 @@ export default function CoffeeChatRoom() {
     setUserId(id ? Number(id) : null); 
     if (!id) return;
 
-    axios.get(`${BACKEND_URL}/api/bookings/${chatId}`)
+    axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => {
         // 💡 [디버깅 로그] 콘솔창에서 백엔드가 주는 진짜 데이터 구조를 확인합니다.
         console.log("=== [☕ 디버깅] 백엔드 응답 Booking 데이터 원본 ===");
