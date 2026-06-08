@@ -20,6 +20,8 @@ import MentorRegistration from './pages/MentorRegistration';
 import MainContent from './components/MainContent';
 import BookingHistory from './pages/BookingHistory';
 import ProfileImageUpload from './components/ProfileImageUpload';
+import CoffeeChatReview from './pages/CoffeeChatReview';
+
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [userName, setUserName] = useState(localStorage.getItem('userName') || "회원");
@@ -90,6 +92,7 @@ const App = () => {
         <Route path="/booking/:mentorId" element={<BookingFlow />} />
         <Route path="/dashboard" element={<MentorDashboard />} />
         <Route path="/coffee-chats" element={<CoffeeChats />} />
+        <Route path="/coffee-chat/:chatId" element={<CoffeeChatReview />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="/login/kakao/callback" element={<KakaoCallback />} />
