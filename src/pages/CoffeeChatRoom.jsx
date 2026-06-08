@@ -8,7 +8,6 @@ import axios from 'axios';
 import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC"; 
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
-
 const WS_URL = BACKEND_URL.replace(/^http/, 'ws');
 
 function ControlBtn({ active, onClick, icon, danger = false, label }) {
@@ -34,7 +33,6 @@ export default function CoffeeChatRoom() {
   const navigate = useNavigate();
   
   const [duration, setDuration] = useState(0);
-  // ✅ [3번 수정] isMuted/isVideoOff는 UI 상태이자 트랙 제어 트리거
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   
@@ -43,21 +41,24 @@ export default function CoffeeChatRoom() {
   const [isSTTExpanded, setIsSTTExpanded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
-  // ✅ [4번 수정] 채팅 WebSocket
+  // 채팅 WebSocket
   const chatWsRef = useRef(null);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([{ sender: 'system', text: '채팅방이 개설되었습니다.' }]);
   
+  // LLM State
   const [llmInput, setLlmInput] = useState('');
   const [llmMessages, setLlmMessages] = useState([{ sender: 'ai', text: '무엇이든 물어보세요! 대화를 기반으로 조언해 드릴게요.' }]);
-  
+  const [llmStreaming, setLlmStreaming] = useState(false);
+  const [llmBuffer, setLlmBuffer] = useState('');
+
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
   const [myName, setMyName] = useState('나');
   const [userId, setUserId] = useState(null); 
   const [activeQuestion, setActiveQuestion] = useState(0);
 
-  // ✅ [2번 수정] 원격 스트림 연결 여부 추적
+  // 원격 스트림 연결 여부 추적
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
 
   const chatScrollRef = useRef(null);
@@ -73,12 +74,6 @@ export default function CoffeeChatRoom() {
 
     axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => {
-        console.log("=== [☕ 디버깅] Booking 데이터 ===", res.data);
-        // 👇 여기에 내 로컬 ID와 멘토 ID를 비교하는 로그를 추가합니다.
-        console.log("👉 [비교 체크] 내 로컬 ID (로컬스토리지):", id, " 타입:", typeof id);
-        console.log("👉 [비교 체크] DB의 멘토 ID:", res.data.mentor_id, " 타입:", typeof res.data.mentor_id);
-        console.log("👉 [결과] 일치 여부:", Number(id) === Number(res.data.mentor_id));
-        
         setBooking(res.data); 
       }).catch(err => console.error('[예약 정보 로드 실패]', err));
 
@@ -99,24 +94,21 @@ export default function CoffeeChatRoom() {
   }, [chatMessages]);
   useEffect(() => {
     if (llmScrollRef.current) llmScrollRef.current.scrollTop = llmScrollRef.current.scrollHeight;
-  }, [llmMessages]);
+  }, [llmMessages, llmBuffer]);
 
-  // ✅ [4번 수정] 채팅 WebSocket 연결 (userId, chatId 확정 이후)
+  // 채팅 WebSocket 연결
   useEffect(() => {
     if (!userId || !chatId) return;
 
     const ws = new WebSocket(`${WS_URL}/ws/llm/${chatId}/${userId}`);
     chatWsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log('[Chat WS] 연결됨');
-    };
+    ws.onopen = () => console.log('[Chat WS] 연결됨');
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        // 서버가 { sender_id, sender_name, message } 형태로 보낸다고 가정
-        if (Number(data.sender_id) === Number(userId)) return; // 내가 보낸 건 이미 낙관적 추가
+        if (Number(data.sender_id) === Number(userId)) return;
         setChatMessages(prev => [...prev, {
           sender: 'other',
           name: data.sender_name || '상대방',
@@ -130,17 +122,12 @@ export default function CoffeeChatRoom() {
     ws.onclose = () => console.log('[Chat WS] 연결 종료');
     ws.onerror = (e) => console.error('[Chat WS] 오류', e);
 
-    return () => {
-      ws.close();
-    };
+    return () => ws.close();
   }, [userId, chatId]);
 
   // ── 역할 판별 ──
-  const isMentor = booking && userId 
-  ? (Number(userId) === Number(booking.mentor_user_id)) // 👈 백엔드가 준 진짜 유저 ID와 비교!
-  : false;
+  const isMentor = booking && userId ? (Number(userId) === Number(booking.mentor_user_id)) : false;
 
-  // ✅ [1번 수정] 역할에 따른 레이블: 내가 멘토면 내 화면=멘토, 상대=멘티 / 반대도 동일
   const myRole    = isMentor ? '멘토 (나)' : '멘티 (나)';
   const theirRole = isMentor ? '멘티' : '멘토';
 
@@ -153,10 +140,7 @@ export default function CoffeeChatRoom() {
     localVideoRef,
     remoteVideoRef,
     sttLogs,
-    sendLLMQuestion,
     hangUp,
-    llmStreaming,
-    llmBuffer,
   } = useCoffeeChatWebRTC({
     chatId,
     userId,
@@ -164,12 +148,70 @@ export default function CoffeeChatRoom() {
     questions: booking?.questions,
   });
 
-  // ✅ [3번 수정] 마이크 상태 변경 시 실제 오디오 트랙 enable/disable
+  // ── LLM 통신 함수 ──
+  const sendLLMQuestion = async (questionText) => {
+    if (llmStreaming) return;
+    
+    setLlmStreaming(true);
+    setLlmBuffer('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BACKEND_URL}/api/llm/ask`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          question: questionText,
+          context: sttLogs.slice(-10) 
+        })
+      });
+
+      if (!response.ok) throw new Error('LLM 요청 실패');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedResponse = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedResponse += chunk;
+        setLlmBuffer(accumulatedResponse);
+      }
+
+      setLlmMessages(prev => [...prev, { sender: 'ai', text: accumulatedResponse }]);
+      setLlmBuffer('');
+
+    } catch (error) {
+      console.error('❌ LLM 어시스턴트 에러:', error);
+      setLlmMessages(prev => [...prev, { sender: 'ai', text: '답변을 생성하는 중 오류가 발생했습니다.' }]);
+    } finally {
+      setLlmStreaming(false);
+    }
+  };
+
+  // ── LLM 폼 제출 핸들러 ──
+  const handleLlmSubmit = (e) => {
+    e.preventDefault();
+    if (!llmInput.trim() || llmStreaming) return;
+
+    const text = llmInput.trim();
+    setLlmMessages(prev => [...prev, { sender: 'me', text }]);
+    setLlmInput('');
+    sendLLMQuestion(text);
+  };
+
+  // ── 미디어 제어 함수 ──
   const handleToggleMute = useCallback(() => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
 
-    // localVideoRef.current는 <video> 엘리먼트 → srcObject가 MediaStream
     const stream = localVideoRef?.current?.srcObject;
     if (stream) {
       stream.getAudioTracks().forEach(track => {
@@ -178,7 +220,6 @@ export default function CoffeeChatRoom() {
     }
   }, [isMuted, localVideoRef]);
 
-  // ✅ [3번 수정] 비디오 상태 변경 시 실제 비디오 트랙 enable/disable
   const handleToggleVideo = useCallback(() => {
     const newOff = !isVideoOff;
     setIsVideoOff(newOff);
@@ -191,21 +232,8 @@ export default function CoffeeChatRoom() {
     }
   }, [isVideoOff, localVideoRef]);
 
-  // ✅ [2번 수정] 원격 비디오 스트림 감지: 영상이 실제로 재생되면 썸네일 제거
-  const handleRemoteVideoPlay = useCallback(() => {
-    setIsRemoteConnected(true);
-  }, []);
-
-  const handleRemoteVideoEmptied = useCallback(() => {
-    setIsRemoteConnected(false);
-  }, []);
-
-  // LLM 스트리밍 완료 시 메시지 추가
-  useEffect(() => {
-    if (!llmStreaming && llmBuffer) {
-      setLlmMessages(prev => [...prev, { sender: 'ai', text: llmBuffer }]);
-    }
-  }, [llmStreaming]);
+  const handleRemoteVideoPlay = useCallback(() => setIsRemoteConnected(true), []);
+  const handleRemoteVideoEmptied = useCallback(() => setIsRemoteConnected(false), []);
 
   const formatDuration = (s) => {
     const m = Math.floor(s / 60);
@@ -223,7 +251,6 @@ export default function CoffeeChatRoom() {
     navigate(`/coffee-chat-review/${chatId}`);
   };
 
-  // ✅ [4번 수정] 채팅 전송: WS로 서버에 발송 + 낙관적 UI 업데이트
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -238,8 +265,6 @@ export default function CoffeeChatRoom() {
         sender_name: myName,
         message: text,
       }));
-    } else {
-      console.warn('[Chat WS] 연결 안 됨 — 메시지 전송 실패');
     }
   };
 
@@ -284,7 +309,6 @@ export default function CoffeeChatRoom() {
       className="h-screen flex flex-col overflow-hidden transition-colors duration-300"
       style={{ ...themeStyles, background: 'var(--bg-gradient)' }}
     >
-
       {/* ── 헤더 ── */}
       <header
         className="flex-shrink-0 relative z-10 flex items-center justify-between px-6 py-3"
@@ -325,17 +349,11 @@ export default function CoffeeChatRoom() {
 
       {/* ── 바디 ── */}
       <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-4 gap-3">
-
-        {/* 상단 콘텐츠 행 */}
         <div className="flex-1 min-h-0 flex gap-4">
-
           {/* ── 좌측: 비디오 + STT ── */}
           <div className="flex-1 min-h-0 flex flex-col gap-3">
-
-            {/* 비디오 2개 */}
             <div className="flex-1 min-h-0 flex gap-4">
-
-              {/* ✅ [1번] 내 화면: 역할 레이블을 isMentor 기준으로 동적 표시 */}
+              {/* 내 화면 */}
               <div
                 className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg"
                 style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}
@@ -344,10 +362,8 @@ export default function CoffeeChatRoom() {
                   ref={localVideoRef}
                   autoPlay playsInline muted
                   className="absolute inset-0 w-full h-full object-cover"
-                  // ✅ [3번] 비디오 꺼졌을 때 화면도 숨김 (트랙 disable과 병행)
                   style={{ display: isVideoOff ? 'none' : 'block' }}
                 />
-                {/* ✅ [2번] 내 썸네일: 비디오 꺼진 상태일 때만 표시 */}
                 {isVideoOff && (
                   <div className="flex flex-col items-center gap-3 z-10">
                     <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl bg-gradient-to-br ${isMentor ? 'from-amber-500 to-red-500' : 'from-blue-500 to-indigo-600'}`}>
@@ -355,7 +371,6 @@ export default function CoffeeChatRoom() {
                     </div>
                     <div className="text-center">
                       <p className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{myName}</p>
-                      {/* ✅ [1번] myRole은 isMentor에 따라 '멘토 (나)' 또는 '멘티 (나)' */}
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-500'}`}>
                         {myRole}
                       </span>
@@ -370,23 +385,19 @@ export default function CoffeeChatRoom() {
                 </div>
               </div>
 
-              {/* ✅ [1번 + 2번] 상대방 화면 */}
+              {/* 상대방 화면 */}
               <div
                 className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg"
                 style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}
               >
-                {/* ✅ [2번] onPlay: 스트림 재생 시작 → 썸네일 제거 / onEmptied: 끊김 → 썸네일 복원 */}
                 <video
                   ref={remoteVideoRef}
                   autoPlay playsInline
                   onPlay={handleRemoteVideoPlay}
                   onEmptied={handleRemoteVideoEmptied}
                   className="absolute inset-0 w-full h-full object-cover"
-                  // 연결 전에는 video 엘리먼트를 숨겨서 썸네일이 보이게 함
                   style={{ display: isRemoteConnected ? 'block' : 'none' }}
                 />
-
-                {/* ✅ [2번] 상대방 썸네일: 영상 연결 전에만 표시 */}
                 {!isRemoteConnected && (
                   <div className="flex flex-col items-center gap-3 z-10">
                     <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl bg-gradient-to-br ${isMentor ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-red-500'}`}>
@@ -394,14 +405,12 @@ export default function CoffeeChatRoom() {
                     </div>
                     <div className="text-center">
                       <p className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{opponentName}</p>
-                      {/* 상대방 역할: 내가 멘토 → 상대는 멘티 / 내가 멘티 → 상대는 멘토 */}
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-600'}`}>
                         {theirRole}
                       </span>
                     </div>
                   </div>
                 )}
-
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md z-10">
                   {isRemoteConnected ? (
                     <>
@@ -456,7 +465,6 @@ export default function CoffeeChatRoom() {
 
           {/* ── 우측 패널 ── */}
           <div className="w-80 flex-shrink-0 min-h-0 flex flex-col gap-3 relative">
-
             {/* 확정 질문 */}
             <div
               className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md"
@@ -524,33 +532,30 @@ export default function CoffeeChatRoom() {
                   </div>
                 )}
               </div>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!llmInput.trim()) return;
-                  setLlmMessages(prev => [...prev, { sender: 'me', text: llmInput }]);
-                  sendLLMQuestion(llmInput);
-                  setLlmInput('');
-                }}
+              <form 
+                onSubmit={handleLlmSubmit} 
                 className="flex-shrink-0 flex items-center gap-2 relative"
               >
                 <input
                   type="text"
                   value={llmInput}
                   onChange={(e) => setLlmInput(e.target.value)}
-                  placeholder="AI에게 질문하기..."
+                  placeholder={llmStreaming ? "AI가 답변을 작성 중입니다..." : "AI에게 질문하기..."}
                   disabled={llmStreaming}
                   className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                   style={{ color: 'var(--text-main)' }}
                 />
-                <button type="submit" disabled={llmStreaming}
-                  className="absolute right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white disabled:opacity-50">
+                <button 
+                  type="submit" 
+                  disabled={llmStreaming || !llmInput.trim()}
+                  className="absolute right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:bg-gray-500 transition-colors"
+                >
                   <Send className="w-3 h-3" />
                 </button>
               </form>
             </div>
 
-            {/* ✅ [4번] 채팅 오버레이 (슬라이드업, WS 연결) */}
+            {/* 채팅 오버레이 */}
             <div
               className="absolute inset-0 rounded-2xl flex flex-col transition-all duration-300 ease-in-out"
               style={{
@@ -579,7 +584,6 @@ export default function CoffeeChatRoom() {
                     className={`flex flex-col max-w-[85%] flex-shrink-0
                       ${m.sender === 'me' ? 'self-end items-end' : m.sender === 'system' ? 'self-center' : 'self-start items-start'}`}
                   >
-                    {/* 상대방 이름 표시 */}
                     {m.sender === 'other' && m.name && (
                       <span className="text-[10px] mb-0.5 ml-1" style={{ color: 'var(--text-muted)' }}>{m.name}</span>
                     )}
@@ -615,9 +619,8 @@ export default function CoffeeChatRoom() {
                 </button>
               </form>
             </div>
-
-          </div>{/* 우측 패널 끝 */}
-        </div>{/* 상단 콘텐츠 행 끝 */}
+          </div>
+        </div>
 
         {/* ── 하단 컨트롤 바 ── */}
         <div className="flex-shrink-0 flex items-center justify-center">
@@ -625,7 +628,6 @@ export default function CoffeeChatRoom() {
             className="flex items-center gap-3 px-6 py-3 rounded-2xl shadow-lg backdrop-blur-xl"
             style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
           >
-            {/* ✅ [3번] onClick을 handleToggleMute/handleToggleVideo로 교체 */}
             <ControlBtn
               active={!isMuted}
               onClick={handleToggleMute}
@@ -652,8 +654,7 @@ export default function CoffeeChatRoom() {
             <ControlBtn active={showSettings} onClick={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />} label="설정" />
           </div>
         </div>
-
-      </div>{/* 바디 끝 */}
+      </div>
 
       {/* ── 설정 모달 ── */}
       {showSettings && (
@@ -674,7 +675,7 @@ export default function CoffeeChatRoom() {
               <div>
                 <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}><Volume2 className="w-4 h-4" /> 스피커</label>
                 <select className="w-full p-2.5 rounded-lg bg-black/10 text-sm focus:outline-none" style={{ color: 'var(--text-main)' }}>
-                  <option>기본 스피커 (MacBook Pro)</option>
+                  <option>기본 스피커</option>
                   <option>블루투스 헤드폰</option>
                 </select>
               </div>
@@ -682,25 +683,13 @@ export default function CoffeeChatRoom() {
                 <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}><Video className="w-4 h-4" /> 카메라</label>
                 <select className="w-full p-2.5 rounded-lg bg-black/10 text-sm focus:outline-none" style={{ color: 'var(--text-main)' }}>
                   <option>FaceTime HD Camera</option>
+                  <option>외부 웹캠</option>
                 </select>
               </div>
             </div>
-            <button
-              onClick={() => setShowSettings(false)}
-              className="w-full mt-6 py-3 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors"
-            >
-              완료
-            </button>
           </div>
         </div>
       )}
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(150,150,150,0.3); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(150,150,150,0.5); }
-      `}</style>
     </div>
   );
 }
