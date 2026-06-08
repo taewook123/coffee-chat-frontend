@@ -1,20 +1,19 @@
-// hooks/useCoffeeChatWebRTC.js
 /**
  * CoffeeChatRoom.jsx 에서 쓰는 통합 훅
  *
  * 담당:
- *  1. WebRTC P2P 통화 (시그널링 서버 경유)
- *  2. Azure STT (오디오 → 텍스트 실시간)
- *  3. LLM 어시스턴트 WebSocket
+ * 1. WebRTC P2P 통화 (시그널링 서버 경유)
+ * 2. Azure STT (오디오 → 텍스트 실시간)
+ * 3. LLM 어시스턴트 WebSocket
  *
  * 사용법:
- *   const {
- *     localVideoRef, remoteVideoRef,   // <video> 태그에 ref로 연결
- *     sttLogs,                          // 실시간 STT 결과 배열
- *     sendLLMQuestion,                  // LLM 질문 전송 함수
- *     llmStreaming,                     // 현재 LLM 스트리밍 중 여부
- *     hangUp,                           // 통화 종료
- *   } = useCoffeeChatWebRTC({ chatId, userId, userName, questions });
+ * const {
+ * localVideoRef, remoteVideoRef,   // <video> 태그에 ref로 연결
+ * sttLogs,                          // 실시간 STT 결과 배열
+ * sendLLMQuestion,                  // LLM 질문 전송 함수
+ * llmStreaming,                     // 현재 LLM 스트리밍 중 여부
+ * hangUp,                           // 통화 종료
+ * } = useCoffeeChatWebRTC({ chatId, userId, userName, questions });
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -39,7 +38,9 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
   const llmWsRef       = useRef(null);   // LLM WebSocket
   const localStreamRef = useRef(null);   // 내 카메라/마이크 스트림
   const mediaRecRef    = useRef(null);   // MediaRecorder (STT용)
-
+  const audioContextRef   = useRef(null);
+  const audioSourceRef    = useRef(null);
+  const audioProcessorRef = useRef(null);
   // ── state ────────────────────────────────────────────
   const [sttLogs, setSttLogs]           = useState([]);
   const [llmStreaming, setLlmStreaming]  = useState(false);
@@ -144,38 +145,99 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
     };
   }, [chatId, userId]);
 
-  // ── 2. STT WebSocket + MediaRecorder ─────────────────
+  // ── 2. STT WebSocket + MediaRecorder (🚨 수정된 부분) ──
   function _connectSTT(stream) {
-    const sttWs = new WebSocket(
-      `${BACKEND_WS}/ws/stt/${chatId}/${userId}/${encodeURIComponent(userName || '나')}`
-    );
-    sttWsRef.current = sttWs;
+  const safeUserName = encodeURIComponent(userName || '사용자');
+  const sttWsUrl = `${BACKEND_WS}/ws/stt/${chatId}/${userId}/${safeUserName}`;
 
-    sttWs.onopen = () => {
-      // MediaRecorder로 오디오 청크를 STT 서버에 전송
+  console.log('[STT] 웹소켓 연결 시도:', sttWsUrl);
+
+  const sttWs = new WebSocket(sttWsUrl);
+  sttWs.binaryType = 'arraybuffer';
+  sttWsRef.current = sttWs;
+
+  sttWs.onopen = async () => {
+    console.log('[STT] 웹소켓 연결 성공. PCM 마이크 전송 시작');
+
+    try {
       const audioStream = new MediaStream(stream.getAudioTracks());
-      const recorder = new MediaRecorder(audioStream, {
-          mimeType: 'audio/webm;codecs=opus' // 브라우저 지원에 따라 다름
-      });
-      mediaRecRef.current = recorder;
 
-      recorder.ondataavailable = (evt) => {
-        if (evt.data.size > 0 && sttWs.readyState === WebSocket.OPEN) {
-          sttWs.send(evt.data);
+      const audioContext = new AudioContext({ sampleRate: 16000 });
+      const source = audioContext.createMediaStreamSource(audioStream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+      audioContextRef.current = audioContext;
+      audioSourceRef.current = source;
+      audioProcessorRef.current = processor;
+
+      processor.onaudioprocess = (event) => {
+        if (sttWs.readyState !== WebSocket.OPEN) return;
+
+        const input = event.inputBuffer.getChannelData(0);
+        const pcm16 = new Int16Array(input.length);
+
+        for (let i = 0; i < input.length; i += 1) {
+          const sample = Math.max(-1, Math.min(1, input[i]));
+          pcm16[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
         }
-      };
-      // 250ms 단위로 청크 전송 (실시간성)
-      recorder.start(250);
-    };
 
-    sttWs.onmessage = (e) => {
+        sttWs.send(pcm16.buffer);
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      console.log('[STT] PCM 16kHz 전송 시작됨');
+    } catch (err) {
+      console.error('[STT] PCM 오디오 처리 시작 실패:', err);
+    }
+  };
+
+  sttWs.onmessage = (e) => {
+    try {
       const data = JSON.parse(e.data);
-      if (data.type === 'final') {
-        setSttLogs(prev => [...prev, { speaker: data.speaker, text: data.text }]);
+      console.log('[STT] 서버 응답:', data);
+
+      if (data.type === 'notice') {
+        console.warn('[STT] 서버 알림:', data.text);
+        return;
       }
-      // interim(중간) 결과는 필요 시 별도 state로 처리 가능
-    };
-  }
+
+      if (!data.text) return;
+
+      const nextLog = {
+        speaker: data.speaker || data.speaker_name || userName || '사용자',
+        text: data.text,
+        type: data.type,
+      };
+
+      if (data.type === 'interim') {
+        setSttLogs((prev) => [
+          ...prev.filter((log) => log.type !== 'interim'),
+          nextLog,
+        ]);
+        return;
+      }
+
+      if (data.type === 'final') {
+        setSttLogs((prev) => [
+          ...prev.filter((log) => log.type !== 'interim'),
+          nextLog,
+        ]);
+      }
+    } catch (err) {
+      console.warn('[STT] 데이터 파싱 오류:', err);
+    }
+  };
+
+  sttWs.onerror = (err) => {
+    console.error('[STT] 웹소켓 오류:', err);
+  };
+
+  sttWs.onclose = (event) => {
+    console.log('[STT] 웹소켓 연결 종료:', event.code, event.reason);
+  };
+}
 
   // ── 3. LLM WebSocket ──────────────────────────────────
   function _connectLLM() {
@@ -192,7 +254,6 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
         setLlmStreaming(false);
         setLlmBuffer('');
         // 완성된 응답은 컴포넌트에서 llmMessages에 추가
-        // onLLMResponse 콜백으로 올려줄 수도 있음
       } else if (data.type === 'error') {
         setLlmStreaming(false);
         console.error('[LLM]', data.text);
@@ -226,13 +287,20 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
   }, []);
 
   function _cleanup() {
-    mediaRecRef.current?.stop();
-    localStreamRef.current?.getTracks().forEach(t => t.stop());
-    pcRef.current?.close();
-    sigWsRef.current?.close();
-    sttWsRef.current?.close();
-    llmWsRef.current?.close();
+  try {
+    audioProcessorRef.current?.disconnect();
+    audioSourceRef.current?.disconnect();
+    audioContextRef.current?.close();
+  } catch (e) {
+    console.warn('[STT] 오디오 정리 실패:', e);
   }
+
+  localStreamRef.current?.getTracks().forEach((t) => t.stop());
+  pcRef.current?.close();
+  sigWsRef.current?.close();
+  sttWsRef.current?.close();
+  llmWsRef.current?.close();
+}
 
   return {
     localVideoRef,

@@ -442,8 +442,9 @@ export default function CoffeeChatRoom() {
               </div>
               <div className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
                 {sttLogs.length === 0 && (
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>
-                )}
+    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>
+  )}
+  
                 {(isSTTExpanded ? sttLogs : sttLogs.slice(-2)).map((log, idx) => (
                   <div key={idx} className="flex gap-3 text-sm">
                     <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>{log.speaker}</span>
