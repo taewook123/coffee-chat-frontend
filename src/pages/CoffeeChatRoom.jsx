@@ -9,6 +9,8 @@ import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
+const WS_URL = BACKEND_URL.replace(/^http/, 'ws');
+
 function ControlBtn({ active, onClick, icon, danger = false, label }) {
   return (
     <button onClick={onClick} className="flex flex-col items-center gap-1 group">
@@ -103,7 +105,7 @@ export default function CoffeeChatRoom() {
   useEffect(() => {
     if (!userId || !chatId) return;
 
-    const ws = new WebSocket(`${WS_URL}/ws/chat/${chatId}/${userId}`);
+    const ws = new WebSocket(`${WS_URL}/ws/llm/${chatId}/${userId}`);
     chatWsRef.current = ws;
 
     ws.onopen = () => {
