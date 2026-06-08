@@ -154,7 +154,9 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
     sttWs.onopen = () => {
       // MediaRecorder로 오디오 청크를 STT 서버에 전송
       const audioStream = new MediaStream(stream.getAudioTracks());
-      const recorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm;codecs=opus' });
+      const recorder = new MediaRecorder(audioStream, {
+          mimeType: 'audio/webm;codecs=opus' // 브라우저 지원에 따라 다름
+      });
       mediaRecRef.current = recorder;
 
       recorder.ondataavailable = (evt) => {

@@ -202,7 +202,7 @@ export default function ProfileSetup() {
         } else {
           alert('🎉 프로필 정보가 성공적으로 업데이트되었습니다!');
         }
-        navigate('/dashboard'); 
+        window.location.href = '/dashboard'; 
       }
     } catch (error) {
       alert(`❌ DB 업데이트 실패: ${error.message}`);

@@ -2,12 +2,16 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import ReactQuill from 'react-quill-new';
 import "quill/dist/quill.snow.css";
 import { useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 
 const MentorRegistration = () => {
   const [searchParams] = useSearchParams();
   
-  const activeUserId = localStorage.getItem('userId') || searchParams.get('id') || "1";
-  const [userId, setUserId] = useState(parseInt(activeUserId));
+  const rawUserId = localStorage.getItem('userId');
+  const validUserId = (rawUserId && rawUserId !== "undefined" && rawUserId !== "null") 
+    ? rawUserId 
+    : (searchParams.get('id') || "1");
+  const [userId, setUserId] = useState(parseInt(validUserId));
 
   const [experiences, setExperiences] = useState([""]);
 
@@ -63,7 +67,6 @@ const MentorRegistration = () => {
     },
   }), []);
 
-  // 💡 Quill 불릿 에러를 방지하는 표준 규격 포맷 선언
   const formats = [
     'header', 'bold', 'italic', 'underline', 'strike',
     'list', 'align', 'image', 'link',
@@ -81,12 +84,12 @@ const MentorRegistration = () => {
   };
 
   const [basicInfo, setBasicInfo] = useState({ 
-  name: '', 
-  job: '', 
-  main_category: '', 
-  sub_category: '',
-  status: ''
-});
+    name: '', 
+    job: '', 
+    main_category: '', 
+    sub_category: '',
+    status: ''
+  });
 
   const categories = [
     {
@@ -285,52 +288,75 @@ const MentorRegistration = () => {
   };
 
   // =========================================================
-  // 💡 1. [데이터 로드] 원격 클라우드 IP 타겟팅 및 연동 동기화
+  // 💡 [핵심 수정!] users 테이블에서 진짜 프로필 데이터 끌고오기
   // =========================================================
   useEffect(() => {
-    if (!userId) {
-      console.warn("로그인된 유저 ID를 찾을 수 없습니다.");
-      return; 
+    if (!userId) return;
+
+    // 이름 임시 복구 (만약 통신 지연 시 빈칸 방지용)
+    const savedName = localStorage.getItem('userName');
+    if (savedName) {
+      setBasicInfo(prev => ({ ...prev, name: savedName }));
     }
 
-    const fetchSharedUserData = async () => {
-        try {
-          const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+    const fetchRealUserData = async () => {
+      try {
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+        
+        // 🚨 여기가 가장 중요합니다! mentor/dashboard가 아니라 진짜 유저 정보를 주는 API를 호출합니다.
+        const url = `${BACKEND_URL}/api/users/${userId}`;
+        
+        const response = await axios.get(url);
+        const userData = response.data;
 
-            // 2. axios 요청에서 하드코딩된 주소를 BACKEND_URL 변수로 교체
-            const response = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${currentUserId}`);
-        if (response.ok) {
-          const userData = await response.json();
-          setBasicInfo(prev => ({ ...prev, name: userData.name || '' }));
-          
-          if (userData.hashtags) {
-            setHashtags(userData.hashtags.split(',').filter(Boolean));
-          }
-          
-          if (userData.portfolio_url) {
-            try {
-              setLinks(JSON.parse(userData.portfolio_url));
-            } catch (e) {
-              // 쉼표 문자열로 저장되어 있을 경우 분리 바인딩 백업
-              setLinks(userData.portfolio_url.split(',').filter(Boolean));
-            }
-          }
+        if (!userData || Object.keys(userData).length === 0) return;
+
+        // 1. 이름
+        if (userData.name) {
+          setBasicInfo(prev => ({ ...prev, name: userData.name }));
         }
+
+        // 공통 파싱 함수 (DB에 JSON으로 저장되어있든 콤마로 저장되어있든 다 풀어줍니다)
+        const safeParseArray = (rawStr) => {
+          if (!rawStr) return [];
+          try {
+            const parsed = JSON.parse(rawStr);
+            return Array.isArray(parsed) ? parsed : String(rawStr).split(',').filter(Boolean);
+          } catch (e) {
+            return String(rawStr).split(',').filter(Boolean);
+          }
+        };
+
+        // 2. 해시태그
+        if (userData.hashtags) {
+          setHashtags(safeParseArray(userData.hashtags));
+        }
+
+        // 3. 주요 경력 (컬럼명이 experience일 수 있음)
+        if (userData.experience) {
+          setExperiences(safeParseArray(userData.experience));
+        }
+
+        // 4. 포트폴리오/링크
+        if (userData.portfolio_url) {
+          setLinks(safeParseArray(userData.portfolio_url));
+        }
+
       } catch (error) {
-        console.error("공유 프로필 데이터를 불러오는 중 에러 발생:", error);
+        console.error("유저 정보를 불러오는데 실패했습니다.", error);
       }
     };
-    fetchSharedUserData();
+    
+    fetchRealUserData();
   }, [userId]);
 
 
   // =========================================================
-  // 💡 2. [데이터 전송] 꼬이던 JSON 문자열 포맷 해제 및 다이렉트 연동
+  // 💡 [데이터 전송] 백엔드 규격에 맞춰 전송
   // =========================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // 🟢 [정밀 교정] JSON.stringify 껍데기를 벗겨내고 순수 문자열 형태로 포장합니다.
     const targetUrl = links.length > 0 ? links.join(',') : '';
     const targetFilePath = attachedFiles.length > 0 ? attachedFiles[0].name : '';
 
@@ -341,7 +367,6 @@ const MentorRegistration = () => {
       sub_category: basicInfo.sub_category,
       hashtags: hashtags.join(','),
       
-      // 💡 컬럼 스펙에 100% 대응하도록 가방 래핑 수정 완료!
       portfolio_url: targetUrl,          
       portfolio_file_path: targetFilePath,  
 
@@ -353,7 +378,8 @@ const MentorRegistration = () => {
     };
 
     try {
-      const response = await fetch(`http://48.211.169.52:8000/api/mentor/register/${userId}`, {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+      const response = await fetch(`${BACKEND_URL}/api/mentor/register/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData)
@@ -388,7 +414,6 @@ const MentorRegistration = () => {
             <div className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  {/* 기존 주직무, 세부직무 선택 필드 코드 아래에 추가 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">현재 상태</label>
                     <select 
@@ -403,7 +428,6 @@ const MentorRegistration = () => {
                     </select>
                   </div>
                 </div>
-                {/* 주 직무 선택 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">주 직무</label>
                   <select 
@@ -417,7 +441,6 @@ const MentorRegistration = () => {
                   </select>
                 </div>
 
-                {/* 부 직무 선택 (주 직무 선택 시에만 활성화) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">세부 직무</label>
                   <select 

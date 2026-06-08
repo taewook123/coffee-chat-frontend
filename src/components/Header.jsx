@@ -166,7 +166,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
           <li onClick={() => navigate('/mentors')} className="hover:text-blue-300 transition cursor-pointer">호스트 찾기</li>
           <li className="hover:text-blue-300 transition cursor-pointer opacity-70 hover:opacity-100">주제 탐색</li>
           <li className="hover:text-blue-300 transition cursor-pointer opacity-70 hover:opacity-100">커뮤니티</li>
-          <li className="hover:text-blue-300 transition cursor-pointer opacity-70 hover:opacity-100">작동 방식</li>
           <li onClick={() => navigate('/coffee-chats')} className="hover:text-blue-300 transition cursor-pointer opacity-70 hover:opacity-100">커피챗</li>
         </ul>
 
