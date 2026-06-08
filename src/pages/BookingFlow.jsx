@@ -5,7 +5,7 @@ import { ChevronLeft, Calendar as CalendarIcon, Clock, CreditCard, Coffee, Check
 import { DayPicker } from 'react-day-picker';
 import axios from 'axios';
 import 'react-day-picker/dist/style.css';
-
+import PaymentSection from '../components/PaymentSection';
 export default function BookingFlow() {
   const { mentorId } = useParams();
   const navigate = useNavigate();
@@ -43,7 +43,22 @@ export default function BookingFlow() {
     const [h, m] = timeStr.split(':').map(Number);
     return h * 60 + m;
   };
-
+  const handlePaymentFinalize = async () => {
+    try {
+        await axios.post(`${BACKEND_URL}/api/booking/create`, {
+            mentorId: parseInt(mentorId, 10),
+            userId: cleanUserId, // 아까 세척해둔 변수
+            date: dateKey,
+            time: selectedTime,
+            questions: questions,
+        });
+        alert('🎉 예약이 확정되었습니다!');
+        navigate('/dashboard');
+    } catch (err) {
+        console.error("최종 예약 생성 실패:", err);
+        alert("결제는 되었으나 예약 생성에 실패했습니다. 고객센터로 문의해주세요.");
+    }
+  };
   // 1. 멘토 정보 로드
   useEffect(() => {
     if (!mentorId) return;
@@ -404,38 +419,15 @@ export default function BookingFlow() {
             )}
 
             {/* Step 3 */}
-            {currentStep === 3 && (
+              {currentStep === 3 && (
               <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-                <div className="flex items-center gap-3 mb-6">
-                  <CreditCard className="w-6 h-6 text-blue-600" />
-                  <h2 className="text-2xl font-bold text-gray-900">결제 정보</h2>
-                </div>
-                <div className="space-y-6">
-                  <div>
-                    <label className="block font-medium text-gray-700 mb-2">카드 번호</label>
-                    <input type="text" placeholder="1234 5678 9012 3456" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none focus:border-blue-500" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-medium text-gray-700 mb-2">유효기간</label>
-                      <input type="text" placeholder="MM/YY" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none focus:border-blue-500" />
-                    </div>
-                    <div>
-                      <label className="block font-medium text-gray-700 mb-2">CVC</label>
-                      <input type="text" placeholder="123" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none focus:border-blue-500" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-medium text-gray-700 mb-2">카드 소유자명</label>
-                    <input type="text" placeholder="홍길동" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none focus:border-blue-500" />
-                  </div>
-                  <div className="pt-4 border-t border-gray-200">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input type="checkbox" className="mt-1 w-5 h-5 text-blue-600 rounded" />
-                      <span className="text-sm text-gray-600">이용약관 및 개인정보 처리방침에 동의합니다. 예약 취소는 24시간 전까지 가능합니다.</span>
-                    </label>
-                  </div>
-                </div>
+                <h2 className="text-2xl font-bold mb-6">최종 결제</h2>
+                <PaymentSection 
+                  amount={15000} // 필요시 mentor.price에서 동적 할당
+                  mentorName={mentor?.name}
+                  orderInfo={{ orderId: `order_${uuidv4()}` }}
+                  onPaymentSuccess={handlePaymentFinalize} // 예약 최종 생성 API 호출
+                />
               </div>
             )}
 
@@ -517,7 +509,7 @@ export default function BookingFlow() {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-lg">금액</span>
                   <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    {mentor?.price || '0원'}
+                    {mentor?.price || '15,000원'}
                   </span>
                 </div>
               </div>
