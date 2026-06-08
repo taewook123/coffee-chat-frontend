@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   LayoutDashboard,
@@ -15,8 +15,16 @@ import ScheduleManager from './ScheduleManager';
 import BookingHistory from './BookingHistory';
 export default function MentorDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // 3. 페이지가 로드될 때나 넘어올 때 전달받은 state가 있다면 탭을 변경해주는 useEffect 추가
+  useEffect(() => {
+    if (location.state && location.state.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+  
   const [mentorName, setMentorName] = useState(() => {
     return localStorage.getItem('userName') || '호스트';
   });

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // 🌟 1. useLocation 추가
-import { Coffee, Bell } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+// 🌟 1. 삭제 버튼에 필요한 X 아이콘 추가
+import { Coffee, Bell, X } from 'lucide-react';
 import axios from 'axios';
 
 const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   const navigate = useNavigate();
-  const location = useLocation(); // 🌟 2. 현재 주소 감지용 변수 추가
+  const location = useLocation();
   
   const [currentName, setCurrentName] = useState('회원');
   const [isMentor, setIsMentor] = useState(false); 
@@ -26,7 +27,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
       setCurrentName('회원'); 
     }
 
-    // ─── [보완 완료] 멘토 권한 식별 기준 정밀 동기화 ───
     if (isLoggedIn) {
       const rawUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
       const cleanUserId = rawUserId ? parseInt(rawUserId.toString().replace(/[^0-9]/g, ''), 10) : null;
@@ -46,7 +46,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     } else {
       setIsMentor(false);
     }
-  }, [userName, isLoggedIn, location.pathname]); // 🌟 3. 주소(location.pathname)가 바뀔 때마다 재검사!
+  }, [userName, isLoggedIn, location.pathname]); 
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -74,21 +74,79 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     return () => clearInterval(interval);
   }, [isLoggedIn]);
 
-  const handleNotificationClick = async (id) => {
+  const handleNotificationClick = async (notif) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${BACKEND_URL}/api/notifications/${id}/read`, {
+      
+      const response = await fetch(`${BACKEND_URL}/api/notifications/${notif.id}/read`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      if (response.ok) {
-        const updated = notifications.map(n => n.id === id ? { ...n, is_read: true } : n);
-        setNotifications(updated);
-        setHasUnread(updated.some(n => !n.is_read));
+      
+      if (!response.ok) {
+        console.warn(`읽음 처리 서버 응답 에러: ${response.status}`);
+      } else {
+        setNotifications(prev => 
+          prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
+        );
       }
     } catch (error) {
-      console.error("❌ 알림 읽음 처리 실패:", error);
+      console.error("알림 읽음 처리 통신 실패:", error);
+    }
+
+    const targetBookingId = notif.bookingId || notif.booking_id;
+    const msg = notif.message || ""; 
+
+    if (notif.type === 'BOOKING_REQUEST' || msg.includes('신청') || msg.includes('요청')) {
+      navigate('/dashboard', { 
+        state: { activeTab: 'history', subTab: 'received', bookingId: targetBookingId } 
+      });
+      setIsOpen(false); 
+    } 
+    else if (notif.type === 'BOOKING_CONFIRMED' || msg.includes('확정')) {
+      navigate('/dashboard', { 
+        state: { activeTab: 'history', subTab: 'requested', bookingId: targetBookingId } 
+      });
+      setIsOpen(false); 
+    } 
+  };
+
+  // 🌟 2. 깃 충돌 해결 (삭제 기능 복구)
+  const handleDeleteNotification = async (e, id) => {
+    e.stopPropagation(); 
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!response.ok) {
+        console.error(`서버 응답 에러 (${response.status}): 개별 삭제 실패`);
+      }
+    } catch (error) {
+      console.error("❌ 알림 영구 삭제 중 에러 발생:", error);
+    }
+  };
+
+  const handleDeleteAll = async (e) => {
+    e.stopPropagation();
+    setNotifications([]);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BACKEND_URL}/api/notifications/all`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        console.error(`서버 응답 에러 (${response.status}): 전체 삭제 실패`);
+      }
+    } catch (error) {
+      console.error("❌ 알림 전체 영구 삭제 중 에러 발생:", error);
     }
   };
 
@@ -121,7 +179,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
         </ul>
 
         <div className="auth-buttons flex items-center gap-4">
-          {/* 🌟 4. 로그인 안 했거나, 멘토가 아닐 때만 버튼 표시 */}
           {(!isLoggedIn || !isMentor) && (
             <button 
               className="btn-register bg-transparent border border-white/30 hover:border-white px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer mr-2" 
@@ -142,20 +199,40 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
               </div>
 
               {isOpen && (
-                <div className="absolute right-24 top-10 w-72 bg-white text-gray-800 rounded-lg shadow-2xl border border-gray-200 py-2 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100 font-bold text-xs text-gray-500">실시간 알림</div>
+                // 🌟 3. HTML 레이아웃 중복 버그 수정 완료
+                <div className="absolute right-24 top-10 w-80 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                    <span className="font-bold text-xs text-gray-500">실시간 알림</span>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={handleDeleteAll}
+                        className="text-[10px] text-gray-400 hover:text-red-500 font-semibold bg-transparent border-0 cursor-pointer hover:underline"
+                      >
+                        전체 삭제
+                      </button>
+                    )}
+                  </div>
+                  
                   <div className="max-h-60 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="px-4 py-6 text-center text-sm text-gray-400">새로운 알림이 없습니다.</div>
                     ) : (
                       notifications.map((notif) => (
+                        // 🌟 4. onClick 및 className 중복 에러 해결 완료
                         <div 
                           key={notif.id}
-                          onClick={() => handleNotificationClick(notif.id)}
-                          className={`px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50/60 font-semibold' : 'opacity-60'}`}
+                          onClick={() => handleNotificationClick(notif)}
+                          className={`group relative px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50/60 font-semibold' : 'opacity-60'}`}
                         >
                           <p className="m-0 text-gray-700">{notif.message}</p>
                           <span className="text-[10px] text-gray-400 block mt-1">방금 전</span>
+                          <button
+                            onClick={(e) => handleDeleteNotification(e, notif.id)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-transparent border-0 cursor-pointer"
+                            title="삭제"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))
                     )}
