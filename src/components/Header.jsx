@@ -92,51 +92,31 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     }
   };
 
-  // 💡 [실전 기능 1] 개별 알림 삭제 (DB 연동)
   const handleDeleteNotification = async (e, id) => {
     e.stopPropagation(); 
-    
-    // 1. 화면에서 먼저 0.1초 만에 즉각 삭제 (버벅임 방지)
     setNotifications(prev => prev.filter(n => n.id !== id));
-    
-    // 2. 백엔드 DB에 영구 삭제 요청 보내기
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
         method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}` 
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      if (!response.ok) {
-        console.error(`서버 응답 에러 (${response.status}): 개별 삭제 실패`);
-      }
+      if (!response.ok) console.error(`서버 응답 에러 (${response.status}): 개별 삭제 실패`);
     } catch (error) {
       console.error("❌ 알림 영구 삭제 중 에러 발생:", error);
     }
   };
 
-  // 💡 [실전 기능 2] 알림 전체 삭제 (DB 연동)
   const handleDeleteAll = async (e) => {
     e.stopPropagation();
-    
-    // 1. 화면의 모든 알림 즉시 비우기
     setNotifications([]);
-    
-    // 2. 백엔드 DB에 "내 알림 다 지워줘!" 요청 보내기
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${BACKEND_URL}/api/notifications/all`, {
         method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}` 
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      if (!response.ok) {
-        console.error(`서버 응답 에러 (${response.status}): 전체 삭제 실패`);
-      }
+      if (!response.ok) console.error(`서버 응답 에러 (${response.status}): 전체 삭제 실패`);
     } catch (error) {
       console.error("❌ 알림 전체 영구 삭제 중 에러 발생:", error);
     }
@@ -157,18 +137,32 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     <nav className="sticky top-0 z-50 bg-[#1a2332] text-white shadow-lg border-0">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         
-        <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => navigate('/')}>
-          <Coffee className="w-8 h-8 text-white" />
-          <span className="text-xl font-bold tracking-tight">TeaTimes</span>
+        {/* 왼쪽 영역: 로고 + 메뉴 묶음 */}
+        <div className="flex items-center gap-10">
+          {/* 로고 */}
+          <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => navigate('/')}>
+            <Coffee className="w-8 h-8 text-white" />
+            <span className="text-xl font-bold tracking-tight">TeaTimes</span>
+          </div>
+
+          {/* 메뉴 (로고 옆으로 이동) */}
+          <ul className="flex items-center gap-6 list-none m-0 p-0 text-sm font-medium">
+            <li 
+              onClick={() => navigate('/mentors')} 
+              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/mentors' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+            >
+              호스트 찾기
+            </li>
+            <li 
+              onClick={() => navigate('/coffee-chats')} 
+              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/coffee-chats' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+            >
+              커피챗
+            </li>
+          </ul>
         </div>
 
-        <ul className="flex items-center gap-8 list-none m-0 p-0 text-sm font-medium">
-          <li onClick={() => navigate('/mentors')} className="hover:text-blue-300 transition cursor-pointer">호스트 찾기</li>
-          <li className="hover:text-blue-300 transition cursor-pointer opacity-70 hover:opacity-100">주제 탐색</li>
-          <li className="hover:text-blue-300 transition cursor-pointer opacity-70 hover:opacity-100">커뮤니티</li>
-          <li onClick={() => navigate('/coffee-chats')} className="hover:text-blue-300 transition cursor-pointer opacity-70 hover:opacity-100">커피챗</li>
-        </ul>
-
+        {/* 오른쪽 영역: 인증 및 알림 버튼 */}
         <div className="auth-buttons flex items-center gap-4">
           {(!isLoggedIn || !isMentor) && (
             <button 
@@ -191,8 +185,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
 
               {isOpen && (
                 <div className="absolute right-24 top-10 w-80 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
-                  
-                  {/* 💡 헤더 영역: 실시간 알림 타이틀 & 전체 삭제 버튼 */}
                   <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
                     <span className="font-bold text-xs text-gray-500">실시간 알림</span>
                     {notifications.length > 0 && (
@@ -213,13 +205,11 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
                         <div 
                           key={notif.id}
                           onClick={() => handleNotificationClick(notif.id)}
-                          // 💡 group 클래스를 추가하여 마우스 호버 이벤트를 감지
                           className={`group relative px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50/60 font-semibold' : 'opacity-60'}`}
                         >
                           <p className="m-0 text-gray-700 pr-6">{notif.message}</p>
                           <span className="text-[10px] text-gray-400 block mt-1">방금 전</span>
 
-                          {/* 💡 개별 삭제(X) 버튼 */}
                           <button
                             onClick={(e) => handleDeleteNotification(e, notif.id)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-transparent border-0 cursor-pointer"
