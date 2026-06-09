@@ -54,7 +54,13 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
 
     (async () => {
       // 카메라 + 마이크
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: {
+  echoCancellation: true,   // 상대 음성이 내 마이크에 섞이는 것 방지
+  noiseSuppression: true,   // 배경 잡음 제거
+  autoGainControl: true,    // 자동 게인
+  sampleRate: 16000,
+  channelCount: 1,          // 모노 강제 (STT 정확도 향상)
+}});
       if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
 
       localStreamRef.current = stream;
@@ -147,51 +153,77 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
 
   // ── 2. STT WebSocket + MediaRecorder (🚨 수정된 부분) ──
   function _connectSTT(stream) {
-  const safeUserName = encodeURIComponent(userName || '사용자');
-  const sttWsUrl = `${BACKEND_WS}/ws/stt/${chatId}/${userId}/${safeUserName}`;
+    const safeUserName = encodeURIComponent(userName || '사용자');
+    const sttWsUrl = `${BACKEND_WS}/ws/stt/${chatId}/${userId}/${safeUserName}`;
 
-  console.log('[STT] 웹소켓 연결 시도:', sttWsUrl);
+    console.log('[STT] 웹소켓 연결 시도:', sttWsUrl);
 
-  const sttWs = new WebSocket(sttWsUrl);
-  sttWs.binaryType = 'arraybuffer';
-  sttWsRef.current = sttWs;
+    const sttWs = new WebSocket(sttWsUrl);
+    sttWs.binaryType = 'arraybuffer';
+    sttWsRef.current = sttWs;
 
-  sttWs.onopen = async () => {
-    console.log('[STT] 웹소켓 연결 성공. PCM 마이크 전송 시작');
+    sttWs.onopen = async () => {
+  try {
+    const audioStream = new MediaStream(stream.getAudioTracks());
+    const audioContext = new AudioContext({ sampleRate: 16000 });
+    const source = audioContext.createMediaStreamSource(audioStream);
 
-    try {
-      const audioStream = new MediaStream(stream.getAudioTracks());
+    audioContextRef.current = audioContext;
+    audioSourceRef.current = source;
 
-      const audioContext = new AudioContext({ sampleRate: 16000 });
-      const source = audioContext.createMediaStreamSource(audioStream);
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-      audioContextRef.current = audioContext;
-      audioSourceRef.current = source;
-      audioProcessorRef.current = processor;
-
-      processor.onaudioprocess = (event) => {
-        if (sttWs.readyState !== WebSocket.OPEN) return;
-
-        const input = event.inputBuffer.getChannelData(0);
-        const pcm16 = new Int16Array(input.length);
-
-        for (let i = 0; i < input.length; i += 1) {
-          const sample = Math.max(-1, Math.min(1, input[i]));
-          pcm16[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+    // ✅ AudioWorklet으로 교체 (ScriptProcessor 대신)
+    const workletCode = `
+      class PCMProcessor extends AudioWorkletProcessor {
+        constructor() {
+          super();
+          this._buffer = [];
+          this._bufferSize = 4096;
         }
+        process(inputs) {
+          const input = inputs[0][0];
+          if (!input) return true;
+          for (let i = 0; i < input.length; i++) this._buffer.push(input[i]);
+          while (this._buffer.length >= this._bufferSize) {
+            const chunk = this._buffer.splice(0, this._bufferSize);
+            this.port.postMessage(new Float32Array(chunk));
+          }
+          return true;
+        }
+      }
+      registerProcessor('pcm-processor', PCMProcessor);
+    `;
+    const blob = new Blob([workletCode], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    await audioContext.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
 
-        sttWs.send(pcm16.buffer);
-      };
+    const workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+    audioProcessorRef.current = workletNode;
 
-      source.connect(processor);
-      processor.connect(audioContext.destination);
+    // ✅ VAD: 무음 구간은 전송 안 함 (오인식 방지)
+    let silenceCount = 0;
+    workletNode.port.onmessage = (e) => {
+      if (sttWs.readyState !== WebSocket.OPEN) return;
+      const float32 = e.data;
 
-      console.log('[STT] PCM 16kHz 전송 시작됨');
-    } catch (err) {
-      console.error('[STT] PCM 오디오 처리 시작 실패:', err);
-    }
-  };
+      // PCM16 변환 및 볼륨 증폭
+      const pcm16 = new Int16Array(float32.length);
+      for (let i = 0; i < float32.length; i++) {
+        // 💡 튜닝: 볼륨(Gain) 1.5배 증폭은 그대로 유지 (작게 말하는 소리 캐치)
+        const amplified = float32[i] * 1.5; 
+        const s = Math.max(-1, Math.min(1, amplified));
+        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      sttWs.send(pcm16.buffer);
+    };
+
+    source.connect(workletNode);
+    workletNode.connect(audioContext.destination);
+
+  } catch (err) {
+    console.error('[STT] 오디오 처리 시작 실패:', err);
+  }
+};
 
   sttWs.onmessage = (e) => {
     try {
@@ -213,7 +245,8 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
 
       if (data.type === 'interim') {
         setSttLogs((prev) => [
-          ...prev.filter((log) => log.type !== 'interim'),
+          // 💡 핵심 수정: 화면의 모든 interim을 지우지 않고, '방금 데이터를 보낸 사람'의 interim만 지우고 교체합니다.
+          ...prev.filter((log) => log.type !== 'interim' || log.speaker !== nextLog.speaker),
           nextLog,
         ]);
         return;
@@ -221,7 +254,8 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
 
       if (data.type === 'final') {
         setSttLogs((prev) => [
-          ...prev.filter((log) => log.type !== 'interim'),
+          // 💡 핵심 수정: 방금 문장을 끝낸 사람의 interim만 제거하고 final을 추가합니다.
+          ...prev.filter((log) => log.type !== 'interim' || log.speaker !== nextLog.speaker),
           nextLog,
         ]);
       }
@@ -288,6 +322,7 @@ export function useCoffeeChatWebRTC({ chatId, userId, userName, questions }) {
 
   function _cleanup() {
   try {
+    audioProcessorRef.current?.port?.close(); // ✅ worklet port 닫기
     audioProcessorRef.current?.disconnect();
     audioSourceRef.current?.disconnect();
     audioContextRef.current?.close();

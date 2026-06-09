@@ -105,7 +105,7 @@ export default function CoffeeChatRoom() {
   useEffect(() => {
     if (!userId || !chatId) return;
 
-    const ws = new WebSocket(`${WS_URL}/ws/llm/${chatId}/${userId}`);
+    const ws = new WebSocket(`${WS_URL}/ws/chat/${chatId}/${userId}`);
     chatWsRef.current = ws;
 
     ws.onopen = () => {
