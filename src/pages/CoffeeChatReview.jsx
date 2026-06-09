@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Send } from 'lucide-react';
+import { Star, Send, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 
 export default function CoffeeChatReview() {
@@ -8,32 +8,27 @@ export default function CoffeeChatReview() {
   const navigate = useNavigate();
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
-  const [review, setReview] = useState('');
+  const [reviewText, setReviewText] = useState('');
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false); // [추가] 제출 완료 상태
+  const [recommendedMentors, setRecommendedMentors] = useState([]);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
 
-    // 예약 정보 가져오기
-    axios.get(`${BACKEND_URL}/api/bookings/${userId}`)
+    axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
       .then(res => {
-        const found = res.data.find(b => String(b.id) === String(chatId));
+        const found = res.data.find(b => String(b.booking_id) === String(chatId));
         if (found) setBooking(found);
       })
       .catch(err => console.error(err));
 
-    // 세션 정보 가져오기
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
-      .then(res => {
-        setSession(res.data);
-        // AI 요약본 있으면 자동으로 채우기
-        if (res.data.ai_summary) {
-          setReview(res.data.ai_summary);
-        }
-      })
+      .then(res => setSession(res.data))
       .catch(err => console.error(err));
   }, [chatId]);
 
@@ -42,40 +37,54 @@ export default function CoffeeChatReview() {
       alert('별점을 선택해주세요!');
       return;
     }
+    if (!reviewText.trim()) {
+      alert('리뷰를 작성해주세요!');
+      return;
+    }
+    axios.get(`${BACKEND_URL}/api/booking/recommend/${chatId}`)
+    .then(res => setRecommendedMentors(res.data))
+    .catch(err => console.error(err));
+    setSubmitting(true);
 
     try {
       const userId = localStorage.getItem('userId');
-      await axios.post(`${BACKEND_URL}/api/review/create`, {
+      await axios.post(`${BACKEND_URL}/api/booking/review/create`, {
         booking_id: Number(chatId),
         user_id: Number(userId),
         mentor_id: booking?.mentor_id || 0,
         rating: rating,
-        review: review
+        review: reviewText
       });
-      alert('리뷰가 성공적으로 제출되었습니다!');
-      navigate('/coffee-chats');
+      setSubmitted(true); // [수정] alert 대신 상태 변경
     } catch (err) {
       console.error('리뷰 제출 실패:', err);
       alert('리뷰 제출에 실패했어요');
+    } finally {
+      setSubmitting(false);
     }
   };
+  
+
+  const ratingLabels = ['', '별로예요', '그저 그래요', '괜찮아요', '좋아요', '최고예요!'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="bg-white rounded-3xl shadow-2xl p-12">
+      <div className="w-full max-w-lg">
+        <div className="bg-white rounded-3xl shadow-2xl p-10">
+
           {/* 헤더 */}
-          <div className="text-center mb-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-6">
-              {booking?.mentor_name?.slice(0, 1) || '멘'}
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4 overflow-hidden">
+              {booking?.partner_image
+                ? <img src={booking.partner_image} alt="" className="w-full h-full object-cover" />
+                : booking?.partner_name?.slice(0, 1) || '멘'}
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              커피챗이 종료되었습니다
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">
+              티타임이 종료됐어요!
             </h1>
-            <p className="text-gray-600">
-              {booking?.mentor_name || '멘토'} 님과의 세션이 완료되었습니다
+            <p className="text-gray-500">
+              {booking?.partner_name || '멘토'} 님과의 대화 어떠셨나요?
             </p>
-            {/* 진행 시간 표시 */}
             {session?.duration_sec && (
               <p className="text-sm text-gray-400 mt-1">
                 진행 시간: {Math.floor(session.duration_sec / 60)}분 {session.duration_sec % 60}초
@@ -85,82 +94,124 @@ export default function CoffeeChatReview() {
 
           {/* 별점 */}
           <div className="mb-8">
-            <h3 className="font-bold text-gray-900 mb-4 text-center">
-              커피챗은 어떠셨나요?
+            <h3 className="font-bold text-gray-900 mb-4 text-center text-lg">
+              별점을 남겨주세요
             </h3>
-            <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="flex items-center justify-center gap-2 mb-3">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoveredRating(star)}
+                  onClick={() => !submitted && setRating(star)}
+                  onMouseEnter={() => !submitted && setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
                   className="transition-transform hover:scale-110"
+                  disabled={submitted}
                 >
                   <Star
                     className={`w-12 h-12 ${
                       star <= (hoveredRating || rating)
                         ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
+                        : 'text-gray-200'
                     }`}
                   />
                 </button>
               ))}
             </div>
-            <div className="text-center">
-              <span className="text-2xl font-bold text-gray-900">
-                {rating === 0 ? '별점을 선택해주세요' : `${rating}.0`}
-              </span>
-            </div>
-          </div>
-
-          {/* 리뷰 작성 */}
-          <div className="bg-gray-50 rounded-xl p-6 mb-6">
-            <h3 className="font-bold text-gray-900 mb-3">리뷰</h3>
-            <textarea
-              className="w-full h-32 p-3 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="멘토와의 대화는 어떠셨나요?"
-            />
-          </div>
-
-          {/* 대화내용 요약본 */}
-          <div className="mb-6">
-            <label className="block font-bold text-gray-900 mb-3">
-              대화내용 요약본
-            </label>
-            <textarea
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-              rows={6}
-              placeholder="대화 내용을 요약해주세요"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-500 resize-none"
-            />
-          </div>
-
-          {/* AI 어드바이스 */}
-          <div className="mb-8">
-            <label className="block font-bold text-gray-900 mb-3">
-              AI 어드바이스
-            </label>
-            <textarea
-              rows={6}
-              placeholder="AI 어드바이스가 여기에 표시돼요"
-              readOnly
-              className="w-full px-4 py-3 border-2 border-gray-100 bg-gray-50 rounded-xl outline-none resize-none text-gray-500"
-            />
-            <p className="text-sm text-gray-500 mt-2">
-              {review.length} / 500 자
+            <p className="text-center text-gray-500 text-sm h-5">
+              {ratingLabels[hoveredRating || rating]}
             </p>
           </div>
 
-          {/* 제출 버튼 */}
-          <button
-            onClick={handleSubmit}
-            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-3"
-          >
-            <Send className="w-5 h-5" />
-            리뷰 제출하기
-          </button>
+          {/* 리뷰 작성 */}
+          <div className="mb-8">
+            <h3 className="font-bold text-gray-900 mb-3">리뷰 작성</h3>
+            <textarea
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              rows={5}
+              maxLength={500}
+              disabled={submitted}
+              placeholder="멘토와의 대화는 어떠셨나요? 솔직한 후기를 남겨주세요 😊"
+              className={`w-full px-4 py-3 border-2 rounded-xl outline-none resize-none text-gray-700 text-sm ${
+                submitted 
+                  ? 'border-gray-100 bg-gray-50 text-gray-400' 
+                  : 'border-gray-200 focus:border-blue-400'
+              }`}
+            />
+            <p className="text-right text-xs text-gray-400 mt-1">
+              {reviewText.length} / 500
+            </p>
+          </div>
+
+          {/* [수정] 제출 완료 메시지 */}
+          {submitted && (
+            <div className="flex items-center justify-center gap-2 mb-6 py-3 bg-green-50 rounded-xl border border-green-100">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              <p className="text-green-600 font-semibold text-sm">리뷰가 완료되었습니다!</p>
+            </div>
+          )}
+
+          {/* 버튼들 */}
+          {recommendedMentors.length > 0 && (
+          <div className="mt-8 pt-8 border-t border-gray-100">
+           <h3 className="font-bold text-gray-900 mb-4 text-center">
+            🤝 비슷한 직무의 멘토와도 대화해보세요!
+          </h3>
+          <div className="flex flex-col gap-3">
+              {recommendedMentors.map(mentor => (
+          <div
+          key={mentor.mentor_id}
+          onClick={() => navigate(`/mentors/apply/${mentor.mentor_id}`)}
+          className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-blue-50 cursor-pointer transition border border-gray-100 hover:border-blue-200"
+            >
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold shrink-0">
+            {mentor.profile_image
+              ? <img src={mentor.profile_image} alt="" className="w-full h-full object-cover" />
+              : mentor.name?.slice(0, 1)
+            }
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-gray-900 text-sm">{mentor.name}</p>
+            <p className="text-xs text-gray-500">{mentor.job_title}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+            <span className="text-xs text-gray-600">{mentor.avg_rating?.toFixed(1) || '0.0'}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+          <div className="flex flex-col gap-3">
+            {/* [수정] 제출 버튼 → 완료 후 회색으로 변경 */}
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || submitted}
+              className={`w-full py-4 rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-2 ${
+                submitted
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white'
+              }`}
+            >
+              <Send className="w-5 h-5" />
+              {submitting ? '제출 중...' : submitted ? '리뷰 완료' : '리뷰 제출하기'}
+            </button>
+
+            {/* [수정] AI 요약 버튼 → 제출 완료 후 파란색으로 변경 */}
+            <button
+              onClick={() => submitted ? alert('준비 중이에요! 😊') : alert('리뷰를 먼저 제출해주세요!')}
+              className={`w-full py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                submitted
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              📋 AI 요약 확인하기
+            </button>
+            
+          </div>
+
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Star } from 'lucide-react';
 import Hero from '../components/Hero'; // Hero 컴포넌트 경로 확인 필요
 
 export default function MainContent() {
@@ -9,8 +8,11 @@ export default function MainContent() {
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 💡 탭 구성을 전자 명세인 [전체, 개발, 디자인, 기획] 구조로 적용
-  const tabs = ['전체', '개발', '디자인', '기획'];
+  // 💡 대분류 직무 탭 구성 반영 (소분류를 제외한 큰 범위만 구성)
+  const tabs = [
+    '전체', '개발/엔지니어링', '기획/PM', '디자인', '마케팅', 
+    '경영/사무', '영업/CS', '미디어/콘텐츠', '전문직', '교육', '스타트업', '기타'
+  ];
   const [activeTab, setActiveTab] = useState('전체');
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
@@ -20,25 +22,35 @@ export default function MainContent() {
       try {
         const response = await axios.get(`${BACKEND_URL}/api/mentors`);
         
-        // 💡 백엔드 데이터를 전자의 '가공된 포맷(별점, 리뷰수, 명예 등)'에 맞게 매핑
+        // 💡 백엔드 데이터를 대형 직무 명세 대분류에 맞게 정밀 매핑
         const formattedMentors = response.data.map((m) => {
-          // 직무(job_title) 기반으로 카테고리 자동 유추
-          let cat = '개발';
-          const job = m.job_title || '';
-          if (job.includes('디자인') || job.includes('UI')) cat = '디자인';
-          else if (job.includes('기획') || job.includes('PM')) cat = '기획';
+          // 1순위: 백엔드 DB의 main_category 값을 우선 사용
+          let cat = m.main_category || '';
+          
+          // 2순위: 데이터가 없는 경우 job_title 기반으로 자동 유추 (방어코드)
+          if (!cat) {
+            const job = m.job_title || '';
+            if (job.includes('디자인') || job.includes('UI') || job.includes('UX')) cat = '디자인';
+            else if (job.includes('기획') || job.includes('PM') || job.includes('프로덕트')) cat = '기획/PM';
+            else if (job.includes('마케팅') || job.includes('홍보') || job.includes('SEO')) cat = '마케팅';
+            else if (job.includes('인사') || job.includes('재무') || job.includes('회계') || job.includes('경영')) cat = '경영/사무';
+            else if (job.includes('영업') || job.includes('CS') || job.includes('고객')) cat = '영업/CS';
+            else if (job.includes('영상') || job.includes('PD') || job.includes('작가') || job.includes('콘텐츠')) cat = '미디어/콘텐츠';
+            else if (job.includes('변호사') || job.includes('회계사') || job.includes('의사') || job.includes('전문')) cat = '전문직';
+            else if (job.includes('강사') || job.includes('교사') || job.includes('교육')) cat = '교육';
+            else if (job.includes('창업') || job.includes('CEO') || job.includes('스타트업')) cat = '스타트업';
+            else if (job.includes('개발') || job.includes('엔지니어') || job.includes('백엔드') || job.includes('프론트') || job.includes('DevOps')) cat = '개발/엔지니어링';
+            else cat = '기타';
+          }
 
           return {
             ...m,
             category: cat,
-            // 백엔드 데이터에 경력이 없으므로 기본값 세팅 (나중에 실제 데이터로 연동 가능)
-            rating: 4.9, 
-            reviewCount: Math.floor(Math.random() * 50) + 10, // 10~60 사이 랜덤 리뷰수 가짜 데이터 부여
-            isHonor: Math.random() > 0.7 // 30% 확률로 '명예' 배지 부여
+            isHonor: Math.random() > 0.7 // 디자인 포인트용 명예 배지 (유지)
           };
         });
 
-        // 💡 상위 8명만 잘라서 보여줍니다.
+        // 💡 상위 8명만 잘라서 메인에 배치합니다.
         setMentors(formattedMentors.slice(0, 8)); 
       } catch (error) {
         console.error("❌ 메인 화면 호스트 데이터 로딩 실패:", error);
@@ -48,14 +60,14 @@ export default function MainContent() {
     };
 
     fetchMentors();
-  }, []);
+  }, [BACKEND_URL]);
 
   const stripHTML = (htmlString) => {
     if (!htmlString) return '';
     return htmlString.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ');
   };
 
-  // 💡 선택된 직무 탭에 따라 실시간 필터링
+  // 💡 선택된 직무 대분류 탭에 따라 실시간 필터링
   const filteredHosts = activeTab === '전체' 
     ? mentors 
     : mentors.filter(host => host.category === activeTab);
@@ -82,14 +94,14 @@ export default function MainContent() {
           <p className="text-gray-500 text-sm m-0 font-medium">목표하는 직무의 호스트를 탭을 통해 빠르게 만나보세요.</p>
         </div>
 
-        {/* 탭 버튼 그룹 인터페이스 */}
-        <div className="flex justify-center border-0 border-b border-solid border-gray-200 max-w-md mx-auto mb-12">
+        {/* 💡 탭 버튼 그룹 인터페이스 (개수가 많아져 flex-wrap 및 간격 최적화 적용) */}
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 border-0 border-b border-solid border-gray-200 max-w-5xl mx-auto mb-12 pb-3">
           {tabs.map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 pb-4 text-center font-bold text-sm bg-transparent border-0 cursor-pointer transition-all duration-200 relative ${
+              className={`pb-2 px-1 text-center font-bold text-sm bg-transparent border-0 cursor-pointer transition-all duration-200 relative ${
                 activeTab === tab ? 'text-[#4a90e2]' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
@@ -119,12 +131,8 @@ export default function MainContent() {
                   {/* 둥근 사각형 프로필 박스 처리 */}
                   <div className="w-full aspect-square overflow-hidden rounded-xl mb-4 bg-slate-50 relative">
                     <img
-                      // 💡 마지막 남은 아줌마 사진 퇴출! 기본 실루엣으로 변경
                       src={host.profile_image || 'https://coffeechat.blob.core.windows.net/profiles/KakaoTalk_20260601_105227589.png'}
-                      
-                      // 💡 이미지 로드 실패 시 방어막 추가
                       onError={(e) => { e.target.src = 'https://coffeechat.blob.core.windows.net/profiles/KakaoTalk_20260601_105227589.png'; }}
-                      
                       alt={host.name}
                       className="w-full h-full object-cover group-hover:scale-103 transition duration-300 bg-gray-100"
                     />
@@ -140,7 +148,6 @@ export default function MainContent() {
                       <span className="px-2 py-0.5 bg-blue-50 text-[#4a90e2] text-[10px] font-bold rounded">
                         {host.category}
                       </span>
-                      {/* 백엔드에 회사 정보가 없어서 일단 호스트의 첫 번째 해시태그나 역할을 출력 */}
                       <span className="text-xs text-blue-600 font-bold">{host.job_title || '크루'}</span>
                     </div>
                     <h3 className="font-bold text-gray-900 text-base mb-1 m-0 group-hover:text-[#4a90e2] transition">
@@ -151,12 +158,10 @@ export default function MainContent() {
                   </div>
                 </div>
                 
-                {/* 별점 스코어 및 하단 가이드 링크 영역 */}
+                {/* 💡 "몇명 확인중" 삭제 후 깔끔하게 불꽃 스코어만 노출되도록 교정 완료 */}
                 <div className="pt-3 mt-4 border-0 border-t border-solid border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                    <span className="text-xs font-bold text-gray-900">{host.rating.toFixed(1)}</span>
-                    <span className="text-[10px] text-gray-400">({host.reviewCount})</span>
+                  <div className="flex items-center gap-1 bg-orange-50 px-2.5 py-1 rounded-md border border-solid border-orange-100">
+                    <span className="text-[11px] text-orange-600 font-extrabold">🔥 {host.views || 0}</span>
                   </div>
                   <span className="text-[11px] font-bold text-[#4a90e2] group-hover:underline">
                     프로필 보기 &rarr;
@@ -185,7 +190,6 @@ export default function MainContent() {
             이용 방법
           </h2>
           
-          {/* 가로 배열 잠금 조치 */}
           <div 
             style={{ 
               display: 'flex', 
