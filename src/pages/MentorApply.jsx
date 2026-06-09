@@ -8,7 +8,8 @@ export default function MentorDetails() {
   const [isLoading, setIsLoading] = useState(true);
 
   // 💡 [배포 고정] 모든 환경에서 클라우드 원격 서버 API를 바라보도록 주소 고정
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+  const BACKEND_URL = 'http://localhost:8000';
+    //const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
 
   // 💡 [데이터 로드] 페이지 진입 시 해당 멘토의 상세 프로필 조회
@@ -57,27 +58,15 @@ export default function MentorDetails() {
   if (id) fetchMentorDetails();
 }, [id]);
   
-  // 후기 데이터는 요구사항에 따라 고정 더미 상태로 유지합니다.
-  const reviews = [
-    {
-      id: 1,
-      author: 'Michael Johnson',
-      role: '이직을 준비하던 백엔드 개발자',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-      rating: 5,
-      date: '2026-05-10',
-      comment: "분산 시스템이 너무 막막했는데 동네 누나가 설명해주듯 편하게 짚어주셔서 감을 잡았습니다. 면접용 팁이 아니라 실무에서 왜 이렇게 쓰는지 이해시켜 주셔서 정말 좋았어요."
-    },
-    {
-      id: 2,
-      author: '김다윗',
-      role: '직무 전환을 고민하던 주니어',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
-      rating: 5,
-      date: '2026-05-05',
-      comment: "프론트에서 백엔드로 넘어가려니 불안했는데, 사라님도 스타트업 시절 맨땅에 해딩했던 이야기를 해주셔서 엄청 위로가 되었어요. 공부 방향성도 친근하게 조언해 주셔서 든든합니다!"
-    }
-  ];
+const [reviews, setReviews] = useState([]);
+
+useEffect(() => {
+  // 기존 멘토 정보 fetch 아래에 추가
+  fetch(`${BACKEND_URL}/api/booking/reviews/${id}`)
+    .then(res => res.json())
+    .then(data => setReviews(data))
+    .catch(err => console.error(err));
+}, [id]);
 
   const renderStars = (rating) => {
     return (
@@ -266,7 +255,13 @@ export default function MentorDetails() {
                 {reviews.map((review) => (
                   <div key={review.id} className="bg-gray-50/30 rounded-xl p-5 border border-gray-100">
                     <div className="flex items-start gap-4">
-                      <img src={review.avatar} alt={review.author} className="w-10 h-10 rounded-full object-cover" />
+                      <img src={review.author_image || 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'} 
+                      alt={review.author}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => { 
+                      e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; 
+                      }}
+                      />
                       <div className="flex-1">
                         <div className="flex justify-between items-start mb-1">
                           <div>

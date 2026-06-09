@@ -65,10 +65,10 @@ export default function CoffeeChatRoom() {
     '대화가 시작되면 AI가 맥락에 맞는 추천 질문을 생성합니다.',
   ]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  // STT final 텍스트 누적 버퍼 (ref → 렌더 불필요)
+  // STT final 텍스트 누적 버퍼
   const sttBufferRef       = useRef('');
   const lastFinalCountRef  = useRef(0);
-  // 다음 갱신까지 남은 시간 (카운트다운 표시용)
+  // 다음 갱신까지 남은 시간
   const [nextRefreshIn, setNextRefreshIn] = useState(RECOMMEND_INTERVAL_MS / 1000);
 
   const [booking, setBooking]   = useState(null);
@@ -121,9 +121,9 @@ export default function CoffeeChatRoom() {
 
     ws.onopen = () => console.log('[Chat WS] 연결됨');
     ws.onmessage = (event) => {
-  try {
-    const data = JSON.parse(event.data);
-    console.log('[LLM WS 수신]', data);
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[Chat WS 수신]', data);
         if (Number(data.sender_id) === Number(userId)) return;
         setChatMessages(prev => [...prev, {
           sender: 'other',
@@ -153,7 +153,7 @@ export default function CoffeeChatRoom() {
       try {
         const data = JSON.parse(event.data);
 
-        // ── 일반 LLM 응답 ──
+        // 일반 LLM 응답
         if (data.type === 'chunk') {
           setLlmStreaming(true);
           setLlmBuffer(prev => prev + data.text);
@@ -166,7 +166,7 @@ export default function CoffeeChatRoom() {
           setLlmMessages(prev => [...prev, { sender: 'ai', text: `❌ 오류: ${data.text}` }]);
           setLlmBuffer('');
 
-        // ── 추천 질문 응답 ──
+        // 추천 질문 응답
         } else if (data.type === 'recommended_questions') {
           setIsGeneratingQuestions(false);
           if (Array.isArray(data.questions) && data.questions.length > 0) {
@@ -198,8 +198,6 @@ export default function CoffeeChatRoom() {
   });
 
   // ── STT final 로그 → 버퍼 누적 ──────────────────────
-  // sttLogs에서 final만 골라 순서대로 버퍼에 append
-  // 이미 처리한 항목은 lastFinalCountRef로 추적해 중복 방지
   useEffect(() => {
     const finals = sttLogs.filter(l => l.type === 'final');
     if (finals.length <= lastFinalCountRef.current) return;
@@ -216,7 +214,6 @@ export default function CoffeeChatRoom() {
   useEffect(() => {
     if (!userId || !chatId) return;
 
-    // 카운트다운 (1초마다 UI 업데이트)
     const countdown = setInterval(() => {
       setNextRefreshIn(prev => {
         if (prev <= 1) return RECOMMEND_INTERVAL_MS / 1000;
@@ -224,7 +221,6 @@ export default function CoffeeChatRoom() {
       });
     }, 1000);
 
-    // 45초마다 LLM에 추천 질문 요청
     const interval = setInterval(() => {
       const buffer = sttBufferRef.current.trim();
 
@@ -242,16 +238,12 @@ export default function CoffeeChatRoom() {
 
       llmWsRef.current.send(JSON.stringify({
         type: 'recommend_questions',
-        // 1분치 대화 텍스트 (STT 오타 있어도 LLM이 문맥 추론)
         conversation: buffer,
-        // 멘토/멘티 프로필 → LLM이 역할에 맞는 질문 생성
         mentor_profile: booking?.mentor_profile || booking?.mentorProfile || '',
         mentee_profile: booking?.user_profile  || booking?.userProfile  || '',
-        // 사전 확정 질문 → 중복 추천 방지
         preset_questions: booking?.questions || '',
       }));
 
-      // 버퍼 비우기 (다음 1분 치 새로 모음)
       sttBufferRef.current = '';
     }, RECOMMEND_INTERVAL_MS);
 
@@ -421,6 +413,7 @@ export default function CoffeeChatRoom() {
           </span>
         </div>
         <div className="flex items-center gap-4">
+          {/* 💡 수정된 부분: 불필요하게 중복된 button 태그 제거 */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-full hover:bg-black/10 transition-colors"
@@ -428,11 +421,14 @@ export default function CoffeeChatRoom() {
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
+          
           {booking && (
             <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
               {isMentor ? `${opponentName}님과의 코칭 세션` : `${opponentName}님과의 세션`}
             </span>
           )}
+          
+          {/* 💡 수정된 부분: 불필요하게 중복된 div 태그 제거 */}
           <div
             className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm"
             style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
@@ -470,6 +466,7 @@ export default function CoffeeChatRoom() {
                       {getInitials(myName)}
                     </div>
                     <div className="text-center">
+                      {/* 💡 수정된 부분: 중복된 p 태그 제거 */}
                       <p className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{myName}</p>
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-500'}`}>
                         {myRole}
@@ -648,7 +645,7 @@ export default function CoffeeChatRoom() {
                 ))}
               </div>
 
-              {/* 버퍼 진행 바 — 얼마나 쌓였는지 시각화 */}
+              {/* 버퍼 진행 바 */}
               <div className="flex-shrink-0 mt-2">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>대화 수집 중</span>
@@ -733,6 +730,7 @@ export default function CoffeeChatRoom() {
                 <h3 className="font-semibold text-sm text-indigo-400 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" /> 채팅방
                 </h3>
+                {/* 💡 수정된 부분: 중복된 X 닫기 버튼 제거 */}
                 <button onClick={() => setShowChat(false)}>
                   <X className="w-4 h-4 text-gray-400 hover:text-gray-200 transition-colors" />
                 </button>
@@ -810,7 +808,8 @@ export default function CoffeeChatRoom() {
             <ControlBtn active={showSettings} onClick={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />} label="설정" />
           </div>
         </div>
-      </div>
+
+      </div>{/* 바디 끝 */}
 
       {/* ── 설정 모달 ── */}
       {showSettings && (

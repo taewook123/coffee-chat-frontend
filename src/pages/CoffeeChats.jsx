@@ -10,34 +10,38 @@ export default function CoffeeChats() {
   const [loading, setLoading] = useState(true);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-  useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
+  const getTabStatus = (booking) => {
+  const now = new Date();
+  const [year, month, day] = booking.booking_date.split('-');
+  const [hour, minute] = booking.booking_time.split(':');
+  const dt = new Date(year, month - 1, day, hour, minute);
+  const diffMin = (dt - now) / 1000 / 60;
+  if (diffMin > 5) return 'upcoming';
+  if (diffMin <= 5 && diffMin >= -30) return 'ongoing';
+  return 'completed';
+};
 
-    axios.get(`${BACKEND_URL}/api/booking/${userId}`)
-      .then(res => {
-        setBookings(res.data);
-      })
-      .catch(err => {
-        console.error('예약 목록 조회 실패:', err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+
+  useEffect(() => {
+  const userId = localStorage.getItem('userId');
+  if (!userId) { setLoading(false); return; }
+  axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
+    .then(res => setBookings(res.data))
+    .catch(err => console.error(err))
+    .finally(() => setLoading(false));
+
+}, []);
 
   // tab_status 기준으로 분류
-  const upcomingChats = bookings.filter(b => b.tab_status === 'upcoming');
-  const ongoingChats = bookings.filter(b => b.tab_status === 'ongoing');
-  const completedChats = bookings.filter(b => b.tab_status === 'completed');
+  const upcomingChats = bookings.filter(b => getTabStatus(b) === 'upcoming');
+  const ongoingChats = bookings.filter(b => getTabStatus(b) === 'ongoing');
+  const completedChats = bookings.filter(b => getTabStatus(b) === 'completed');
 
   const handleJoinChat = (e, chatId) => {
     e.stopPropagation(); // 카드 클릭 이벤트 막기
     navigate(`/coffee-chat/${chatId}`);
   };
+
 
   // 💡 [추가됨] D-Day 자동 계산 함수
   const getDDay = (dateString) => {
@@ -58,10 +62,10 @@ export default function CoffeeChats() {
   // 🚀 [디자인 대폭 수정됨] 세련된 카드 UI
   const renderChatCard = (chat) => (
     <div
-      key={chat.id}
+      key={chat.booking_id}
       onClick={() => {
-        if (chat.tab_status === 'upcoming') navigate(`/coffee-chat-detail/${chat.id}`);
-        if (chat.tab_status === 'completed') navigate(`/coffee-chat-review/${chat.id}`);
+        if (getTabStatus(chat) === 'upcoming') navigate(`/coffee-chat-detail/${chat.booking_id}`);
+        if (getTabStatus(chat) === 'completed') navigate(`/coffee-chat-review/${chat.booking_id}`);
       }}
       className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[280px] cursor-pointer group"
     >
@@ -127,7 +131,7 @@ export default function CoffeeChats() {
           {/* 상태별 액션 버튼 처리 */}
           {chat.tab_status === 'ongoing' ? (
             <button
-              onClick={(e) => handleJoinChat(e, chat.id)}
+              onClick={(e) => handleJoinChat(e, chat.booking_id)}
               className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
             >
               <Coffee className="w-3.5 h-3.5" /> 입장하기
