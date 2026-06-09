@@ -1,14 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, 
-  Settings, ChevronRight, Sparkles, Clock, Sun, Moon, Send, X, Volume2 
+import {
+  Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare,
+  Settings, ChevronRight, Sparkles, Clock, Sun, Moon, Send, X, Volume2,
+  RefreshCw,
 } from 'lucide-react';
 import axios from 'axios';
-import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC"; 
+import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 const WS_URL = BACKEND_URL.replace(/^http/, 'ws');
+
+// ── 추천 질문 생성 간격 (45초)
+const RECOMMEND_INTERVAL_MS = 45000;
+
+// ── 버퍼 최소 길이 — 이보다 짧으면 LLM 호출 안 함
+const MIN_BUFFER_LENGTH = 20;
 
 function ControlBtn({ active, onClick, icon, danger = false, label }) {
   return (
@@ -31,65 +38,73 @@ function ControlBtn({ active, onClick, icon, danger = false, label }) {
 export default function CoffeeChatRoom() {
   const { chatId } = useParams();
   const navigate = useNavigate();
-  
+
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  
+
   const [theme, setTheme] = useState('dark');
   const [showChat, setShowChat] = useState(false);
   const [isSTTExpanded, setIsSTTExpanded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  
+
   // 채팅 WebSocket
   const chatWsRef = useRef(null);
-  const llmWsRef = useRef(null);
-  const [chatInput, setChatInput] = useState('');
+  const llmWsRef  = useRef(null);
+  const [chatInput, setChatInput]     = useState('');
   const [chatMessages, setChatMessages] = useState([{ sender: 'system', text: '채팅방이 개설되었습니다.' }]);
-  
-  // LLM State
-  const [llmInput, setLlmInput] = useState('');
-  const [llmMessages, setLlmMessages] = useState([{ sender: 'ai', text: '무엇이든 물어보세요! 대화를 기반으로 조언해 드릴게요.' }]);
-  const [llmStreaming, setLlmStreaming] = useState(false);
-  const [llmBuffer, setLlmBuffer] = useState('');
 
-  const [booking, setBooking] = useState(null);
-  const [session, setSession] = useState(null);
-  const [myName, setMyName] = useState('나');
-  const [userId, setUserId] = useState(null); 
+  // LLM 어시스턴트 State
+  const [llmInput, setLlmInput]         = useState('');
+  const [llmMessages, setLlmMessages]   = useState([{ sender: 'ai', text: '무엇이든 물어보세요! 대화를 기반으로 조언해 드릴게요.' }]);
+  const [llmStreaming, setLlmStreaming]  = useState(false);
+  const [llmBuffer, setLlmBuffer]       = useState('');
+
+  // ── AI 추천 질문 State ──────────────────────────────
+  const [recommendedQuestions, setRecommendedQuestions] = useState([
+    '대화가 시작되면 AI가 맥락에 맞는 추천 질문을 생성합니다.',
+  ]);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  // STT final 텍스트 누적 버퍼 (ref → 렌더 불필요)
+  const sttBufferRef       = useRef('');
+  const lastFinalCountRef  = useRef(0);
+  // 다음 갱신까지 남은 시간 (카운트다운 표시용)
+  const [nextRefreshIn, setNextRefreshIn] = useState(RECOMMEND_INTERVAL_MS / 1000);
+
+  const [booking, setBooking]   = useState(null);
+  const [session, setSession]   = useState(null);
+  const [myName, setMyName]     = useState('나');
+  const [userId, setUserId]     = useState(null);
   const [activeQuestion, setActiveQuestion] = useState(0);
-
-  // 원격 스트림 연결 여부 추적
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
 
   const chatScrollRef = useRef(null);
-  const llmScrollRef = useRef(null);
+  const llmScrollRef  = useRef(null);
 
-  // ── 초기 데이터 로딩 ──
+  // ── 초기 데이터 로딩 ──────────────────────────────────
   useEffect(() => {
     const id = localStorage.getItem('userId');
     const userName = localStorage.getItem('userName') || '나';
     setMyName(userName);
-    setUserId(id ? Number(id) : null); 
+    setUserId(id ? Number(id) : null);
     if (!id) return;
 
     axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
-      .then(res => {
-        setBooking(res.data); 
-      }).catch(err => console.error('[예약 정보 로드 실패]', err));
+      .then(res => setBooking(res.data))
+      .catch(err => console.error('[예약 정보 로드 실패]', err));
 
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
       .then(res => setSession(res.data))
       .catch(err => console.error('[세션 정보 로드 실패]', err));
   }, [chatId]);
 
-  // ── 타이머 ──
+  // ── 타이머 ────────────────────────────────────────────
   useEffect(() => {
-    const timer = setInterval(() => setDuration((p) => p + 1), 1000);
+    const timer = setInterval(() => setDuration(p => p + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // ── 자동 스크롤 ──
+  // ── 자동 스크롤 ───────────────────────────────────────
   useEffect(() => {
     if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [chatMessages]);
@@ -97,7 +112,7 @@ export default function CoffeeChatRoom() {
     if (llmScrollRef.current) llmScrollRef.current.scrollTop = llmScrollRef.current.scrollHeight;
   }, [llmMessages, llmBuffer]);
 
-  // 채팅 WebSocket 연결
+  // ── 채팅 WebSocket ────────────────────────────────────
   useEffect(() => {
     if (!userId || !chatId) return;
 
@@ -105,10 +120,10 @@ export default function CoffeeChatRoom() {
     chatWsRef.current = ws;
 
     ws.onopen = () => console.log('[Chat WS] 연결됨');
-
     ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+  try {
+    const data = JSON.parse(event.data);
+    console.log('[LLM WS 수신]', data);
         if (Number(data.sender_id) === Number(userId)) return;
         setChatMessages(prev => [...prev, {
           sender: 'other',
@@ -119,63 +134,57 @@ export default function CoffeeChatRoom() {
         console.warn('[Chat WS] 메시지 파싱 오류', e);
       }
     };
-
     ws.onclose = () => console.log('[Chat WS] 연결 종료');
     ws.onerror = (e) => console.error('[Chat WS] 오류', e);
 
     return () => ws.close();
   }, [userId, chatId]);
 
+  // ── LLM WebSocket ─────────────────────────────────────
   useEffect(() => {
-  if (!userId || !chatId) return;
+    if (!userId || !chatId) return;
 
-  const ws = new WebSocket(`${WS_URL}/ws/llm/${chatId}/${userId}`);
-  llmWsRef.current = ws;
+    const ws = new WebSocket(`${WS_URL}/ws/llm/${chatId}/${userId}`);
+    llmWsRef.current = ws;
 
-  ws.onopen = () => console.log('[LLM WS] 연결 성공');
+    ws.onopen = () => console.log('[LLM WS] 연결 성공');
 
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      
-      if (data.type === 'chunk') {
-        setLlmStreaming(true);
-        // 한 글자씩 들어오는 청크를 버퍼 말풍선에 누적
-        setLlmBuffer(prev => prev + data.text); 
-      } 
-      else if (data.type === 'done') {
-        setLlmStreaming(false);
-        // 스트리밍이 끝나면 최종본을 메시지 배열에 정식 저장
-        setLlmMessages(prev => [...prev, { sender: 'ai', text: data.text }]);
-        setLlmBuffer(''); // 버퍼 비우기
-      } 
-      else if (data.type === 'error') {
-        setLlmStreaming(false);
-        setLlmMessages(prev => [...prev, { sender: 'ai', text: `❌ 오류: ${data.text}` }]);
-        setLlmBuffer('');
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        // ── 일반 LLM 응답 ──
+        if (data.type === 'chunk') {
+          setLlmStreaming(true);
+          setLlmBuffer(prev => prev + data.text);
+        } else if (data.type === 'done') {
+          setLlmStreaming(false);
+          setLlmMessages(prev => [...prev, { sender: 'ai', text: data.text }]);
+          setLlmBuffer('');
+        } else if (data.type === 'error') {
+          setLlmStreaming(false);
+          setLlmMessages(prev => [...prev, { sender: 'ai', text: `❌ 오류: ${data.text}` }]);
+          setLlmBuffer('');
+
+        // ── 추천 질문 응답 ──
+        } else if (data.type === 'recommended_questions') {
+          setIsGeneratingQuestions(false);
+          if (Array.isArray(data.questions) && data.questions.length > 0) {
+            setRecommendedQuestions(data.questions);
+          }
+        }
+      } catch (e) {
+        console.warn('[LLM WS] 데이터 파싱 실패:', e);
       }
-    } catch (e) {
-      console.warn('[LLM WS] 데이터 파싱 실패:', e);
-    }
-  };
+    };
 
-  ws.onclose = () => console.log('[LLM WS] 연결 종료');
-  ws.onerror = (e) => console.error('[LLM WS] 에러 발생:', e);
+    ws.onclose = () => console.log('[LLM WS] 연결 종료');
+    ws.onerror = (e) => console.error('[LLM WS] 에러 발생:', e);
 
-  return () => ws.close();
-}, [userId, chatId]);
+    return () => ws.close();
+  }, [userId, chatId]);
 
-  // ── 역할 판별 ──
-  const isMentor = booking && userId ? (Number(userId) === Number(booking.mentor_user_id)) : false;
-
-  const myRole    = isMentor ? '멘토 (나)' : '멘티 (나)';
-  const theirRole = isMentor ? '멘티' : '멘토';
-
-  const opponentName = isMentor 
-    ? (booking?.user_name || booking?.userName || '멘티')
-    : (booking?.mentor_name || booking?.mentorName || '멘토');
-
-  // ── WebRTC 훅 ──
+  // ── WebRTC 훅 ─────────────────────────────────────────
   const {
     localVideoRef,
     remoteVideoRef,
@@ -188,67 +197,142 @@ export default function CoffeeChatRoom() {
     questions: booking?.questions,
   });
 
-  // ── LLM 통신 함수 ──
-  const handleLlmSubmit = (e) => {
-  e.preventDefault();
-  if (!llmInput.trim() || llmStreaming) return;
+  // ── STT final 로그 → 버퍼 누적 ──────────────────────
+  // sttLogs에서 final만 골라 순서대로 버퍼에 append
+  // 이미 처리한 항목은 lastFinalCountRef로 추적해 중복 방지
+  useEffect(() => {
+    const finals = sttLogs.filter(l => l.type === 'final');
+    if (finals.length <= lastFinalCountRef.current) return;
 
-  const text = llmInput.trim();
-  
-  // 1. 화면에 내가 보낸 질문 말풍선 즉시 띄우기
-  setLlmMessages(prev => [...prev, { sender: 'me', text }]);
-  setLlmInput('');
+    const newFinals = finals.slice(lastFinalCountRef.current);
+    newFinals.forEach(log => {
+      const line = `${log.speaker}: ${log.text}`;
+      sttBufferRef.current += (sttBufferRef.current ? '\n' : '') + line;
+    });
+    lastFinalCountRef.current = finals.length;
+  }, [sttLogs]);
 
-  // 2. 뚫어놓은 LLM 웹소켓이 열려있다면 백엔드 JSON 규격에 맞춰 발송
-  if (llmWsRef.current?.readyState === WebSocket.OPEN) {
-    setLlmStreaming(true);
-    setLlmBuffer(''); // 새 스트리밍 출력을 위해 버퍼 초기화
+  // ── 추천 질문 자동 갱신 타이머 ──────────────────────
+  useEffect(() => {
+    if (!userId || !chatId) return;
+
+    // 카운트다운 (1초마다 UI 업데이트)
+    const countdown = setInterval(() => {
+      setNextRefreshIn(prev => {
+        if (prev <= 1) return RECOMMEND_INTERVAL_MS / 1000;
+        return prev - 1;
+      });
+    }, 1000);
+
+    // 45초마다 LLM에 추천 질문 요청
+    const interval = setInterval(() => {
+      const buffer = sttBufferRef.current.trim();
+
+      if (buffer.length < MIN_BUFFER_LENGTH) {
+        console.log('[추천질문] 버퍼가 짧아 스킵:', buffer.length, '자');
+        return;
+      }
+      if (llmWsRef.current?.readyState !== WebSocket.OPEN) {
+        console.warn('[추천질문] LLM WS가 닫혀있어 스킵');
+        return;
+      }
+
+      console.log('[추천질문] 요청 전송, 버퍼:', buffer.length, '자');
+      setIsGeneratingQuestions(true);
+
+      llmWsRef.current.send(JSON.stringify({
+        type: 'recommend_questions',
+        // 1분치 대화 텍스트 (STT 오타 있어도 LLM이 문맥 추론)
+        conversation: buffer,
+        // 멘토/멘티 프로필 → LLM이 역할에 맞는 질문 생성
+        mentor_profile: booking?.mentor_profile || booking?.mentorProfile || '',
+        mentee_profile: booking?.user_profile  || booking?.userProfile  || '',
+        // 사전 확정 질문 → 중복 추천 방지
+        preset_questions: booking?.questions || '',
+      }));
+
+      // 버퍼 비우기 (다음 1분 치 새로 모음)
+      sttBufferRef.current = '';
+    }, RECOMMEND_INTERVAL_MS);
+
+    return () => {
+      clearInterval(countdown);
+      clearInterval(interval);
+    };
+  }, [userId, chatId, booking]);
+
+  // ── 수동 갱신 버튼 ───────────────────────────────────
+  const handleManualRefresh = useCallback(() => {
+    const buffer = sttBufferRef.current.trim();
+    if (!buffer || buffer.length < MIN_BUFFER_LENGTH) return;
+    if (llmWsRef.current?.readyState !== WebSocket.OPEN) return;
+
+    setIsGeneratingQuestions(true);
+    setNextRefreshIn(RECOMMEND_INTERVAL_MS / 1000);
 
     llmWsRef.current.send(JSON.stringify({
-      type: "question",
-      text: text,
-      questions: booking?.questions || "" // 백엔드 시스템 프롬프트가 참고할 사전 질문지
+      type: 'recommend_questions',
+      conversation: buffer,
+      mentor_profile: booking?.mentor_profile || booking?.mentorProfile || '',
+      mentee_profile: booking?.user_profile  || booking?.userProfile  || '',
+      preset_questions: booking?.questions || '',
     }));
-  } else {
-    console.error('[LLM WS] 연결이 닫혀있습니다.');
-    setLlmMessages(prev => [...prev, { sender: 'ai', text: 'AI 연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.' }]);
-  }
-};
 
-  // ── 미디어 제어 함수 ──
+    sttBufferRef.current = '';
+  }, [booking]);
+
+  // ── 역할 판별 ─────────────────────────────────────────
+  const isMentor = booking && userId
+    ? Number(userId) === Number(booking.mentor_user_id)
+    : false;
+
+  const myRole    = isMentor ? '멘토 (나)' : '멘티 (나)';
+  const theirRole = isMentor ? '멘티' : '멘토';
+  const opponentName = isMentor
+    ? (booking?.user_name   || booking?.userName   || '멘티')
+    : (booking?.mentor_name || booking?.mentorName || '멘토');
+
+  // ── LLM 어시스턴트 전송 ───────────────────────────────
+  const handleLlmSubmit = (e) => {
+    e.preventDefault();
+    if (!llmInput.trim() || llmStreaming) return;
+
+    const text = llmInput.trim();
+    setLlmMessages(prev => [...prev, { sender: 'me', text }]);
+    setLlmInput('');
+
+    if (llmWsRef.current?.readyState === WebSocket.OPEN) {
+      setLlmStreaming(true);
+      setLlmBuffer('');
+      llmWsRef.current.send(JSON.stringify({
+        type: 'question',
+        text,
+        questions: booking?.questions || '',
+      }));
+    } else {
+      setLlmMessages(prev => [...prev, { sender: 'ai', text: 'AI 연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.' }]);
+    }
+  };
+
+  // ── 미디어 제어 ───────────────────────────────────────
   const handleToggleMute = useCallback(() => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
-
-    const stream = localVideoRef?.current?.srcObject;
-    if (stream) {
-      stream.getAudioTracks().forEach(track => {
-        track.enabled = !newMuted;
-      });
-    }
+    localVideoRef?.current?.srcObject?.getAudioTracks()
+      .forEach(track => { track.enabled = !newMuted; });
   }, [isMuted, localVideoRef]);
 
   const handleToggleVideo = useCallback(() => {
     const newOff = !isVideoOff;
     setIsVideoOff(newOff);
-
-    const stream = localVideoRef?.current?.srcObject;
-    if (stream) {
-      stream.getVideoTracks().forEach(track => {
-        track.enabled = !newOff;
-      });
-    }
+    localVideoRef?.current?.srcObject?.getVideoTracks()
+      .forEach(track => { track.enabled = !newOff; });
   }, [isVideoOff, localVideoRef]);
 
-  const handleRemoteVideoPlay = useCallback(() => setIsRemoteConnected(true), []);
+  const handleRemoteVideoPlay    = useCallback(() => setIsRemoteConnected(true), []);
   const handleRemoteVideoEmptied = useCallback(() => setIsRemoteConnected(false), []);
 
-  const formatDuration = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-  };
-
+  // ── 통화 종료 ─────────────────────────────────────────
   const handleEndCall = async () => {
     await hangUp();
     chatWsRef.current?.close();
@@ -259,70 +343,63 @@ export default function CoffeeChatRoom() {
     navigate(`/coffee-chat-review/${chatId}`);
   };
 
+  // ── 채팅 전송 ─────────────────────────────────────────
   const handleSendMessage = (e) => {
-  e.preventDefault();
-  if (!chatInput.trim()) return;
+    e.preventDefault();
+    if (!chatInput.trim()) return;
 
-  const text = chatInput.trim();
-  
-  // 🔍 디버깅용 로그 추가
-  console.log("=== [채팅 전송 디버깅] ===");
-  console.log("1. 유저 ID:", userId, " / 방 ID:", chatId);
-  console.log("2. 소켓 객체 존재 여부:", !!chatWsRef.current);
-  console.log("3. 현재 소켓 상태(readyState):", chatWsRef.current?.readyState);
+    const text = chatInput.trim();
+    setChatMessages(prev => [...prev, { sender: 'me', text }]);
+    setChatInput('');
 
-  setChatMessages(prev => [...prev, { sender: 'me', text }]);
-  setChatInput('');
+    if (chatWsRef.current?.readyState === WebSocket.OPEN) {
+      chatWsRef.current.send(JSON.stringify({
+        sender_id:   userId,
+        sender_name: myName,
+        message:     text,
+      }));
+    }
+  };
 
-  if (chatWsRef.current?.readyState === WebSocket.OPEN) {
-    console.log("4. 결과: 🎉 소켓이 열려 있어 정상 발송합니다!");
-    chatWsRef.current.send(JSON.stringify({
-      sender_id: userId,
-      sender_name: myName,
-      message: text,
-    }));
-  } else {
-    // 🚨 소켓이 안 열렸을 때 에러 출력
-    console.error("4. 결과: ❌ 소켓이 OPEN(1) 상태가 아니라서 전송이 스킵되었습니다!");
-  }
-};
-
-  const questions = booking?.questions
-    ? booking.questions.split('\n').filter(q => q.trim()).map((q, i) => ({ text: q.replace(/^[-•]\s*/, '').trim(), tag: `질문 ${i + 1}` }))
-    : [{ text: '작성된 질문이 없어요', tag: '질문' }];
-
-  const recommendedQuestions = [
-    '실무에서 가장 많이 쓰는 기술 스택은?',
-    '신입 개발자로서 가장 중요하게 볼 역량은?',
-    '코드 리뷰 시 가장 신경 쓰는 부분은?'
-  ];
+  // ── helpers ───────────────────────────────────────────
+  const formatDuration = (s) => {
+    const m = Math.floor(s / 60);
+    return `${m.toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+  };
 
   const getInitials = (name) => name?.slice(0, 2) || '??';
 
+  const questions = booking?.questions
+    ? booking.questions.split('\n').filter(q => q.trim())
+        .map((q, i) => ({ text: q.replace(/^[-•]\s*/, '').trim(), tag: `질문 ${i + 1}` }))
+    : [{ text: '작성된 질문이 없어요', tag: '질문' }];
+
+  // ── 테마 변수 ─────────────────────────────────────────
   const themeStyles = theme === 'dark' ? {
-    '--bg-gradient': 'linear-gradient(135deg, #0d1520 0%, #111d2e 50%, #0a1628 100%)',
-    '--panel-bg': 'rgba(255,255,255,0.03)',
-    '--panel-border': 'rgba(255,255,255,0.08)',
-    '--text-main': '#ffffff',
-    '--text-muted': 'rgba(255,255,255,0.5)',
-    '--btn-bg': 'rgba(255,255,255,0.06)',
-    '--btn-active': 'rgba(255,255,255,0.15)',
-    '--btn-border': 'rgba(255,255,255,0.06)',
+    '--bg-gradient':       'linear-gradient(135deg, #0d1520 0%, #111d2e 50%, #0a1628 100%)',
+    '--panel-bg':          'rgba(255,255,255,0.03)',
+    '--panel-border':      'rgba(255,255,255,0.08)',
+    '--text-main':         '#ffffff',
+    '--text-muted':        'rgba(255,255,255,0.5)',
+    '--btn-bg':            'rgba(255,255,255,0.06)',
+    '--btn-active':        'rgba(255,255,255,0.15)',
+    '--btn-border':        'rgba(255,255,255,0.06)',
     '--btn-border-active': 'rgba(255,255,255,0.2)',
-    '--chat-overlay': 'rgba(13,21,32,0.97)',
+    '--chat-overlay':      'rgba(13,21,32,0.97)',
   } : {
-    '--bg-gradient': 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%)',
-    '--panel-bg': 'rgba(255,255,255,0.8)',
-    '--panel-border': 'rgba(0,0,0,0.1)',
-    '--text-main': '#0f172a',
-    '--text-muted': '#64748b',
-    '--btn-bg': 'rgba(0,0,0,0.05)',
-    '--btn-active': 'rgba(0,0,0,0.1)',
-    '--btn-border': 'rgba(0,0,0,0.05)',
+    '--bg-gradient':       'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%)',
+    '--panel-bg':          'rgba(255,255,255,0.8)',
+    '--panel-border':      'rgba(0,0,0,0.1)',
+    '--text-main':         '#0f172a',
+    '--text-muted':        '#64748b',
+    '--btn-bg':            'rgba(0,0,0,0.05)',
+    '--btn-active':        'rgba(0,0,0,0.1)',
+    '--btn-border':        'rgba(0,0,0,0.05)',
     '--btn-border-active': 'rgba(0,0,0,0.15)',
-    '--chat-overlay': 'rgba(241,245,249,0.97)',
+    '--chat-overlay':      'rgba(241,245,249,0.97)',
   };
 
+  // ─────────────────────────────────────────────────────
   return (
     <div
       className="h-screen flex flex-col overflow-hidden transition-colors duration-300"
@@ -361,7 +438,9 @@ export default function CoffeeChatRoom() {
             style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
           >
             <Clock className="w-4 h-4" style={{ color: 'var(--text-main)' }} />
-            <span className="font-mono font-semibold text-sm" style={{ color: 'var(--text-main)' }}>{formatDuration(duration)}</span>
+            <span className="font-mono font-semibold text-sm" style={{ color: 'var(--text-main)' }}>
+              {formatDuration(duration)}
+            </span>
           </div>
         </div>
       </header>
@@ -369,9 +448,11 @@ export default function CoffeeChatRoom() {
       {/* ── 바디 ── */}
       <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-4 gap-3">
         <div className="flex-1 min-h-0 flex gap-4">
+
           {/* ── 좌측: 비디오 + STT ── */}
           <div className="flex-1 min-h-0 flex flex-col gap-3">
             <div className="flex-1 min-h-0 flex gap-4">
+
               {/* 내 화면 */}
               <div
                 className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg"
@@ -397,7 +478,10 @@ export default function CoffeeChatRoom() {
                   </div>
                 )}
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md z-10">
-                  {isMuted ? <MicOff className="w-3 h-3 text-red-400" /> : <Mic className="w-3 h-3 text-white/70" />}
+                  {isMuted
+                    ? <MicOff className="w-3 h-3 text-red-400" />
+                    : <Mic className="w-3 h-3 text-white/70" />
+                  }
                   <span className="text-xs text-white/70">
                     {isMuted ? '음소거' : `${myName} (${isMentor ? '멘토' : '멘티'})`}
                   </span>
@@ -446,7 +530,7 @@ export default function CoffeeChatRoom() {
               </div>
             </div>
 
-            {/* STT */}
+            {/* STT 패널 */}
             <div
               onClick={() => setIsSTTExpanded(!isSTTExpanded)}
               className={`flex-shrink-0 rounded-2xl p-4 cursor-pointer flex flex-col shadow-md hover:border-blue-400/50 transition-all duration-300 overflow-hidden ${isSTTExpanded ? '!flex-shrink !flex-1' : ''}`}
@@ -470,13 +554,17 @@ export default function CoffeeChatRoom() {
               </div>
               <div className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
                 {sttLogs.length === 0 && (
-    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>
-  )}
-  
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>
+                )}
                 {(isSTTExpanded ? sttLogs : sttLogs.slice(-2)).map((log, idx) => (
                   <div key={idx} className="flex gap-3 text-sm">
-                    <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>{log.speaker}</span>
-                    <p style={{ color: 'var(--text-main)' }}>{log.text}</p>
+                    <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>
+                      {log.speaker}
+                    </span>
+                    <p style={{ color: log.type === 'interim' ? 'var(--text-muted)' : 'var(--text-main)', fontStyle: log.type === 'interim' ? 'italic' : 'normal' }}>
+                      {log.text}
+                      {log.type === 'interim' && <span className="inline-block w-1 h-3 bg-current ml-1 animate-pulse" />}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -485,6 +573,7 @@ export default function CoffeeChatRoom() {
 
           {/* ── 우측 패널 ── */}
           <div className="w-80 flex-shrink-0 min-h-0 flex flex-col gap-3 relative">
+
             {/* 확정 질문 */}
             <div
               className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md"
@@ -506,23 +595,75 @@ export default function CoffeeChatRoom() {
               </div>
             </div>
 
-            {/* AI 추천 질문 */}
+            {/* ── AI 추천 질문 ── */}
             <div
               className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md"
               style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
             >
-              <h3 className="flex-shrink-0 font-semibold text-sm mb-3" style={{ color: 'var(--text-main)' }}>AI 추천 질문</h3>
+              {/* 헤더 */}
+              <div className="flex-shrink-0 flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <h3 className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>AI 추천 질문</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* 다음 갱신 카운트다운 */}
+                  {!isGeneratingQuestions && sttBufferRef.current.length >= MIN_BUFFER_LENGTH && (
+                    <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                      {nextRefreshIn}s
+                    </span>
+                  )}
+                  {isGeneratingQuestions ? (
+                    <span className="text-xs text-amber-400 animate-pulse flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> 생성 중...
+                    </span>
+                  ) : (
+                    /* 수동 갱신 버튼 */
+                    <button
+                      onClick={handleManualRefresh}
+                      disabled={sttBufferRef.current.length < MIN_BUFFER_LENGTH}
+                      className="p-1 rounded-lg transition-colors hover:bg-amber-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="지금 바로 추천 질문 갱신"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 질문 목록 */}
               <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
                 {recommendedQuestions.map((q, i) => (
                   <div
                     key={i}
-                    className="p-3 rounded-xl text-sm bg-black/5 flex items-start gap-2 hover:bg-black/10 transition-colors cursor-pointer flex-shrink-0"
-                    style={{ color: 'var(--text-main)' }}
+                    className="p-3 rounded-xl text-sm flex items-start gap-2 hover:bg-amber-500/5 transition-colors cursor-pointer flex-shrink-0 border border-transparent hover:border-amber-500/20"
+                    style={{
+                      background: 'rgba(0,0,0,0.04)',
+                      color: 'var(--text-main)',
+                    }}
                   >
                     <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
                     <span>{q}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* 버퍼 진행 바 — 얼마나 쌓였는지 시각화 */}
+              <div className="flex-shrink-0 mt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>대화 수집 중</span>
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                    {Math.min(100, Math.round((nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100 * -1 + 100))}%
+                  </span>
+                </div>
+                <div className="w-full h-1 rounded-full bg-black/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-1000"
+                    style={{
+                      width: `${Math.min(100, Math.round((1 - nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100))}%`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -552,21 +693,18 @@ export default function CoffeeChatRoom() {
                   </div>
                 )}
               </div>
-              <form 
-                onSubmit={handleLlmSubmit} 
-                className="flex-shrink-0 flex items-center gap-2 relative"
-              >
+              <form onSubmit={handleLlmSubmit} className="flex-shrink-0 flex items-center gap-2 relative">
                 <input
                   type="text"
                   value={llmInput}
                   onChange={(e) => setLlmInput(e.target.value)}
-                  placeholder={llmStreaming ? "AI가 답변을 작성 중입니다..." : "AI에게 질문하기..."}
+                  placeholder={llmStreaming ? 'AI가 답변을 작성 중입니다...' : 'AI에게 질문하기...'}
                   disabled={llmStreaming}
                   className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                   style={{ color: 'var(--text-main)' }}
                 />
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={llmStreaming || !llmInput.trim()}
                   className="absolute right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:bg-gray-500 transition-colors"
                 >
@@ -588,8 +726,10 @@ export default function CoffeeChatRoom() {
                 zIndex: 20,
               }}
             >
-              <div className="flex-shrink-0 flex items-center justify-between px-4 pt-4 pb-3"
-                style={{ borderBottom: '1px solid var(--panel-border)' }}>
+              <div
+                className="flex-shrink-0 flex items-center justify-between px-4 pt-4 pb-3"
+                style={{ borderBottom: '1px solid var(--panel-border)' }}
+              >
                 <h3 className="font-semibold text-sm text-indigo-400 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" /> 채팅방
                 </h3>
@@ -601,19 +741,13 @@ export default function CoffeeChatRoom() {
                 {chatMessages.map((m, i) => (
                   <div
                     key={i}
-                    className={`flex flex-col max-w-[85%] flex-shrink-0
-                      ${m.sender === 'me' ? 'self-end items-end' : m.sender === 'system' ? 'self-center' : 'self-start items-start'}`}
+                    className={`flex flex-col max-w-[85%] flex-shrink-0 ${m.sender === 'me' ? 'self-end items-end' : m.sender === 'system' ? 'self-center' : 'self-start items-start'}`}
                   >
                     {m.sender === 'other' && m.name && (
                       <span className="text-[10px] mb-0.5 ml-1" style={{ color: 'var(--text-muted)' }}>{m.name}</span>
                     )}
                     <div
-                      className={`p-2.5 rounded-xl text-xs
-                        ${m.sender === 'me'
-                          ? 'bg-indigo-500 text-white rounded-tr-sm'
-                          : m.sender === 'system'
-                          ? 'bg-transparent text-gray-400 text-[10px]'
-                          : 'bg-black/10 rounded-tl-sm'}`}
+                      className={`p-2.5 rounded-xl text-xs ${m.sender === 'me' ? 'bg-indigo-500 text-white rounded-tr-sm' : m.sender === 'system' ? 'bg-transparent text-gray-400 text-[10px]' : 'bg-black/10 rounded-tl-sm'}`}
                       style={m.sender === 'other' ? { color: 'var(--text-main)' } : {}}
                     >
                       {m.text}
@@ -633,8 +767,10 @@ export default function CoffeeChatRoom() {
                   className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   style={{ color: 'var(--text-main)' }}
                 />
-                <button type="submit"
-                  className="absolute right-5 top-1/2 -translate-y-1/2 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white">
+                <button
+                  type="submit"
+                  className="absolute right-5 top-1/2 -translate-y-1/2 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white"
+                >
                   <Send className="w-3 h-3" />
                 </button>
               </form>
@@ -686,21 +822,27 @@ export default function CoffeeChatRoom() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}><Mic className="w-4 h-4" /> 마이크</label>
+                <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+                  <Mic className="w-4 h-4" /> 마이크
+                </label>
                 <select className="w-full p-2.5 rounded-lg bg-black/10 text-sm focus:outline-none" style={{ color: 'var(--text-main)' }}>
                   <option>기본 마이크 (내장 마이크)</option>
                   <option>외부 USB 마이크</option>
                 </select>
               </div>
               <div>
-                <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}><Volume2 className="w-4 h-4" /> 스피커</label>
+                <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+                  <Volume2 className="w-4 h-4" /> 스피커
+                </label>
                 <select className="w-full p-2.5 rounded-lg bg-black/10 text-sm focus:outline-none" style={{ color: 'var(--text-main)' }}>
                   <option>기본 스피커</option>
                   <option>블루투스 헤드폰</option>
                 </select>
               </div>
               <div>
-                <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}><Video className="w-4 h-4" /> 카메라</label>
+                <label className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+                  <Video className="w-4 h-4" /> 카메라
+                </label>
                 <select className="w-full p-2.5 rounded-lg bg-black/10 text-sm focus:outline-none" style={{ color: 'var(--text-main)' }}>
                   <option>FaceTime HD Camera</option>
                   <option>외부 웹캠</option>
