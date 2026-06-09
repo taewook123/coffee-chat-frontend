@@ -43,6 +43,7 @@ export default function CoffeeChatRoom() {
   
   // 채팅 WebSocket
   const chatWsRef = useRef(null);
+  const llmWsRef = useRef(null);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([{ sender: 'system', text: '채팅방이 개설되었습니다.' }]);
   
@@ -100,7 +101,7 @@ export default function CoffeeChatRoom() {
   useEffect(() => {
     if (!userId || !chatId) return;
 
-    const ws = new WebSocket(`${WS_URL}/ws/llm/${chatId}/${userId}`);
+    const ws = new WebSocket(`${WS_URL}/ws/chat/${chatId}/${userId}`); // chat 엔드포인트로 변경!
     chatWsRef.current = ws;
 
     ws.onopen = () => console.log('[Chat WS] 연결됨');
@@ -124,6 +125,45 @@ export default function CoffeeChatRoom() {
 
     return () => ws.close();
   }, [userId, chatId]);
+
+  useEffect(() => {
+  if (!userId || !chatId) return;
+
+  const ws = new WebSocket(`${WS_URL}/ws/llm/${chatId}/${userId}`);
+  llmWsRef.current = ws;
+
+  ws.onopen = () => console.log('[LLM WS] 연결 성공');
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'chunk') {
+        setLlmStreaming(true);
+        // 한 글자씩 들어오는 청크를 버퍼 말풍선에 누적
+        setLlmBuffer(prev => prev + data.text); 
+      } 
+      else if (data.type === 'done') {
+        setLlmStreaming(false);
+        // 스트리밍이 끝나면 최종본을 메시지 배열에 정식 저장
+        setLlmMessages(prev => [...prev, { sender: 'ai', text: data.text }]);
+        setLlmBuffer(''); // 버퍼 비우기
+      } 
+      else if (data.type === 'error') {
+        setLlmStreaming(false);
+        setLlmMessages(prev => [...prev, { sender: 'ai', text: `❌ 오류: ${data.text}` }]);
+        setLlmBuffer('');
+      }
+    } catch (e) {
+      console.warn('[LLM WS] 데이터 파싱 실패:', e);
+    }
+  };
+
+  ws.onclose = () => console.log('[LLM WS] 연결 종료');
+  ws.onerror = (e) => console.error('[LLM WS] 에러 발생:', e);
+
+  return () => ws.close();
+}, [userId, chatId]);
 
   // ── 역할 판별 ──
   const isMentor = booking && userId ? (Number(userId) === Number(booking.mentor_user_id)) : false;
@@ -149,63 +189,31 @@ export default function CoffeeChatRoom() {
   });
 
   // ── LLM 통신 함수 ──
-  const sendLLMQuestion = async (questionText) => {
-    if (llmStreaming) return;
-    
-    setLlmStreaming(true);
-    setLlmBuffer('');
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${BACKEND_URL}/api/llm/ask`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          chat_id: chatId,
-          question: questionText,
-          context: sttLogs.slice(-10) 
-        })
-      });
-
-      if (!response.ok) throw new Error('LLM 요청 실패');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let accumulatedResponse = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        accumulatedResponse += chunk;
-        setLlmBuffer(accumulatedResponse);
-      }
-
-      setLlmMessages(prev => [...prev, { sender: 'ai', text: accumulatedResponse }]);
-      setLlmBuffer('');
-
-    } catch (error) {
-      console.error('❌ LLM 어시스턴트 에러:', error);
-      setLlmMessages(prev => [...prev, { sender: 'ai', text: '답변을 생성하는 중 오류가 발생했습니다.' }]);
-    } finally {
-      setLlmStreaming(false);
-    }
-  };
-
-  // ── LLM 폼 제출 핸들러 ──
   const handleLlmSubmit = (e) => {
-    e.preventDefault();
-    if (!llmInput.trim() || llmStreaming) return;
+  e.preventDefault();
+  if (!llmInput.trim() || llmStreaming) return;
 
-    const text = llmInput.trim();
-    setLlmMessages(prev => [...prev, { sender: 'me', text }]);
-    setLlmInput('');
-    sendLLMQuestion(text);
-  };
+  const text = llmInput.trim();
+  
+  // 1. 화면에 내가 보낸 질문 말풍선 즉시 띄우기
+  setLlmMessages(prev => [...prev, { sender: 'me', text }]);
+  setLlmInput('');
+
+  // 2. 뚫어놓은 LLM 웹소켓이 열려있다면 백엔드 JSON 규격에 맞춰 발송
+  if (llmWsRef.current?.readyState === WebSocket.OPEN) {
+    setLlmStreaming(true);
+    setLlmBuffer(''); // 새 스트리밍 출력을 위해 버퍼 초기화
+
+    llmWsRef.current.send(JSON.stringify({
+      type: "question",
+      text: text,
+      questions: booking?.questions || "" // 백엔드 시스템 프롬프트가 참고할 사전 질문지
+    }));
+  } else {
+    console.error('[LLM WS] 연결이 닫혀있습니다.');
+    setLlmMessages(prev => [...prev, { sender: 'ai', text: 'AI 연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.' }]);
+  }
+};
 
   // ── 미디어 제어 함수 ──
   const handleToggleMute = useCallback(() => {
@@ -252,21 +260,32 @@ export default function CoffeeChatRoom() {
   };
 
   const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  e.preventDefault();
+  if (!chatInput.trim()) return;
 
-    const text = chatInput.trim();
-    setChatMessages(prev => [...prev, { sender: 'me', text }]);
-    setChatInput('');
+  const text = chatInput.trim();
+  
+  // 🔍 디버깅용 로그 추가
+  console.log("=== [채팅 전송 디버깅] ===");
+  console.log("1. 유저 ID:", userId, " / 방 ID:", chatId);
+  console.log("2. 소켓 객체 존재 여부:", !!chatWsRef.current);
+  console.log("3. 현재 소켓 상태(readyState):", chatWsRef.current?.readyState);
 
-    if (chatWsRef.current?.readyState === WebSocket.OPEN) {
-      chatWsRef.current.send(JSON.stringify({
-        sender_id: userId,
-        sender_name: myName,
-        message: text,
-      }));
-    }
-  };
+  setChatMessages(prev => [...prev, { sender: 'me', text }]);
+  setChatInput('');
+
+  if (chatWsRef.current?.readyState === WebSocket.OPEN) {
+    console.log("4. 결과: 🎉 소켓이 열려 있어 정상 발송합니다!");
+    chatWsRef.current.send(JSON.stringify({
+      sender_id: userId,
+      sender_name: myName,
+      message: text,
+    }));
+  } else {
+    // 🚨 소켓이 안 열렸을 때 에러 출력
+    console.error("4. 결과: ❌ 소켓이 OPEN(1) 상태가 아니라서 전송이 스킵되었습니다!");
+  }
+};
 
   const questions = booking?.questions
     ? booking.questions.split('\n').filter(q => q.trim()).map((q, i) => ({ text: q.replace(/^[-•]\s*/, '').trim(), tag: `질문 ${i + 1}` }))

@@ -255,4 +255,4 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   );
 };
 
-export default Headg
+export default Header;
