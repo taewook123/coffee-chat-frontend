@@ -31,31 +31,26 @@ export default function CoffeeChatRoom() {
   const { chatId } = useParams();
   const navigate = useNavigate();
   
-  // 기본 상태
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   
-  // UI 토글 상태
   const [theme, setTheme] = useState('dark');
   const [showChat, setShowChat] = useState(false);
   const [isSTTExpanded, setIsSTTExpanded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
-  // 채팅 & LLM 상태
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([{ sender: 'system', text: '채팅방이 개설되었습니다.' }]);
   const [llmInput, setLlmInput] = useState('');
   const [llmMessages, setLlmMessages] = useState([{ sender: 'ai', text: '무엇이든 물어보세요! 대화를 기반으로 조언해 드릴게요.' }]);
   
-  // DB 연동 state
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
   const [myName, setMyName] = useState('나');
   const [userId, setUserId] = useState(null); 
   const [activeQuestion, setActiveQuestion] = useState(0);
 
-  // 스크롤 참조
   const chatScrollRef = useRef(null);
   const llmScrollRef = useRef(null);
 
@@ -66,17 +61,10 @@ export default function CoffeeChatRoom() {
     setUserId(id ? Number(id) : null); 
     if (!id) return;
 
-    if (!userId) return;
-
-    // 예약 정보 가져오기
-    axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
+    axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => {
-        // 💡 [디버깅 로그] 콘솔창에서 백엔드가 주는 진짜 데이터 구조를 확인합니다.
         console.log("=== [☕ 디버깅] 백엔드 응답 Booking 데이터 원본 ===");
         console.log(res.data);
-        console.log("현재 로그인한 내 userId (로컬스토리지):", id, " (타입:", typeof id, ")");
-        console.log("=================================================");
-        
         setBooking(res.data); 
       }).catch(err => console.error('[예약 정보 로드 실패]', err));
 
@@ -90,7 +78,6 @@ export default function CoffeeChatRoom() {
     return () => clearInterval(timer);
   }, []);
 
-  // 자동 스크롤
   useEffect(() => {
     if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [chatMessages]);
@@ -98,20 +85,14 @@ export default function CoffeeChatRoom() {
     if (llmScrollRef.current) llmScrollRef.current.scrollTop = llmScrollRef.current.scrollHeight;
   }, [llmMessages]);
 
-  // 💡 [역할 판별 초강력 방어 로직] 
-  // 내 ID가 백엔드가 준 데이터의 mentor_id 혹은 mentorId와 일치하는지 판별합니다.
-  // Number()로 감싸서 문자열과 숫자가 다치지 않게 완벽하게 통일합니다.
   const isMentor = booking && userId 
     ? (Number(userId) === Number(booking.mentor_id) || Number(userId) === Number(booking.mentorId))
     : false;
 
-  // 상대방 이름 설정 (내가 멘토면 멘티 이름, 내가 멘티면 멘토 이름)
-  // 백엔드가 준 필드명이 snake_case든 camelCase든 둘 다 방어하도록 설계했습니다.
   const opponentName = isMentor 
     ? (booking?.user_name || booking?.userName || '멘티 회원') 
     : (booking?.mentor_name || booking?.mentorName || '멘토 호스트');
 
-  // ✅ WebRTC + STT + LLM 훅 연결
   const {
     localVideoRef,
     remoteVideoRef,
@@ -178,6 +159,7 @@ export default function CoffeeChatRoom() {
     '--btn-active': 'rgba(255,255,255,0.15)',
     '--btn-border': 'rgba(255,255,255,0.06)',
     '--btn-border-active': 'rgba(255,255,255,0.2)',
+    '--chat-overlay': 'rgba(13,21,32,0.97)',
   } : {
     '--bg-gradient': 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%)',
     '--panel-bg': 'rgba(255,255,255,0.8)',
@@ -188,26 +170,24 @@ export default function CoffeeChatRoom() {
     '--btn-active': 'rgba(0,0,0,0.1)',
     '--btn-border': 'rgba(0,0,0,0.05)',
     '--btn-border-active': 'rgba(0,0,0,0.15)',
+    '--chat-overlay': 'rgba(241,245,249,0.97)',
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-700 via-orange-600 to-orange-800 flex flex-col">
-      {/* Header */}
-      <div className="bg-black/20 backdrop-blur-sm px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <span className="font-bold text-orange-600 text-sm">
-                {booking?.mentor_name?.slice(0, 2) || '멘토'}
-              </span>
-            </div>
-            <div className="text-white">
-              {/* [수정] DB에서 가져온 멘토 이름 */}
-              <h2 className="font-bold">
-                {booking?.mentor_name || '멘토'}
-              </h2>
-              <p className="text-sm text-white/80">커피챗 진행중</p>
-            </div>
+    /* ─── 루트: 뷰포트 고정 ─── */
+    <div
+      className="h-screen flex flex-col overflow-hidden transition-colors duration-300"
+      style={{ ...themeStyles, background: 'var(--bg-gradient)' }}
+    >
+
+      {/* ── 헤더 (flex-shrink-0) ── */}
+      <header
+        className="flex-shrink-0 relative z-10 flex items-center justify-between px-6 py-3"
+        style={{ borderBottom: '1px solid var(--panel-border)' }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
           <span className="font-semibold tracking-wide" style={{ color: 'var(--text-main)' }}>Coffee Chat</span>
           <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 bg-blue-500/10 text-blue-500 border border-blue-500/20">
@@ -215,258 +195,330 @@ export default function CoffeeChatRoom() {
             LIVE
           </span>
         </div>
-
         <div className="flex items-center gap-4">
-          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full hover:bg-black/10 transition-colors" style={{ color: 'var(--text-main)' }}>
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-full hover:bg-black/10 transition-colors"
+            style={{ color: 'var(--text-main)' }}
+          >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          
-          {/* 헤더 타이틀 동적 변경 */}
           {booking && (
             <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
               {isMentor ? `${opponentName}님과의 코칭 세션` : `${opponentName} 호스트 세션`}
             </span>
           )}
-          
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
+          <div
+            className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm"
+            style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
+          >
             <Clock className="w-4 h-4" style={{ color: 'var(--text-main)' }} />
             <span className="font-mono font-semibold text-sm" style={{ color: 'var(--text-main)' }}>{formatDuration(duration)}</span>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="relative z-10 flex-1 flex gap-4 px-6 py-4 min-h-0">
-        
-        {/* 좌측: 비디오 & 컨트롤 */}
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
-          
-          <div className={`flex gap-4 transition-all duration-500 ease-in-out ${isSTTExpanded ? 'h-40' : 'flex-1'}`}>
-            
-            {/* [나 - Local Video] 내가 멘토면 멘토, 멘티면 멘티 표시 */}
-            <div className={`flex-1 relative rounded-3xl overflow-hidden flex flex-col items-center justify-center transition-all shadow-lg`}
-                 style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}>
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="absolute inset-0 w-full h-full object-cover rounded-3xl"
-                style={{ display: isVideoOff ? 'none' : 'block' }}
-              />
-              {isVideoOff && (
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`rounded-2xl flex items-center justify-center text-white font-bold bg-gradient-to-br ${isMentor ? 'from-amber-500 to-red-500' : 'from-blue-500 to-indigo-600'} ${isSTTExpanded ? 'w-16 h-16 text-xl' : 'w-24 h-24 text-3xl shadow-xl'}`}>
-                    {getInitials(myName)}
-                  </div>
-                  {!isSTTExpanded && (
+      {/* ── 바디: 헤더 아래 남은 공간 전부 ── */}
+      <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-4 gap-3">
+
+        {/* 상단 콘텐츠 행 (비디오 좌측 + 우측 패널) */}
+        <div className="flex-1 min-h-0 flex gap-4">
+
+          {/* ── 좌측: 비디오 + STT ── */}
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
+
+            {/* 비디오 2개 */}
+            <div className="flex-1 min-h-0 flex gap-4">
+
+              {/* 나 */}
+              <div
+                className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg"
+                style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}
+              >
+                <video ref={localVideoRef} autoPlay playsInline muted
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ display: isVideoOff ? 'none' : 'block' }}
+                />
+                {isVideoOff && (
+                  <div className="flex flex-col items-center gap-3 z-10">
+                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl bg-gradient-to-br ${isMentor ? 'from-amber-500 to-red-500' : 'from-blue-500 to-indigo-600'}`}>
+                      {getInitials(myName)}
+                    </div>
                     <div className="text-center">
-                      <p className="font-semibold text-lg" style={{ color: 'var(--text-main)' }}>{myName}</p>
+                      <p className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{myName}</p>
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-500'}`}>
                         {isMentor ? '멘토 (나)' : '멘티 (나)'}
                       </span>
                     </div>
-                  )}
+                  </div>
+                )}
+                <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md z-10">
+                  {isMuted ? <MicOff className="w-3 h-3 text-red-400" /> : <Mic className="w-3 h-3 text-white/70" />}
+                  <span className="text-xs text-white/70">{isMuted ? '음소거' : `${myName} (${isMentor ? '멘토' : '멘티'})`}</span>
                 </div>
-              )}
-              <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md">
-                {isMuted
-                  ? <MicOff className="w-3 h-3 text-red-400" />
-                  : <Mic className="w-3 h-3 text-white/70" />}
-                <span className="text-xs text-white/70">{isMuted ? '음소거' : `${myName} (${isMentor ? '멘토' : '멘티'})`}</span>
               </div>
-            </div>
 
-            {/* [상대방 - Remote Video] 내가 멘토면 상대방은 멘티, 내가 멘티면 상대방은 멘토 */}
-            <div className={`flex-1 relative rounded-3xl overflow-hidden flex flex-col items-center justify-center transition-all shadow-lg`}
-                 style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}>
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover rounded-3xl"
-              />
-              <div className="flex flex-col items-center gap-3">
-                <div className={`rounded-2xl flex items-center justify-center text-white font-bold bg-gradient-to-br ${isMentor ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-red-500'} ${isSTTExpanded ? 'w-16 h-16 text-xl' : 'w-24 h-24 text-3xl shadow-xl'}`}>
-                  {getInitials(opponentName)}
-                </div>
-                {!isSTTExpanded && (
+              {/* 상대방 */}
+              <div
+                className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg"
+                style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}
+              >
+                <video ref={remoteVideoRef} autoPlay playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="flex flex-col items-center gap-3 z-10">
+                  <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl bg-gradient-to-br ${isMentor ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-red-500'}`}>
+                    {getInitials(opponentName)}
+                  </div>
                   <div className="text-center">
-                    <p className="font-semibold text-lg" style={{ color: 'var(--text-main)' }}>{opponentName}</p>
+                    <p className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{opponentName}</p>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-600'}`}>
                       {isMentor ? '멘티 회원' : '호스트 (멘토)'}
                     </span>
                   </div>
+                </div>
+                <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md z-10">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs text-green-400">연결 대기 중</span>
+                </div>
+              </div>
+            </div>
+
+            {/* STT — 접힘: 고정 높이 / 펼침: flex-1 */}
+            <div
+              onClick={() => setIsSTTExpanded(!isSTTExpanded)}
+              className={`flex-shrink-0 rounded-2xl p-4 cursor-pointer flex flex-col shadow-md hover:border-blue-400/50 transition-all duration-300 overflow-hidden ${isSTTExpanded ? '!flex-shrink !flex-1' : ''}`}
+              style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--panel-border)',
+                backdropFilter: 'blur(12px)',
+                height: isSTTExpanded ? undefined : '7rem',
+              }}
+            >
+              <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>
+                    실시간 대화 내역 {isSTTExpanded ? '(전체)' : '(최신)'}
+                  </span>
+                </div>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {isSTTExpanded ? '접기 ▲' : '펼치기 ▼'}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
+                {sttLogs.length === 0 && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>
+                )}
+                {(isSTTExpanded ? sttLogs : sttLogs.slice(-2)).map((log, idx) => (
+                  <div key={idx} className="flex gap-3 text-sm">
+                    <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>{log.speaker}</span>
+                    <p style={{ color: 'var(--text-main)' }}>{log.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── 우측 패널: 3분할 고정 비율 ── */}
+          <div className="w-80 flex-shrink-0 min-h-0 flex flex-col gap-3 relative">
+
+            {/* 확정 질문 — flex-1: 항상 동일 비율 */}
+            <div
+              className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md"
+              style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
+            >
+              <h3 className="flex-shrink-0 font-semibold text-sm mb-3" style={{ color: 'var(--text-main)' }}>내 확정 질문</h3>
+              {/* 내용이 많아도 이 div 안에서만 스크롤 */}
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
+                {questions.map((q, i) => (
+                  <div
+                    key={i}
+                    onClick={() => setActiveQuestion(i)}
+                    className={`p-3 rounded-xl cursor-pointer text-sm transition-colors flex-shrink-0 ${activeQuestion === i ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-black/5 border border-transparent'}`}
+                    style={{ color: 'var(--text-main)' }}
+                  >
+                    <span className="text-xs text-blue-500 block mb-1 font-semibold">{q.tag}</span>
+                    {q.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* AI 추천 질문 — flex-1 */}
+            <div
+              className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md"
+              style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
+            >
+              <h3 className="flex-shrink-0 font-semibold text-sm mb-3" style={{ color: 'var(--text-main)' }}>AI 추천 질문</h3>
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
+                {recommendedQuestions.map((q, i) => (
+                  <div
+                    key={i}
+                    className="p-3 rounded-xl text-sm bg-black/5 flex items-start gap-2 hover:bg-black/10 transition-colors cursor-pointer flex-shrink-0"
+                    style={{ color: 'var(--text-main)' }}
+                  >
+                    <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                    <span>{q}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* LLM 어시스턴트 — flex-[1.4] (조금 더 크게) */}
+            <div
+              className="flex-[1.4] min-h-0 flex flex-col rounded-2xl p-4 shadow-md border border-blue-500/30 bg-blue-500/5"
+            >
+              <div className="flex-shrink-0 flex items-center gap-2 mb-3">
+                <Sparkles className="w-4 h-4 text-blue-500" />
+                <h3 className="font-semibold text-sm text-blue-500">LLM 어시스턴트</h3>
+                {llmStreaming && (
+                  <span className="text-xs text-blue-400 animate-pulse ml-auto">답변 생성 중...</span>
                 )}
               </div>
-              <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs text-green-400">연결 대기 중</span>
+              <div ref={llmScrollRef} className="flex-1 min-h-0 overflow-y-auto pr-1 mb-2 flex flex-col gap-2 custom-scrollbar">
+                {llmMessages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`p-2.5 rounded-xl text-xs max-w-[85%] flex-shrink-0 ${m.sender === 'me' ? 'bg-blue-500 text-white self-end rounded-tr-sm' : 'bg-black/10 self-start rounded-tl-sm'}`}
+                    style={m.sender !== 'me' ? { color: 'var(--text-main)' } : {}}
+                  >
+                    {m.text}
+                  </div>
+                ))}
+                {llmStreaming && llmBuffer && (
+                  <div className="p-2.5 rounded-xl text-xs max-w-[85%] bg-black/10 self-start rounded-tl-sm opacity-70 flex-shrink-0" style={{ color: 'var(--text-main)' }}>
+                    {llmBuffer}
+                    <span className="inline-block w-1 h-3 bg-blue-400 ml-1 animate-pulse" />
+                  </div>
+                )}
               </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!llmInput.trim()) return;
+                  setLlmMessages(prev => [...prev, { sender: 'me', text: llmInput }]);
+                  sendLLMQuestion(llmInput);
+                  setLlmInput('');
+                }}
+                className="flex-shrink-0 flex items-center gap-2 relative"
+              >
+                <input
+                  type="text"
+                  value={llmInput}
+                  onChange={(e) => setLlmInput(e.target.value)}
+                  placeholder="AI에게 질문하기..."
+                  disabled={llmStreaming}
+                  className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                  style={{ color: 'var(--text-main)' }}
+                />
+                <button type="submit" disabled={llmStreaming}
+                  className="absolute right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white disabled:opacity-50">
+                  <Send className="w-3 h-3" />
+                </button>
+              </form>
             </div>
-          </div>
 
-          {/* 실시간 대화 내역 (STT) */}
-          <div 
-            onClick={() => setIsSTTExpanded(!isSTTExpanded)}
-            className="rounded-2xl p-4 transition-all duration-500 ease-in-out cursor-pointer flex flex-col overflow-hidden shadow-md hover:border-blue-400/50"
-            style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(12px)', height: isSTTExpanded ? 'auto' : '120px', flex: isSTTExpanded ? 1 : 'none' }}
-          >
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>실시간 대화 내역 {isSTTExpanded ? '(전체)' : '(최신)'}</span>
-              </div>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{isSTTExpanded ? '접기' : '클릭해서 펼치기'}</span>
-            </div>
-            
-            <div className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
-              {sttLogs.length === 0 && (
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>
-              )}
-              {(isSTTExpanded ? sttLogs : sttLogs.slice(-3)).map((log, idx) => (
-                <div key={idx} className="flex gap-3 text-sm">
-                  <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>{log.speaker}</span>
-                  <p style={{ color: 'var(--text-main)' }}>{log.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 하단 컨트롤 바 */}
-          <div className="flex items-center justify-center flex-shrink-0">
-            <div className="flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg backdrop-blur-xl" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
-              <ControlBtn
-                active={!isMuted}
-                onClick={() => setIsMuted(!isMuted)}
-                icon={isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                danger={isMuted}
-                label={isMuted ? '음소거' : '마이크'}
-              />
-              <ControlBtn
-                active={!isVideoOff}
-                onClick={() => setIsVideoOff(!isVideoOff)}
-                icon={isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-                danger={isVideoOff}
-                label={isVideoOff ? '비디오 꺼짐' : '비디오'}
-              />
-              
-              <div className="w-px h-8 mx-1" style={{ background: 'var(--panel-border)' }} />
-              
-              <button onClick={handleEndCall} className="flex flex-col items-center gap-1 group">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 shadow-xl bg-gradient-to-br from-red-500 to-red-700">
-                  <PhoneOff className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xs text-red-500 font-medium">종료</span>
-              </button>
-              
-              <div className="w-px h-8 mx-1" style={{ background: 'var(--panel-border)' }} />
-              
-              <ControlBtn active={showChat} onClick={() => setShowChat(!showChat)} icon={<MessageSquare className="w-5 h-5" />} label="채팅" />
-              <ControlBtn active={showSettings} onClick={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />} label="설정" />
-            </div>
-          </div>
-        </div>
-
-        {/* 우측 패널 */}
-        <div className="w-80 flex flex-col gap-4 flex-shrink-0 transition-all duration-500 h-full">
-          
-          {/* 확정 질문 */}
-          <div className={`flex flex-col rounded-2xl p-4 shadow-md transition-all duration-500 ${showChat ? 'h-32' : 'flex-1'}`} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
-            <h3 className="font-semibold text-sm mb-3 flex-shrink-0" style={{ color: 'var(--text-main)' }}>내 확정 질문</h3>
-            <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
-              {questions.map((q, i) => (
-                <div key={i} onClick={() => setActiveQuestion(i)} className={`p-3 rounded-xl cursor-pointer text-sm transition-colors ${activeQuestion === i ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-black/5 border border-transparent'}`} style={{ color: 'var(--text-main)' }}>
-                  <span className="text-xs text-blue-500 block mb-1 font-semibold">{q.tag}</span>
-                  {q.text}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 추천 질문 */}
-          <div className={`flex flex-col rounded-2xl p-4 shadow-md transition-all duration-500 ${showChat ? 'h-32' : 'flex-1'}`} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
-            <h3 className="font-semibold text-sm mb-3 flex-shrink-0" style={{ color: 'var(--text-main)' }}>AI 추천 질문</h3>
-            <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
-              {recommendedQuestions.map((q, i) => (
-                <div key={i} className="p-3 rounded-xl text-sm bg-black/5 flex items-start gap-2 hover:bg-black/10 transition-colors cursor-pointer" style={{ color: 'var(--text-main)' }}>
-                  <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                  <span>{q}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* LLM 어시스턴트 */}
-          <div className={`flex flex-col rounded-2xl p-4 shadow-md transition-all duration-500 border border-blue-500/30 bg-blue-500/5 ${showChat ? 'h-40' : 'flex-[1.2]'}`}>
-            <div className="flex items-center gap-2 mb-3 flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-blue-500" />
-              <h3 className="font-semibold text-sm text-blue-500">LLM 어시스턴트</h3>
-              {llmStreaming && (
-                <span className="text-xs text-blue-400 animate-pulse ml-auto">답변 생성 중...</span>
-              )}
-            </div>
-            <div ref={llmScrollRef} className="flex-1 overflow-y-auto pr-1 mb-2 flex flex-col gap-2 custom-scrollbar">
-              {llmMessages.map((m, i) => (
-                <div key={i} className={`p-2.5 rounded-xl text-xs max-w-[85%] ${m.sender === 'me' ? 'bg-blue-500 text-white self-end rounded-tr-sm' : 'bg-black/10 self-start rounded-tl-sm'}`} style={m.sender !== 'me' ? { color: 'var(--text-main)' } : {}}>
-                  {m.text}
-                </div>
-              ))}
-              {llmStreaming && llmBuffer && (
-                <div className="p-2.5 rounded-xl text-xs max-w-[85%] bg-black/10 self-start rounded-tl-sm opacity-70" style={{ color: 'var(--text-main)' }}>
-                  {llmBuffer}
-                  <span className="inline-block w-1 h-3 bg-blue-400 ml-1 animate-pulse" />
-                </div>
-              )}
-            </div>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!llmInput.trim()) return;
-              setLlmMessages(prev => [...prev, { sender: 'me', text: llmInput }]);
-              sendLLMQuestion(llmInput);
-              setLlmInput('');
-            }} className="flex items-center gap-2 flex-shrink-0 relative">
-              <input
-                type="text"
-                value={llmInput}
-                onChange={(e) => setLlmInput(e.target.value)}
-                placeholder="AI에게 질문하기..."
-                disabled={llmStreaming}
-                className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                style={{ color: 'var(--text-main)' }}
-              />
-              <button type="submit" disabled={llmStreaming} className="absolute right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white disabled:opacity-50">
-                <Send className="w-3 h-3" />
-              </button>
-            </form>
-          </div>
-
-          {/* 채팅창 */}
-          {showChat && (
-            <div className="flex-[1.5] flex flex-col rounded-2xl p-4 shadow-xl border border-indigo-500/30 bg-indigo-500/5 animate-in slide-in-from-bottom-5">
-              <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                <h3 className="font-semibold text-sm text-indigo-500 flex items-center gap-2">
+            {/* ── 채팅 오버레이: 우측 패널 위에 절대 위치로 슬라이드업 ── */}
+            <div
+              className="absolute inset-0 rounded-2xl flex flex-col transition-all duration-300 ease-in-out"
+              style={{
+                background: 'var(--chat-overlay)',
+                border: '1px solid var(--panel-border)',
+                backdropFilter: 'blur(20px)',
+                // 닫힌 상태: 아래로 밀고 투명하게, 열린 상태: 정위치 + 불투명
+                transform: showChat ? 'translateY(0)' : 'translateY(100%)',
+                opacity: showChat ? 1 : 0,
+                pointerEvents: showChat ? 'auto' : 'none',
+                zIndex: 20,
+              }}
+            >
+              <div className="flex-shrink-0 flex items-center justify-between px-4 pt-4 pb-3"
+                style={{ borderBottom: '1px solid var(--panel-border)' }}>
+                <h3 className="font-semibold text-sm text-indigo-400 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" /> 채팅방
                 </h3>
-                <button onClick={() => setShowChat(false)}><X className="w-4 h-4 text-gray-400" /></button>
+                <button onClick={() => setShowChat(false)}>
+                  <X className="w-4 h-4 text-gray-400 hover:text-gray-200 transition-colors" />
+                </button>
               </div>
-              <div ref={chatScrollRef} className="flex-1 overflow-y-auto pr-1 mb-2 flex flex-col gap-2 custom-scrollbar">
+              <div
+                ref={chatScrollRef}
+                className="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-2 custom-scrollbar"
+              >
                 {chatMessages.map((m, i) => (
-                  <div key={i} className={`p-2.5 rounded-xl text-xs max-w-[85%] ${m.sender === 'me' ? 'bg-indigo-500 text-white self-end rounded-tr-sm' : m.sender === 'system' ? 'self-center bg-transparent text-gray-400 text-[10px]' : 'bg-black/10 self-start rounded-tl-sm'}`} style={m.sender === 'other' ? { color: 'var(--text-main)' } : {}}>
+                  <div
+                    key={i}
+                    className={`p-2.5 rounded-xl text-xs max-w-[85%] flex-shrink-0
+                      ${m.sender === 'me'
+                        ? 'bg-indigo-500 text-white self-end rounded-tr-sm'
+                        : m.sender === 'system'
+                        ? 'self-center bg-transparent text-gray-400 text-[10px]'
+                        : 'bg-black/10 self-start rounded-tl-sm'}`}
+                    style={m.sender === 'other' ? { color: 'var(--text-main)' } : {}}
+                  >
                     {m.text}
                   </div>
                 ))}
               </div>
-              <form onSubmit={(e) => handleSendMessage(e, 'chat')} className="flex items-center gap-2 flex-shrink-0 relative">
-                <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="메시지 입력..." className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" style={{ color: 'var(--text-main)' }} />
-                <button type="submit" className="absolute right-1 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white"><Send className="w-3 h-3" /></button>
+              <form
+                onSubmit={(e) => handleSendMessage(e, 'chat')}
+                className="flex-shrink-0 flex items-center gap-2 relative px-4 pb-4 pt-2"
+              >
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="메시지 입력..."
+                  className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  style={{ color: 'var(--text-main)' }}
+                />
+                <button type="submit"
+                  className="absolute right-5 top-1/2 -translate-y-1/2 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white">
+                  <Send className="w-3 h-3" />
+                </button>
               </form>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* 설정 모달 */}
+          </div>{/* 우측 패널 끝 */}
+        </div>{/* 상단 콘텐츠 행 끝 */}
+
+        {/* ── 하단 컨트롤 바 (flex-shrink-0, 절대 잘리지 않음) ── */}
+        <div className="flex-shrink-0 flex items-center justify-center">
+          <div
+            className="flex items-center gap-3 px-6 py-3 rounded-2xl shadow-lg backdrop-blur-xl"
+            style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
+          >
+            <ControlBtn
+              active={!isMuted}
+              onClick={() => setIsMuted(!isMuted)}
+              icon={isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              danger={isMuted}
+              label={isMuted ? '음소거' : '마이크'}
+            />
+            <ControlBtn
+              active={!isVideoOff}
+              onClick={() => setIsVideoOff(!isVideoOff)}
+              icon={isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+              danger={isVideoOff}
+              label={isVideoOff ? '비디오 꺼짐' : '비디오'}
+            />
+            <div className="w-px h-8 mx-1" style={{ background: 'var(--panel-border)' }} />
+            <button onClick={handleEndCall} className="flex flex-col items-center gap-1 group">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 shadow-xl bg-gradient-to-br from-red-500 to-red-700">
+                <PhoneOff className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs text-red-500 font-medium">종료</span>
+            </button>
+            <div className="w-px h-8 mx-1" style={{ background: 'var(--panel-border)' }} />
+            <ControlBtn active={showChat} onClick={() => setShowChat(!showChat)} icon={<MessageSquare className="w-5 h-5" />} label="채팅" />
+            <ControlBtn active={showSettings} onClick={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />} label="설정" />
+          </div>
+        </div>
+
+      </div>{/* 바디 끝 */}
+
+      {/* ── 설정 모달 ── */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-96 rounded-2xl p-6 shadow-2xl" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
@@ -496,7 +548,10 @@ export default function CoffeeChatRoom() {
                 </select>
               </div>
             </div>
-            <button onClick={() => setShowSettings(false)} className="w-full mt-6 py-3 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors">
+            <button
+              onClick={() => setShowSettings(false)}
+              className="w-full mt-6 py-3 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors"
+            >
               완료
             </button>
           </div>
@@ -506,8 +561,8 @@ export default function CoffeeChatRoom() {
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(150, 150, 150, 0.3); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(150, 150, 150, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(150,150,150,0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(150,150,150,0.5); }
       `}</style>
     </div>
   );

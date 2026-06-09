@@ -8,139 +8,144 @@ export default function CoffeeChats() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+  const BACKEND_URL = 'http://localhost:8000';
+    //const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+
+  const getTabStatus = (booking) => {
+  const now = new Date();
+  const [year, month, day] = booking.booking_date.split('-');
+  const [hour, minute] = booking.booking_time.split(':');
+  const dt = new Date(year, month - 1, day, hour, minute);
+  const diffMin = (dt - now) / 1000 / 60;
+  if (diffMin > 5) return 'upcoming';
+  if (diffMin <= 5 && diffMin >= -30) return 'ongoing';
+  return 'completed';
+};
+
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
+  const userId = localStorage.getItem('userId');
+  if (!userId) { setLoading(false); return; }
+  axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
+    .then(res => setBookings(res.data))
+    .catch(err => console.error(err))
+    .finally(() => setLoading(false));
 
-    axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
-      .then(res => {
-        setBookings(res.data);
-      })
-      .catch(err => {
-        console.error('예약 목록 조회 실패:', err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+}, []);
 
-  // [수정] 날짜/시간 기준으로 직접 분류
-  const getTabStatus = (booking) => {
-    const now = new Date();
-    const dt = new Date(`${booking.booking_date}T${booking.booking_time}`);
-    const diffMin = (dt - now) / 1000 / 60;
-
-    if (diffMin > 5) return 'upcoming';
-    if (diffMin <= 5 && diffMin >= -30) return 'ongoing';
-    return 'completed';
-  };
-
+  // tab_status 기준으로 분류
   const upcomingChats = bookings.filter(b => getTabStatus(b) === 'upcoming');
   const ongoingChats = bookings.filter(b => getTabStatus(b) === 'ongoing');
   const completedChats = bookings.filter(b => getTabStatus(b) === 'completed');
 
-  const renderChatCard = (chat) => {
-    const tabStatus = getTabStatus(chat);
-    return (
-      <div
-        key={chat.booking_id}
-        className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition"
-      >
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
-            {/* 아바타 */}
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden">
-              {chat.partner_image
-                ? <img src={chat.partner_image} alt={chat.partner_name} className="w-full h-full object-cover" />
-                : chat.partner_name?.slice(0, 1) || '#'
-              }
+  const handleJoinChat = (e, chatId) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 막기
+    navigate(`/coffee-chat/${chatId}`);
+  };
+
+
+  // 💡 [추가됨] D-Day 자동 계산 함수
+  const getDDay = (dateString) => {
+    if (!dateString) return '';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(dateString);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = targetDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'D-Day';
+    if (diffDays > 0) return `D-${diffDays}`;
+    return `D+${Math.abs(diffDays)}`;
+  };
+
+  // 🚀 [디자인 대폭 수정됨] 세련된 카드 UI
+  const renderChatCard = (chat) => (
+    <div
+      key={chat.booking_id}
+      onClick={() => {
+        if (getTabStatus(chat) === 'upcoming') navigate(`/coffee-chat-detail/${chat.booking_id}`);
+        if (getTabStatus(chat) === 'completed') navigate(`/coffee-chat-review/${chat.booking_id}`);
+      }}
+      className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[280px] cursor-pointer group"
+    >
+      <div>
+        {/* 상단: 프로필 & 뱃지 */}
+        <div className="flex items-start justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner">
+              {chat.mentor_name ? chat.mentor_name.slice(0, 1) : '#'}
             </div>
             <div>
-              {/* [수정] partner_name 사용 */}
-              <h3 className="font-bold text-gray-900 text-lg">
-                {chat.partner_name ? `${chat.partner_name} 멘토` : '멘토'}
+              <h3 className="font-bold text-gray-900 m-0">
+                {chat.mentor_name ? `${chat.mentor_name} 멘토` : `멘토 #${chat.mentor_id}`}
               </h3>
-              <p className="text-sm text-gray-600">
-                {chat.questions?.slice(0, 50)}...
-              </p>
+              {/* 진행 상태 뱃지 */}
+              <div className="mt-1">
+                {chat.tab_status === 'upcoming' && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">예정</span>}
+                {chat.tab_status === 'ongoing' && <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded text-[10px] font-bold animate-pulse">진행중</span>}
+                {chat.tab_status === 'completed' && <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">종료</span>}
+              </div>
             </div>
           </div>
-
-          {/* 상태 뱃지 */}
-          {tabStatus === 'upcoming' && (
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-              예정
+          
+          {/* 디데이 뱃지 */}
+          <div className="flex flex-col items-end gap-1">
+            <span className={`text-xs font-black ${chat.tab_status === 'completed' ? 'text-gray-400' : 'text-red-500'}`}>
+              {getDDay(chat.booking_date)}
             </span>
-          )}
-          {tabStatus === 'ongoing' && (
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-              진행중
-            </span>
-          )}
-          {tabStatus === 'completed' && (
-            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
-              종료
-            </span>
-          )}
-        </div>
-
-        {/* 날짜 시간 */}
-        <div className="flex items-center gap-6 mb-4 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            <span>{chat.booking_date}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            <span>{chat.booking_time}</span>
           </div>
         </div>
 
-        {/* 진행중 안내 */}
-        {tabStatus === 'ongoing' && (
-          <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-700 font-medium">
-              🟢 지금 입장 가능해요!
+        {/* 중단: 작성한 사전 질문 (말풍선 스타일) */}
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-5 relative group-hover:bg-blue-50/30 transition-colors">
+          <MessageSquare className="w-4 h-4 text-gray-300 absolute top-4 right-4" />
+          <p className="text-xs text-gray-600 leading-relaxed line-clamp-3 m-0 font-medium pr-6">
+            {chat.questions || "작성된 사전 질문이 없습니다."}
+          </p>
+        </div>
+      </div>
+
+      {/* 하단: 날짜/시간 및 액션 버튼 */}
+      <div>
+        {chat.tab_status === 'ongoing' && (
+          <div className="mb-4">
+            <p className="text-xs text-green-600 font-bold bg-green-50 px-3 py-2 rounded-lg text-center m-0 border border-green-100">
+              🟢 지금 티타임 방에 입장해 주세요!
             </p>
           </div>
         )}
 
-        {/* 버튼 */}
-        <div className="flex gap-3">
-          {tabStatus === 'upcoming' && (
+        <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+          <div className="flex flex-col gap-1.5 text-xs text-gray-500 font-medium">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{chat.booking_date}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{chat.booking_time} (30분)</span>
+            </div>
+          </div>
+          
+          {/* 상태별 액션 버튼 처리 */}
+          {chat.tab_status === 'ongoing' ? (
             <button
-              onClick={() => navigate(`/coffee-chat-detail/${chat.booking_id}`)}
-              className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition"
+              onClick={(e) => handleJoinChat(e, chat.booking_id)}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
             >
-              세부사항 보기
+              <Coffee className="w-3.5 h-3.5" /> 입장하기
             </button>
-          )}
-          {tabStatus === 'ongoing' && (
-            <button
-              onClick={() => navigate(`/coffee-chat/${chat.booking_id}`)}
-              className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2"
-            >
-              <Coffee className="w-5 h-5" />
-              티타임 입장
-            </button>
-          )}
-          {tabStatus === 'completed' && (
-            <button
-              onClick={() => navigate(`/coffee-chat-review/${chat.booking_id}`)}
-              className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition"
-            >
-              세부사항 보기
-            </button>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors text-gray-400">
+              <ChevronRight className="w-4 h-4" />
+            </div>
           )}
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#fdfdfd]">
@@ -216,17 +221,23 @@ export default function CoffeeChats() {
               {activeTab === 'upcoming' && (
                 upcomingChats.length > 0
                   ? upcomingChats.map(renderChatCard)
-                  : <p className="text-center text-gray-500 py-12">예정된 티타임이 없어요</p>
+                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                      <p className="text-gray-500 font-medium">예정된 티타임이 없습니다.</p>
+                    </div>
               )}
               {activeTab === 'ongoing' && (
                 ongoingChats.length > 0
                   ? ongoingChats.map(renderChatCard)
-                  : <p className="text-center text-gray-500 py-12">진행중인 티타임이 없어요</p>
+                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                      <p className="text-gray-500 font-medium">현재 진행중인 티타임이 없습니다.</p>
+                    </div>
               )}
               {activeTab === 'completed' && (
                 completedChats.length > 0
                   ? completedChats.map(renderChatCard)
-                  : <p className="text-center text-gray-500 py-12">종료된 티타임이 없어요</p>
+                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                      <p className="text-gray-500 font-medium">종료된 티타임 기록이 없습니다.</p>
+                    </div>
               )}
             </div>
           </>

@@ -12,7 +12,8 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
 
   const [notifications, setNotifications] = useState([]); 
   const [hasUnread, setHasUnread] = useState(false);       
-  const [isOpen, setIsOpen] = useState(false);             
+  const [isOpen, setIsOpen] = useState(false);
+
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
@@ -26,7 +27,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
       setCurrentName('회원'); 
     }
 
-    // ─── [보완 완료] 멘토 권한 식별 기준 정밀 동기화 ───
     if (isLoggedIn) {
       const rawUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
       const cleanUserId = rawUserId ? parseInt(rawUserId.toString().replace(/[^0-9]/g, ''), 10) : null;

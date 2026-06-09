@@ -10,7 +10,7 @@ export default function ProfileSetup() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
   const signUpData = location.state?.signUpData;
   const token = searchParams.get('token');
   const userId = searchParams.get('id');
@@ -23,33 +23,14 @@ export default function ProfileSetup() {
   const [dbEmail, setDbEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const [tempCareer, setTempCareer] = useState('');
-  const [tempHashtag, setTempHashtag] = useState('');
-  const [tempLink, setTempLink] = useState('');
-  const [tempKeyword, setTempKeyword] = useState(''); // 💡 [추가] 대화 키워드용 임시 저장소
-
   const [formData, setFormData] = useState({
-    name: '', bio: '', mbti: '', hashtags: '', experience: '', portfolio_url: '', help_provide: '', help_receive: '',
-    phone_number: '', 
+    name: '', bio: '', mbti: '', portfolio_url: '', phone_number: '', 
     main_category: '', sub_category: '', status: '', profile_image: '',
-    mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', mentor_keywords: [], // 💡 배열로 초기화
-    mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
+    portfolio_file_path: '', // 🚀 이력서 파일 저장용 컬럼 추가
+    hashtags: [], experience: [], help_provide: [], help_receive: [], 
+    mentor_job: '', mentor_careers: [], mentor_hashtags: [], mentor_story: '', 
+    mentor_keywords: [], mentor_experiences: [{ id: Date.now(), text: '' }], mentor_links: []
   });
-
-  // 💡 포장지(JSON) 예쁘게 벗기는 함수 부활!
-  const safeParse = (data, fallback) => {
-    if (!data) return fallback;
-    if (typeof data === 'string') {
-      try { return JSON.parse(data); } catch (e) { return fallback; }
-    }
-    return data;
-  };
-
-  // 💡 억울하게 묻어온 HTML 태그(<p> 등) 지워주는 함수 부활!
-  const stripHTML = (html) => {
-    if (!html) return '';
-    return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').trim();
-  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -65,41 +46,72 @@ export default function ProfileSetup() {
 
     const fetchExistingProfile = async () => {
       const activeUserId = userId || localStorage.getItem('userId');
-      if (!activeUserId) { setIsLoading(false); return; }
+      if (!activeUserId) {
+        setIsLoading(false);
+        return;
+      }
       try {
         const activeToken = token || localStorage.getItem('token');
         const response = await axios.get(`${BACKEND_URL}/api/user/${activeUserId}`, {
           headers: { Authorization: `Bearer ${activeToken}` }
         });
         
-        
         if (response.data) {
           const user = response.data;
           setDbEmail(user.email || '');
+          setIsMentor(user.is_mentor || false); 
 
-          // 🌟 [핵심] 일반 프로필 -> 호스트 프로필 완벽 연동 로직!
-          const generalTags = user.hashtags ? user.hashtags.split(' ').map(t => t.trim()).filter(Boolean) : [];
-          const mTags = safeParse(user.mentor_hashtags || user.mentoring_topics, []);
-          const finalTags = mTags.length > 0 ? mTags : generalTags; // 호스트 태그가 없으면 일반 태그 가져오기
+          const safeParse = (data, fallback) => {
+            if (!data) return fallback;
+            if (typeof data === 'string') {
+              try { 
+                const parsed = JSON.parse(data);
+                if (Array.isArray(fallback) && !Array.isArray(parsed)) return [String(parsed)];
+                return parsed;
+              } catch (e) { return fallback; }
+            }
+            return Array.isArray(fallback) && !Array.isArray(data) ? [String(data)] : data;
+          };
 
-          const mLinks = safeParse(user.mentor_links, []);
-          const finalLinks = mLinks.length > 0 ? mLinks : (user.portfolio_url ? [user.portfolio_url] : []); // 링크 가져오기
+          const parseToTags = (data) => {
+            if (!data) return [];
+            if (Array.isArray(data)) return data.map(String);
+            if (typeof data === 'string') {
+              try { 
+                const parsed = JSON.parse(data); 
+                if (Array.isArray(parsed)) return parsed.map(String);
+              } catch (e) {}
+              return data.split(',').map(s => String(s).trim()).filter(Boolean);
+            }
+            return [String(data)];
+          };
+
+          const parsedExperiences = safeParse(user.detailed_experience, []);
 
           setFormData({
-            name: user.name || '', bio: stripHTML(user.bio), mbti: user.mbti || '', hashtags: user.hashtags || '',
-            experience: user.experience || '', portfolio_url: user.portfolio_url || '',
-            help_provide: user.help_provide || '', help_receive: user.help_receive || '', 
+            name: user.name || '', 
+            bio: user.bio || '', 
+            mbti: user.mbti || '', 
+            portfolio_url: user.portfolio_url || '',
+            portfolio_file_path: user.portfolio_file_path || '', // 🚀 이력서/포트폴리오 경로 로딩
             phone_number: user.phone_number || '', 
-            main_category: user.main_category || '', sub_category: user.sub_category || '',
-            status: user.status || '', profile_image: user.profile_image || '',
+            profile_image: user.profile_image || '',
+            main_category: user.main_category || '',
+            sub_category: user.sub_category || '',
+            status: user.status || '',
+            
+            hashtags: parseToTags(user.hashtags),
+            experience: parseToTags(user.experience),
+            help_provide: parseToTags(user.help_provide),
+            help_receive: parseToTags(user.help_receive),
 
-            mentor_job: user.mentor_job || user.job_title || '', 
-            mentor_careers: safeParse(user.mentor_careers || user.career_history, []),
-            mentor_hashtags: finalTags, // 💡 연동된 해시태그 삽입
-            mentor_story: stripHTML(user.mentor_story || user.mentor_intro), // 자기소개 <p> 제거
-            mentor_keywords: safeParse(user.mentor_keywords, []), // 💡 대화 키워드 배열로 가져오기
-            mentor_experiences: safeParse(user.detailed_experience || user.mentor_experiences, [{ id: Date.now(), text: '' }]),
-            mentor_links: finalLinks // 💡 연동된 링크 삽입
+            mentor_job: user.job_title || '', 
+            mentor_story: user.mentor_intro || '',
+            mentor_careers: safeParse(user.career_history, []),
+            mentor_hashtags: safeParse(user.mentoring_topics, []),
+            mentor_keywords: parseToTags(user.mentor_keywords),
+            mentor_links: safeParse(user.mentor_links, []),
+            mentor_experiences: parsedExperiences.length > 0 ? parsedExperiences : [{ id: Date.now(), text: '' }]
           });
         }
       } catch (error) {
@@ -111,17 +123,12 @@ export default function ProfileSetup() {
     fetchExistingProfile();
   }, [userId, token, searchParams, signUpData]);
 
-  // 💡 한국어 치고 Enter 누를 때 폼 날아가거나 두 번 실행되는 고질병 완벽 방지!
-  const handleKeyDownArray = (e, field, value, setValue) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (e.nativeEvent.isComposing) return; 
-
-      if (value.trim() && !formData[field].includes(value.trim())) {
-        setFormData({ ...formData, [field]: [...formData[field], value.trim()] });
-      }
-      setValue('');
-    }
+  // 🚀 태그 스위치 함수
+  const handleAddArrayItem = (field, value) => {
+    setFormData(prev => {
+      const currentList = Array.isArray(prev[field]) ? prev[field] : [];
+      return { ...prev, [field]: [...currentList, value] };
+    });
   };
 
   const handleRemoveArrayItem = (field, index) => {
@@ -135,7 +142,7 @@ export default function ProfileSetup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.bio.trim() || !formData.mbti.trim() || !formData.hashtags.trim() || !formData.experience.trim() || !formData.help_provide.trim() || !formData.help_receive.trim() || !formData.phone_number.trim()) {
+    if (!formData.name.trim() || !formData.phone_number.trim()) {
       alert("⚠️ 필수 텍스트 항목을 채워주세요.");
       setActiveTab('general');
       return;
@@ -149,18 +156,34 @@ export default function ProfileSetup() {
       };
 
       const commonPayload = {
-        name: formData.name, bio: formData.bio, mbti: formData.mbti, hashtags: formData.hashtags, experience: formData.experience,
-        portfolio_url: formData.portfolio_url || (formData.mentor_links?.[0] || ''), // 💡 포트폴리오 링크도 양방향 연동!
-        help_provide: formData.help_provide, help_receive: formData.help_receive, profile_image: formData.profile_image || "", phone_number: formData.phone_number, 
-        main_category: formData.main_category, sub_category: formData.sub_category, status: formData.status,
+        name: String(formData.name || ""), 
+        bio: String(formData.bio || ""), 
+        mbti: String(formData.mbti || ""), 
+        portfolio_url: String(formData.portfolio_url || ""), 
+        
+        // 🚀 이력서 파일(멘토 폼)이나 포트폴리오 파일(일반 폼)이 있으면 파일 이름을 저장
+        portfolio_file_path: mentorResumeFile ? mentorResumeFile.name : (portfolioFile ? portfolioFile.name : formData.portfolio_file_path || ""),
+        
+        profile_image: String(formData.profile_image || ""), 
+        phone_number: String(formData.phone_number || ""), 
+        main_category: String(formData.main_category || ""),
+        sub_category: String(formData.sub_category || ""),
+        status: String(formData.status || ""),
 
-        job_title: formData.mentor_job || "", 
-        career_history: JSON.stringify(formData.mentor_careers || []), 
-        mentor_intro: formData.mentor_story || "", 
-        mentoring_topics: JSON.stringify(formData.mentor_hashtags || []), 
-        mentor_keywords: JSON.stringify(formData.mentor_keywords || []), // 🌟 대화 키워드 DB 저장 누락 복구!
-        detailed_experience: JSON.stringify(formData.mentor_experiences || []),
-        mentor_links: JSON.stringify(formData.mentor_links || []) // 🌟 멘토 링크 DB 저장 누락 복구!
+        hashtags: formatString(formData.hashtags),
+        experience: formatString(formData.experience),
+        help_provide: formatString(formData.help_provide),
+        help_receive: formatString(formData.help_receive),
+
+        job_title: String(formData.sub_category || "직무 미정"), 
+        career_history: JSON.stringify(formData.experience || []), 
+        mentor_intro: String(formData.mentor_story || formData.bio || ""), 
+        mentoring_topics: JSON.stringify(formData.hashtags || []), 
+        detailed_experience: JSON.stringify(
+          (formData.mentor_experiences || []).filter(exp => exp.text && String(exp.text).trim() !== '')
+        ),
+        mentor_keywords: JSON.stringify(formData.mentor_keywords || []),
+        mentor_links: JSON.stringify(formData.mentor_links || [])
       };
 
       let response;
@@ -176,11 +199,10 @@ export default function ProfileSetup() {
           localStorage.setItem('token', response.data.access_token);
           localStorage.setItem('userId', response.data.user_id || response.data.id || '');
           alert('🎉 회원가입 완료! 자동으로 로그인되었습니다.');
-          navigate('/dashboard');
         } else {
-          alert('🎉 변경 사항이 성공적으로 저장되었습니다!');
-          navigate('/dashboard');
+          alert('🎉 프로필 정보가 성공적으로 업데이트되었습니다!');
         }
+        navigate('/dashboard'); 
       }
     } catch (error) {
       alert(`❌ DB 업데이트 실패: ${error.message}`);
@@ -215,17 +237,22 @@ export default function ProfileSetup() {
               handleRemoveArrayItem={handleRemoveArrayItem}
             />
           ) : (
-            // 💡 [추가] tempKeyword와 setTempKeyword를 자식 컴포넌트로 전달합니다!
             <MentorProfileForm 
-              formData={formData} setFormData={setFormData} 
-              tempCareer={tempCareer} setTempCareer={setTempCareer} 
-              tempHashtag={tempHashtag} setTempHashtag={setTempHashtag} 
-              tempLink={tempLink} setTempLink={setTempLink} 
-              tempKeyword={tempKeyword} setTempKeyword={setTempKeyword} 
-              mentorResumeFile={mentorResumeFile} setMentorResumeFile={setMentorResumeFile} 
+              formData={formData} 
+              setFormData={setFormData} 
+              userId={userId || localStorage.getItem('userId')}
+              dbEmail={dbEmail}
+              mentorResumeFile={mentorResumeFile} 
+              setMentorResumeFile={setMentorResumeFile} 
               handleMentorResumeUpload={(e) => { if(e.target.files?.[0]) setMentorResumeFile(e.target.files[0]); }} 
-              handleKeyDownArray={handleKeyDownArray} handleRemoveArrayItem={handleRemoveArrayItem} 
-              handleExperienceChange={handleExperienceChange} addExperienceField={addExperienceField} removeExperienceField={removeExperienceField} 
+              
+              // 🚀 깜빡하고 안 넘겨줬던 스위치를 드디어 멘토 폼에도 장착 완료!!
+              handleAddArrayItem={handleAddArrayItem}
+              handleRemoveArrayItem={handleRemoveArrayItem}
+              
+              handleExperienceChange={handleExperienceChange} 
+              addExperienceField={addExperienceField} 
+              removeExperienceField={removeExperienceField} 
             />
           )}
 
