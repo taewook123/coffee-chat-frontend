@@ -1,4 +1,3 @@
-// ✨ 1. 상단에 useRef를 추가로 불러옵니다.
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sparkles, Check, Download } from 'lucide-react';
@@ -8,7 +7,8 @@ import remarkGfm from 'remark-gfm';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
-export default function CoffeeChatReport() {``
+// 💡 함수 옆에 잘못 붙어있던 백틱(``) 오타를 제거했습니다.
+export default function CoffeeChatReport() {
   const { chatId } = useParams();
   const navigate = useNavigate();
   
@@ -20,19 +20,19 @@ export default function CoffeeChatReport() {``
   const [isAiLoading, setIsAiLoading] = useState(false);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-  // ✨ 2. PDF로 찍어낼 특정 박스에 붙일 이름표(ref)를 만듭니다.
   const printRef = useRef(null);
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
+    // 💡 [핵심 수정 1] userId가 아니라 URL에 있는 예약 번호(chatId)를 사용해야 합니다!
+    if (!chatId) return;
 
-    axios.get(`${BACKEND_URL}/api/booking/detail/${userId}`)
+    // 💡 [핵심 수정 2] userId 대신 chatId를 넣어 상세 API를 정확히 호출합니다.
+    axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => {
-        const found = res.data.find(b => String(b.id) === String(chatId));
-        if (found) setBooking(found);
+        // 💡 [핵심 수정 3] 백엔드에서 1건의 예약 정보만 예쁘게 주므로, find로 뒤질 필요 없이 바로 넣습니다!
+        setBooking(res.data);
       })
-      .catch(err => console.error(err));
+      .catch(err => console.error("예약 상세 로드 실패:", err));
 
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
       .then(res => {
@@ -41,7 +41,7 @@ export default function CoffeeChatReport() {``
           setSummary(res.data.ai_summary);
         }
       })
-      .catch(err => console.error(err));
+      .catch(err => console.error("세션 데이터 로드 실패:", err));
   }, [chatId]);
 
   const generateAiAdvice = async () => {
@@ -62,43 +62,35 @@ export default function CoffeeChatReport() {``
     }
   };
 
-// ✨ 최신 CSS(oklch)를 지원하는 html-to-image 방식으로 교체!
-// ✨ 여러 페이지(A4)로 예쁘게 잘라서 PDF를 저장하는 마법의 코드!
   const handleDownloadPdf = async () => {
     if (!printRef.current) return;
 
     try {
-      // 1. 화면 전체를 고화질로 캡처
       const imgData = await toPng(printRef.current, { 
         pixelRatio: 2, 
         backgroundColor: '#ffffff' 
       });
 
-      // 2. A4 용지 세팅 및 사이즈 계산
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth(); // A4 가로 길이
-      const pdfPageHeight = pdf.internal.pageSize.getHeight(); // A4 세로 길이 (1장 높이)
+      const pdfWidth = pdf.internal.pageSize.getWidth(); 
+      const pdfPageHeight = pdf.internal.pageSize.getHeight(); 
 
-      // 캡처한 이미지의 전체 길이를 A4 비율에 맞게 계산
       const imgProps = pdf.getImageProperties(imgData);
       const totalImgHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-      let heightLeft = totalImgHeight; // 남은 이미지 길이
-      let position = 0; // 이미지를 붙일 y좌표 위치
+      let heightLeft = totalImgHeight; 
+      let position = 0; 
 
-      // 3. 첫 번째 페이지 도화지에 이미지 붙이기
       pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalImgHeight);
-      heightLeft -= pdfPageHeight; // 1장 분량만큼 그렸으니 남은 길이에서 빼줍니다.
+      heightLeft -= pdfPageHeight; 
 
-      // 4. [핵심] 아직 그릴 내용이 남았다면? 무한 반복해서 새 종이 꺼내기!
       while (heightLeft > 0) {
-        position -= pdfPageHeight; // 이미지를 위로 한 장 높이만큼 끌어올립니다.
-        pdf.addPage(); // 새 A4 용지 추가!
+        position -= pdfPageHeight; 
+        pdf.addPage(); 
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalImgHeight);
-        heightLeft -= pdfPageHeight; // 또 1장 분량만큼 뺍니다.
+        heightLeft -= pdfPageHeight; 
       }
 
-      // 5. 최종 저장
       pdf.save(`커피챗_AI리포트_${booking?.mentor_name || '멘토'}.pdf`);
       
     } catch (error) {
@@ -147,10 +139,7 @@ export default function CoffeeChatReport() {``
                 AI 페이스메이커 어드바이스
               </label>
               
-              {/* ✨ 4. 버튼들을 가로로 묶기 위해 div 추가 */}
               <div className="flex gap-2">
-                
-                {/* ✨ 리포트가 생성되었을 때만 등장하는 빨간색 PDF 다운로드 버튼 */}
                 {aiAdvice && (
                   <button
                     onClick={handleDownloadPdf}
@@ -186,7 +175,6 @@ export default function CoffeeChatReport() {``
                 <div className="h-4 bg-blue-200/50 rounded w-1/2 mt-4"></div>
               </div>
             ) : (
-              // ✨ 5. 핵심! 이 박스에 ref={printRef} 이름표를 딱 붙여서 카메라가 여길 찍게 합니다.
               <div ref={printRef} className="w-full h-auto px-5 py-4 bg-white border-2 border-blue-100 rounded-xl text-gray-700 shadow-inner">
                 {aiAdvice ? (
                   <div className="prose prose-sm max-w-none prose-blue 

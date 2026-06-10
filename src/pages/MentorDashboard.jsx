@@ -13,15 +13,22 @@ import BookingHistory from './BookingHistory';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
 // ── 공통 헬퍼 ──────────────────────────────────────────────────────
-function getUserIdFromToken() {
-  const token = localStorage.getItem('token');
-  if (!token) return localStorage.getItem('userId') || 1;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload.user_id || payload.id || localStorage.getItem('userId') || 1;
-  } catch {
-    return localStorage.getItem('userId') || 1;
+function getCleanUserId() {
+  let finalUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
+  
+  if (!finalUserId || finalUserId === 'null' || finalUserId === 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        finalUserId = payload.user_id || payload.id;
+        if (finalUserId) localStorage.setItem('userId', finalUserId);
+      } catch (e) {
+        console.error('토큰 디코딩 실패:', e);
+      }
+    }
   }
+  return finalUserId ? parseInt(String(finalUserId).replace(/[^0-9]/g, ''), 10) : null;
 }
 
 // ── 서브 컴포넌트 ────────────────────────────────────────────────────
@@ -67,7 +74,6 @@ function EmptyState({ icon: Icon, message, cta, onCta }) {
   );
 }
 
-// 별점 표시
 function StarRating({ rating }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -85,48 +91,72 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
 
-  // 사용자 기본 정보
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '회원');
 
-  // 멘토 데이터
   const [isMentor, setIsMentor] = useState(false);
   const [mentorStats, setMentorStats] = useState(null);
   const [upcomingChats, setUpcomingChats] = useState([]);
   const [recentReviews, setRecentReviews] = useState([]);
 
-  // 멘티 데이터
   const [menteeStats, setMenteeStats] = useState(null);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
   useEffect(() => {
-    const uid = getUserIdFromToken();
+    const uid = getCleanUserId();
+    
+    if (!uid) {
+      alert("로그인 정보가 만료되었습니다.");
+      navigate('/login');
+      return;
+    }
 
     async function load() {
       setLoading(true);
       try {
-        // 1) 멘토 대시보드
+        // 💡 0. 서버에서 내 진짜 유저 이름부터 받아와서 세팅합니다!
         try {
-          const { data } = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${uid}`);
-          const s = data.stats || {};
-          if (s.name) { setUserName(s.name); localStorage.setItem('userName', s.name); }
-          setIsMentor(true);
-          setMentorStats(s);
-          setUpcomingChats(data.upcoming_chats || []);
-          setRecentReviews(data.recent_reviews || []);
-        } catch {
-          setIsMentor(false);
+          const userRes = await axios.get(`${BACKEND_URL}/api/users/${uid}`);
+          if (userRes.data && userRes.data.name) {
+            setUserName(userRes.data.name);
+            localStorage.setItem('userName', userRes.data.name);
+          }
+        } catch (e) {
+          console.error("유저 이름 동기화 실패");
         }
 
-        // 2) 멘티 대시보드
+        // 💡 1. 멘토 권한 확인
+        let checkIsMentor = false;
+        try {
+          const mentorsRes = await axios.get(`${BACKEND_URL}/api/mentors/list`);
+          checkIsMentor = mentorsRes.data.some(m => parseInt(m.user_id, 10) === uid);
+          setIsMentor(checkIsMentor);
+        } catch (err) {
+          console.error("멘토 검증 실패:", err);
+        }
+
+        // 💡 2. 멘토 대시보드 로드 (🚨 해결: actualMentorId가 아니라 uid(2번)를 던집니다!)
+        if (checkIsMentor) {
+          try {
+            const { data } = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${uid}`);
+            const s = data.stats || {};
+            setMentorStats(s);
+            setUpcomingChats(data.upcoming_chats || []);
+            setRecentReviews(data.recent_reviews || []);
+          } catch (err) {
+            console.error("멘토 대시보드 데이터 로드 실패", err);
+          }
+        }
+
+        // 💡 3. 멘티 대시보드 로드 (여기도 uid 2번을 던집니다)
         try {
           const { data } = await axios.get(`${BACKEND_URL}/api/mentee/dashboard/${uid}`);
           const s = data.stats || {};
-          if (!isMentor && s.name) { setUserName(s.name); localStorage.setItem('userName', s.name); }
           setMenteeStats(s);
           setUpcomingBookings(data.upcoming_bookings || []);
           setMentorHistory(data.mentor_history || []);
-        } catch {
+        } catch (err) {
+          console.error("멘티 대시보드 데이터 로드 실패", err);
           setMenteeStats(null);
         }
       } finally {
@@ -135,7 +165,7 @@ export default function Dashboard() {
     }
 
     load();
-  }, []);
+  }, [navigate]);
 
   // ── 멘토 섹션 ──────────────────────────────────────────────────────
   const renderMentorSection = () => {
@@ -162,24 +192,20 @@ export default function Dashboard() {
 
     return (
       <div>
-        {/* 멘토 헤더 */}
         <div className="flex items-center gap-2 mb-4">
           <div className="w-1.5 h-5 bg-amber-400 rounded-full" />
           <h2 className="text-base font-bold text-[#1a2332]">멘토 활동</h2>
           <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-medium">활성</span>
         </div>
 
-        {/* 멘토 스탯 4개 */}
         <div className="grid grid-cols-4 gap-4 mb-5">
           <StatCard icon={DollarSign} label="이번 달 수익" value={`₩${Number(mentorStats?.monthly_earnings||0).toLocaleString()}`} accent="bg-emerald-500" sub="↑ 지난달 대비" />
-          <StatCard icon={Star}       label="평균 평점"    value={`${mentorStats?.average_rating||'—'}`}                             accent="bg-amber-400" />
-          <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours||0}시간`}                           accent="bg-orange-400" />
+          <StatCard icon={Star}       label="평균 평점"    value={`${mentorStats?.average_rating||'—'}`}                            accent="bg-amber-400" />
+          <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours||0}시간`}                          accent="bg-orange-400" />
           <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate||0}%`}                              accent="bg-violet-500" />
         </div>
 
-        {/* 예정된 멘토링 + 최근 리뷰 나란히 */}
         <div className="grid grid-cols-2 gap-4">
-          {/* 예정된 멘토링 */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <SectionHeader title="예정된 멘토링" action="일정 관리" onAction={() => setActiveTab('schedule')} />
             {upcomingChats.length === 0
@@ -198,7 +224,6 @@ export default function Dashboard() {
             }
           </div>
 
-          {/* 최근 받은 리뷰 */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <SectionHeader title="최근 리뷰" />
             {recentReviews.length === 0
@@ -224,23 +249,19 @@ export default function Dashboard() {
   // ── 멘티 섹션 ──────────────────────────────────────────────────────
   const renderMenteeSection = () => (
     <div>
-      {/* 멘티 헤더 */}
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
         <h2 className="text-base font-bold text-[#1a2332]">멘티 활동</h2>
       </div>
 
-      {/* 멘티 스탯 4개 */}
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <StatCard icon={Coffee}    label="참여한 커피챗"    value={`${menteeStats?.total_chats||0}회`}           accent="bg-blue-500" />
+        <StatCard icon={Coffee}    label="참여한 커피챗"    value={`${menteeStats?.total_chats||0}회`}          accent="bg-blue-500" />
         <StatCard icon={Clock}     label="총 학습 시간"     value={`${menteeStats?.learning_hours||0}시간`}       accent="bg-cyan-500" />
-        <StatCard icon={Users}     label="만난 멘토"        value={`${menteeStats?.mentor_count||0}명`}           accent="bg-indigo-500" />
-        <StatCard icon={Heart}     label="관심 멘토"        value={`${menteeStats?.saved_mentors||0}명`}          accent="bg-rose-400" />
+        <StatCard icon={Users}     label="만난 멘토"        value={`${menteeStats?.mentor_count||0}명`}          accent="bg-indigo-500" />
+        <StatCard icon={Heart}     label="관심 멘토"        value={`${menteeStats?.saved_mentors||0}명`}         accent="bg-rose-400" />
       </div>
 
-      {/* 다가오는 예약 + 만난 멘토 나란히 */}
       <div className="grid grid-cols-2 gap-4">
-        {/* 다가오는 예약 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <SectionHeader title="다가오는 예약" action="예약 내역" onAction={() => setActiveTab('history')} />
           {upcomingBookings.length === 0
@@ -259,7 +280,6 @@ export default function Dashboard() {
           }
         </div>
 
-        {/* 최근 만난 멘토 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <SectionHeader title="최근 만난 멘토" />
           {mentorHistory.length === 0
@@ -267,7 +287,6 @@ export default function Dashboard() {
             : <ul className="space-y-3">
                 {mentorHistory.slice(0,4).map((m, i) => (
                   <li key={i} className="flex items-center gap-3 pb-3 border-b border-gray-50 last:border-0 last:pb-0">
-                    {/* 아바타 이니셜 */}
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                       {(m.mentor_name||'M').slice(0,1)}
                     </div>
@@ -288,7 +307,6 @@ export default function Dashboard() {
   // ── 대시보드 전체 ──────────────────────────────────────────────────
   const renderDashboard = () => (
     <div className="space-y-8">
-      {/* 인삿말 */}
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-400 mb-1">
@@ -303,25 +321,21 @@ export default function Dashboard() {
               : '오늘도 좋은 커피챗이 기다리고 있어요.'}
           </p>
         </div>
-        {/* 알림 벨 자리 (선택적) */}
         <button className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm">
           <Bell className="w-4 h-4 text-gray-500" />
         </button>
       </div>
 
-      {/* ── 멘토 섹션 ── */}
       <div className="bg-gray-50/60 rounded-3xl p-6 border border-gray-100">
         {renderMentorSection()}
       </div>
 
-      {/* ── 구분선 ── */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-dashed border-gray-200" />
         </div>
       </div>
 
-      {/* ── 멘티 섹션 ── */}
       <div className="bg-gray-50/60 rounded-3xl p-6 border border-gray-100">
         {renderMenteeSection()}
       </div>
@@ -342,7 +356,6 @@ export default function Dashboard() {
       {/* ── 사이드바 ── */}
       <aside className="w-64 bg-[#1a2332] text-white flex-shrink-0">
         <div className="p-6 sticky top-0">
-          {/* 사용자 정보 */}
           <div className="flex items-center gap-3 mb-8 p-3 bg-white/5 rounded-xl border border-white/10">
             <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {userName.slice(0,1)}
@@ -381,7 +394,7 @@ export default function Dashboard() {
 
             <button
               type="button"
-              onClick={() => navigate(`/profile-setup?id=${getUserIdFromToken()}`)}
+              onClick={() => navigate(`/profile-setup?id=${getCleanUserId()}`)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium hover:bg-white/5 text-gray-400 hover:text-white"
             >
               <User className="w-4 h-4" />

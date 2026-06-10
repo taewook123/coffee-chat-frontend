@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // 💡 페이지 이동을 위해 추가
+import { useNavigate } from 'react-router-dom';
 
-// 슬롯 상태 상수
 const SLOT_STATUS = {
   AVAILABLE: 'available', 
   BOOKED: 'booked',       
@@ -15,9 +14,11 @@ export default function ScheduleManager() {
   const [scheduleData, setScheduleData] = useState({});
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [realMentorId, setRealMentorId] = useState(null);
+  
   const navigate = useNavigate();
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
  
-  // 타임존 버그 해결: 무조건 로컬 시간(한국 시간) 기준
   const formatDate = (d) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -25,7 +26,6 @@ export default function ScheduleManager() {
     return `${year}-${month}-${day}`;
   };
 
-  // 💡 [핵심 교정] 13번 강제 배정 로직 완전 삭제! 없으면 null 반환
   const getMyId = () => {
     let savedId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
     if (!savedId || savedId === 'null' || savedId === 'undefined') {
@@ -38,17 +38,14 @@ export default function ScheduleManager() {
             } catch (e) { console.error("토큰 파싱 에러:", e); }
         }
     }
-    // 💡 13번 하드코딩을 없애고, 정보가 없으면 null을 반환합니다.
     return savedId ? parseInt(savedId.toString().replace(/[^0-9]/g, ''), 10) : null;
   };
 
-  // 새로고침 시 데이터 동기화
   useEffect(() => {
     const fetchSchedule = async () => {
-      const cleanId = getMyId();
+      const currentUserId = getMyId();
       
-      // 💡 내 아이디가 없으면 남의 일정을 띄우지 말고 튕겨냅니다.
-      if (!cleanId) {
+      if (!currentUserId) {
         alert("로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
         navigate('/login');
         return;
@@ -56,7 +53,20 @@ export default function ScheduleManager() {
 
       try {
         setInitialLoading(true);
-        const res = await axios.get(`http://48.211.169.52:8000/api/mentor/availability/${cleanId}`);
+
+        const mentorsRes = await axios.get(`${BACKEND_URL}/api/mentors`);
+        const myMentorData = mentorsRes.data.find(m => parseInt(m.user_id, 10) === currentUserId);
+
+        if (!myMentorData) {
+          alert("멘토로 등록된 정보가 없습니다.");
+          navigate('/');
+          return;
+        }
+
+        const actualMentorId = myMentorData.id; 
+        setRealMentorId(actualMentorId); 
+
+        const res = await axios.get(`${BACKEND_URL}/api/mentor/availability/${actualMentorId}`);
         setScheduleData(res.data);
       } catch (error) {
         console.error('일정 불러오기 실패:', error);
@@ -65,7 +75,7 @@ export default function ScheduleManager() {
       }
     };
     fetchSchedule();
-  }, [navigate]);
+  }, [navigate, BACKEND_URL]);
  
   const [penaltyModal, setPenaltyModal] = useState({
     open: false,
@@ -121,14 +131,13 @@ export default function ScheduleManager() {
  
   const confirmPenaltyCancel = async () => {
     const { time } = penaltyModal;
-    const cleanId = getMyId();
-    if (!cleanId) return; // ID 방어
+    if (!realMentorId) return; 
  
     setPenaltyModal((prev) => ({ ...prev, penaltyLoading: true }));
  
     try {
-      await axios.post(`http://48.211.169.52:8000/api/mentor/penalty`, {
-        mentor_id: cleanId,
+      await axios.post(`${BACKEND_URL}/api/mentor/penalty`, {
+        mentor_id: realMentorId, 
         date: currentDateKey,
         time,
         reason: 'mentor_cancelled_booked_slot',
@@ -150,9 +159,8 @@ export default function ScheduleManager() {
   };
  
   const handleSaveAll = async () => {
-    const cleanId = getMyId();
-    if (!cleanId) {
-        alert("로그인 정보가 없습니다.");
+    if (!realMentorId) {
+        alert("멘토 정보를 확인할 수 없습니다.");
         return;
     }
 
@@ -170,8 +178,8 @@ export default function ScheduleManager() {
     }
   
     try {
-      await axios.post(`http://48.211.169.52:8000/api/mentor/availability/bulk`, {
-        mentor_id: cleanId, 
+      await axios.post(`${BACKEND_URL}/api/mentor/availability/bulk`, {
+        mentor_id: realMentorId, 
         schedules: availableOnly,
       });
       alert('🎉 모든 일정이 성공적으로 DB에 저장되었습니다!');
@@ -200,11 +208,24 @@ export default function ScheduleManager() {
     return 'bg-white text-gray-700 border-gray-300 hover:border-[#4a90e2] hover:bg-blue-50';
   };
  
+  // 💡 [수정됨] 달력 타일에 찍히는 Dot 역시 지나간 일정이면 필터링하여 노출되지 않도록 제어
   const tileContent = ({ date: tileDate }) => {
     const dateKey = formatDate(tileDate);
+    if (dateKey < todayKey) return null; // 완전히 지난 날짜는 닷을 표시 안 함
+
     const slots = scheduleData[dateKey] || {};
-    const hasAvailable = Object.values(slots).some((s) => s && s.toString().toLowerCase().trim() === 'available');
-    const hasBooked = Object.values(slots).some((s) => s && s.toString().toLowerCase().trim() === 'booked');
+    const entries = Object.entries(slots);
+
+    const hasAvailable = entries.some(([time, s]) => {
+      if (dateKey === todayKey && isSlotDisabled(time)) return false; // 오늘이지만 지나간 시간 필터링
+      return s && s.toString().toLowerCase().trim() === 'available';
+    });
+
+    const hasBooked = entries.some(([time, s]) => {
+      if (dateKey === todayKey && isSlotDisabled(time)) return false; // 오늘이지만 지나간 시간 필터링
+      return s && s.toString().toLowerCase().trim() === 'booked';
+    });
+
     return (
       <div className="flex justify-center gap-0.5 mt-1">
         {hasAvailable && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />}
@@ -213,8 +234,14 @@ export default function ScheduleManager() {
     );
   };
  
-  const availableCount = Object.values(currentDaySlots).filter((s) => s && s.toString().toLowerCase().trim() === 'available').length;
-  const bookedCount = Object.values(currentDaySlots).filter((s) => s && s.toString().toLowerCase().trim() === 'booked').length;
+  // 💡 [수정됨] 상단 대시보드 카운터도 이미 지난 시간대의 슬롯은 제외하고 카운트하도록 수정
+  const availableCount = Object.entries(currentDaySlots).filter(([time, s]) => {
+    return s && s.toString().toLowerCase().trim() === 'available' && !isSlotDisabled(time);
+  }).length;
+
+  const bookedCount = Object.entries(currentDaySlots).filter(([time, s]) => {
+    return s && s.toString().toLowerCase().trim() === 'booked' && !isSlotDisabled(time);
+  }).length;
  
   if (initialLoading) {
     return (

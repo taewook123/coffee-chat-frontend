@@ -113,8 +113,11 @@ export default function BookingFlow() {
         questions
       });
 
-      alert('예약이 확정되었습니다.');
-      navigate('/dashboard');
+      // 💡 1. 텍스트를 오해 없도록 명확하게 변경!
+      alert('예약 신청 및 결제가 완료되었습니다! 멘토가 수락하면 최종 확정됩니다.');
+      
+      // 💡 2. 대시보드가 아닌 '예약 내역' 페이지로 이동하여 [수락 대기중] 상태를 바로 보여줌!
+      navigate('/booking-history'); 
     } catch (err) {
       console.error('최종 예약 생성 실패:', err);
       alert('결제는 완료됐으나 예약 생성에 실패했습니다. 관리자에게 문의해주세요.');

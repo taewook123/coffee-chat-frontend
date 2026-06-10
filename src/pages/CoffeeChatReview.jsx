@@ -203,7 +203,7 @@ export default function CoffeeChatReview() {
               <Send className="w-5 h-5" />
               {submitting ? '제출 중...' : submitted ? '리뷰 완료' : '리뷰 제출하기'}
             </button>
-              <p></p>
+              
             {/* ✨ 여기가 수정된 AI 요약 버튼입니다! ✨ */}
             {/* 리뷰 제출 전: 경고 알림 / 리뷰 제출 후: 리포트 페이지로 이동 */}
             <button
