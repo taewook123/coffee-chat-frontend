@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User } from 'lucide-react';
+import axios from 'axios';
 
 export default function SignUpPage() {
   const navigate = useNavigate();
@@ -9,54 +10,55 @@ export default function SignUpPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: '' ,// 'mentor' 또는 'mentee'
+    role: 'mentee', // 💡 무조건 'mentee'로 고정
     phone_number: '' 
   });
-
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
   // 카카오 회원가입/로그인 인가 코드 요청 설정
   const REST_API_KEY = "e2eb2fe1d550c2b3da05dcad347a4517";
   const REDIRECT_URI = "http://48.211.169.52:8000/login/kakao/callback";
 
-  // 💡 1. 카카오 회원가입 처리 로직 (역할 검증 및 state 파라미터 주입)
+  // 💡 1. 카카오 회원가입 처리 로직 (무조건 mentee 주입)
   const handleKakaoSignUp = () => {
-    if (!formData.role) {
-      alert('멘토 또는 멘티 역할을 먼저 선택해주세요!');
-      return;
-    }
-
-    // 카카오 인증 후 백엔드가 역할을 식별할 수 있도록 &state 변수에 고정 주입합니다.
-    const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code&prompt=login&state=${formData.role}`;
+    // 카카오 인증 후 백엔드가 역할을 식별할 수 있도록 &state=mentee로 고정 주입합니다.
+    const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code&prompt=login&state=mentee`;
     window.location.href = KAKAO_AUTH_URL;
   };
 
   // 💡 2. 일반 이메일 회원가입 폼 제출 로직
-  const handleSubmit = (e) => {
+   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // 역할(멘토/멘티)을 선택했는지 검증
-    if (!formData.role) {
-      alert('멘토 또는 멘티 역할을 선택해주세요!');
-      return;
-    }
 
     // 비밀번호 일치 여부를 검증
     if (formData.password !== formData.confirmPassword) {
       alert('비밀번호가 일치하지 않습니다!');
       return;
     }
-
+    try {
+      // 👉 백엔드에 이메일 중복 여부를 먼저 물어봅니다.
+      await axios.post(`${BACKEND_URL}/api/auth/check-email`, {
+        email: formData.email
+      });
     // 💡 백엔드 스키마 유효성 검사(422 에러)를 패스하기 위해 profile_image 기본값 가드를 추가합니다.
     const submitData = {
       name: formData.name,
       email: formData.email,
       password: formData.password,
-      role: formData.role,
+      role: 'mentee', // 안전하게 한 번 더 mentee로 고정
       phone_number: formData.phone_number,
       profile_image: "" // 빈 문자열로 스키마 충돌 방어
     };
 
     // 다음 페이지로 데이터 이전
     navigate('/profile-setup', { state: { signUpData: submitData } });
+  }catch (error) {
+      // 💡 백엔드에서 400 에러(중복 이메일)를 던지면 여기서 캐치해서 막습니다.
+      if (error.response && error.response.status === 400) {
+        alert('이미 가입된 이메일입니다. 다른 이메일을 사용하거나 로그인해주세요.');
+      } else {
+        alert('서버 통신 중 오류가 발생했습니다.');
+      }
+    }
   };
 
   return (
@@ -80,37 +82,11 @@ export default function SignUpPage() {
               TeeTimes 시작하기
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              멘토 또는 멘티로 가입하세요
+              간편하게 가입하고 성장을 시작해보세요
             </p>
           </div>
 
-          {/* 역할 선택 탭 */}
-          <div className="flex gap-4 mb-6">
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, role: 'mentee' })}
-              className={`flex-1 py-2.5 px-4 rounded-full font-semibold text-sm transition ${
-                formData.role === 'mentee'
-                  ? 'bg-[#4a90e2] text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              멘티로 가입
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, role: 'mentor' })}
-              className={`flex-1 py-2.5 px-4 rounded-full font-semibold text-sm transition ${
-                formData.role === 'mentor'
-                  ? 'bg-[#4a90e2] text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              멘토로 가입
-            </button>
-          </div>
-
-          {/* 💡 소셜 버튼 그룹 (form 태그 외부 배치로 이메일 검증 로직 간섭 원천 차단) */}
+          {/* 💡 소셜 버튼 그룹 */}
           <div className="space-y-2.5 mb-6">
             <button type="button" className="w-full py-2.5 px-4 border border-gray-300 rounded-full hover:bg-gray-50 transition flex items-center justify-center gap-3 bg-white text-gray-700 font-medium text-xs shadow-sm">
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -156,7 +132,6 @@ export default function SignUpPage() {
             </div>
               <div>
               <div className="relative">
-                {/* 스마트폰 아이콘을 대신할 단순 텍스트나 다른 아이콘을 써도 좋습니다 */}
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">📱</span>
                 <input
                   type="tel"

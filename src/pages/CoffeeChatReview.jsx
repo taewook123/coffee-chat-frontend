@@ -15,6 +15,8 @@ export default function CoffeeChatReview() {
   const [submitted, setSubmitted] = useState(false);
   const [recommendedMentors, setRecommendedMentors] = useState([]);
   const BACKEND_URL = 'http://localhost:8000';
+  const [submitted, setSubmitted] = useState(false);
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -45,6 +47,7 @@ export default function CoffeeChatReview() {
       alert('리뷰를 작성해주세요!');
       return;
     }
+
     setSubmitting(true);
     try {
       const userId = localStorage.getItem('userId');
@@ -56,6 +59,7 @@ export default function CoffeeChatReview() {
         review: reviewText
       });
       setSubmitted(true);
+      setSubmitted(true); 
     } catch (err) {
       console.error('리뷰 제출 실패:', err);
       alert('리뷰 제출에 실패했어요');
@@ -97,6 +101,7 @@ export default function CoffeeChatReview() {
               별점을 남겨주세요
             </h3>
             <div className="flex items-center justify-center gap-2 mb-3">
+              {/* 👇 변수명 에러를 방지하기 위해 (별) -> (star)로 통일했습니다 */}
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
@@ -142,6 +147,7 @@ export default function CoffeeChatReview() {
             </p>
           </div>
 
+          {/* 제출 완료 메시지 */}
           {/* 제출 완료 메시지 */}
           {submitted && (
             <div className="flex items-center justify-center gap-2 mb-6 py-3 bg-green-50 rounded-xl border border-green-100">
@@ -209,6 +215,33 @@ export default function CoffeeChatReview() {
               </div>
             </div>
           )}
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || submitted}
+              className={`w-full py-4 rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-2 ${
+                submitted
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white'
+              }`}
+            >
+              <Send className="w-5 h-5" />
+              {submitting ? '제출 중...' : submitted ? '리뷰 완료' : '리뷰 제출하기'}
+            </button>
+
+            {/* ✨ 여기가 수정된 AI 요약 버튼입니다! ✨ */}
+            {/* 리뷰 제출 전: 경고 알림 / 리뷰 제출 후: 리포트 페이지로 이동 */}
+            <button
+              onClick={() => submitted ? navigate(`/coffee-chats/report/${chatId}`) : alert('리뷰를 먼저 제출해주세요!')}
+              className={`w-full py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                submitted
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              📋 AI 요약 확인하기
+            </button>
+          </div>
 
         </div>
       </div>

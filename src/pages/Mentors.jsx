@@ -142,9 +142,7 @@ export default function Mentors() {
         <div className="bg-gradient-to-b from-slate-50 to-white border-b border-gray-200/60 py-10 px-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-2 mb-6">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                <Sparkles className="w-5 h-5" />
-              </div>
+              
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 grid lg:grid-cols-12 gap-6 items-center">
