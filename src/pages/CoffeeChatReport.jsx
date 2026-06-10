@@ -7,7 +7,6 @@ import remarkGfm from 'remark-gfm';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
-// 💡 함수 옆에 잘못 붙어있던 백틱(``) 오타를 제거했습니다.
 export default function CoffeeChatReport() {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -15,33 +14,40 @@ export default function CoffeeChatReport() {
   const [summary, setSummary] = useState(''); 
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
-  
   const [aiAdvice, setAiAdvice] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
-
   const printRef = useRef(null);
 
   useEffect(() => {
-    // 💡 [핵심 수정 1] userId가 아니라 URL에 있는 예약 번호(chatId)를 사용해야 합니다!
     if (!chatId) return;
 
-    // 💡 [핵심 수정 2] userId 대신 chatId를 넣어 상세 API를 정확히 호출합니다.
+    // 1. 멘토 및 예약 상세 정보 로드
     axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => {
-        // 💡 [핵심 수정 3] 백엔드에서 1건의 예약 정보만 예쁘게 주므로, find로 뒤질 필요 없이 바로 넣습니다!
         setBooking(res.data);
       })
       .catch(err => console.error("예약 상세 로드 실패:", err));
 
+    // 2. 커피챗 세션 메타데이터 로드 (진행 시간용)
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
       .then(res => {
         setSession(res.data);
-        if (res.data.ai_summary) {
-          setSummary(res.data.ai_summary);
-        }
       })
       .catch(err => console.error("세션 데이터 로드 실패:", err));
+
+    // 💡 [핵심 수정] 신규 테이블(coffee_chat_reports)에서 요약본과 어드바이스를 가져옵니다.
+    axios.get(`${BACKEND_URL}/api/coffee-chat-report/${chatId}`)
+      .then(res => {
+        if (res.data) {
+          // 테이블의 summary 컬럼 매핑
+          if (res.data.summary) setSummary(res.data.summary);
+          // 테이블의 ai_advice 컬럼 매핑 (이미 생성된 이력이 있을 경우)
+          if (res.data.ai_advice) setAiAdvice(res.data.ai_advice);
+        }
+      })
+      .catch(err => console.error("리포트 데이터 로드 실패:", err));
   }, [chatId]);
 
   const generateAiAdvice = async () => {
@@ -49,10 +55,13 @@ export default function CoffeeChatReport() {
     
     setIsAiLoading(true);
     try {
+      // 💡 랩업(AI 생성) 요청 시, 백엔드가 coffee_chat_reports 테이블에 저장 후 값을 반환한다고 가정합니다.
       const response = await axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`);
       
-      if (response.data && response.data.report) {
-        setAiAdvice(response.data.report);
+      if (response.data) {
+        // 백엔드 리포트 응답 구조에 맞게 state 업데이트
+        if (response.data.ai_advice) setAiAdvice(response.data.ai_advice);
+        if (response.data.summary) setSummary(response.data.summary);
       }
     } catch (error) {
       console.error("AI 어드바이스 생성 실패:", error);
