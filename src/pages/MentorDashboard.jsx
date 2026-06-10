@@ -13,7 +13,6 @@ import BookingHistory from './BookingHistory';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
 // ── 공통 헬퍼 ──────────────────────────────────────────────────────
-// 💡 [핵심 수정 1] 1번으로 강제 지정되던 버그를 삭제하고, 정확하게 내 ID만 추출하도록 변경!
 function getCleanUserId() {
   let finalUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
   
@@ -115,28 +114,32 @@ export default function Dashboard() {
     async function load() {
       setLoading(true);
       try {
-        // 💡 [핵심 수정 2] 내 회원 번호(14번)로 진짜 멘토 번호(2번)를 찾습니다.
-        let actualMentorId = null;
+        // 💡 0. 서버에서 내 진짜 유저 이름부터 받아와서 세팅합니다!
         try {
-          const mentorsRes = await axios.get(`${BACKEND_URL}/api/mentors`);
-          const myMentorData = mentorsRes.data.find(m => parseInt(m.user_id, 10) === uid);
-          
-          if (myMentorData) {
-            actualMentorId = myMentorData.id;
-            setIsMentor(true);
-          } else {
-            setIsMentor(false);
+          const userRes = await axios.get(`${BACKEND_URL}/api/users/${uid}`);
+          if (userRes.data && userRes.data.name) {
+            setUserName(userRes.data.name);
+            localStorage.setItem('userName', userRes.data.name);
           }
+        } catch (e) {
+          console.error("유저 이름 동기화 실패");
+        }
+
+        // 💡 1. 멘토 권한 확인
+        let checkIsMentor = false;
+        try {
+          const mentorsRes = await axios.get(`${BACKEND_URL}/api/mentors/list`);
+          checkIsMentor = mentorsRes.data.some(m => parseInt(m.user_id, 10) === uid);
+          setIsMentor(checkIsMentor);
         } catch (err) {
           console.error("멘토 검증 실패:", err);
         }
 
-        // 1) 멘토 대시보드 (💡 찾아낸 진짜 멘토 번호로 API 요청!)
-        if (actualMentorId) {
+        // 💡 2. 멘토 대시보드 로드 (🚨 해결: actualMentorId가 아니라 uid(2번)를 던집니다!)
+        if (checkIsMentor) {
           try {
-            const { data } = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${actualMentorId}`);
+            const { data } = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${uid}`);
             const s = data.stats || {};
-            if (s.name) { setUserName(s.name); localStorage.setItem('userName', s.name); }
             setMentorStats(s);
             setUpcomingChats(data.upcoming_chats || []);
             setRecentReviews(data.recent_reviews || []);
@@ -145,11 +148,10 @@ export default function Dashboard() {
           }
         }
 
-        // 2) 멘티 대시보드 (이건 일반 유저 기능이므로 기존 회원 번호 uid를 씁니다.)
+        // 💡 3. 멘티 대시보드 로드 (여기도 uid 2번을 던집니다)
         try {
           const { data } = await axios.get(`${BACKEND_URL}/api/mentee/dashboard/${uid}`);
           const s = data.stats || {};
-          if (!actualMentorId && s.name) { setUserName(s.name); localStorage.setItem('userName', s.name); }
           setMenteeStats(s);
           setUpcomingBookings(data.upcoming_bookings || []);
           setMentorHistory(data.mentor_history || []);
