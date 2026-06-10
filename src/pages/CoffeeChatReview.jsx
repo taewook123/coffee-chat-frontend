@@ -165,7 +165,7 @@ export default function CoffeeChatReview() {
             {/* ✨ 여기가 수정된 AI 요약 버튼입니다! ✨ */}
             {/* 리뷰 제출 전: 경고 알림 / 리뷰 제출 후: 리포트 페이지로 이동 */}
             <button
-              onClick={() => submitted ? navigate(`/coffee-chats/report/${chatId}`) : alert('리뷰를 먼저 제출해주세요!')}
+              onClick={() => submitted ? navigate(`/coffee-chat-report/${chatId}`) : alert('리뷰를 먼저 제출해주세요!')}
               className={`w-full py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
                 submitted
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg'
