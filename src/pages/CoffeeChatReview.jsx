@@ -13,7 +13,10 @@ export default function CoffeeChatReview() {
   const [session, setSession] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+  const [recommendedMentors, setRecommendedMentors] = useState([]);
+  // const BACKEND_URL = 'http://localhost:8000';
+
+   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -28,6 +31,10 @@ export default function CoffeeChatReview() {
 
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
       .then(res => setSession(res.data))
+      .catch(err => console.error(err));
+
+    axios.get(`${BACKEND_URL}/api/booking/recommend/${chatId}`)
+      .then(res => setRecommendedMentors(res.data))
       .catch(err => console.error(err));
   }, [chatId]);
 
@@ -51,6 +58,7 @@ export default function CoffeeChatReview() {
         rating: rating,
         review: reviewText
       });
+      setSubmitted(true);
       setSubmitted(true); 
     } catch (err) {
       console.error('리뷰 제출 실패:', err);
@@ -129,8 +137,8 @@ export default function CoffeeChatReview() {
               disabled={submitted}
               placeholder="멘토와의 대화는 어떠셨나요? 솔직한 후기를 남겨주세요 😊"
               className={`w-full px-4 py-3 border-2 rounded-xl outline-none resize-none text-gray-700 text-sm ${
-                submitted 
-                  ? 'border-gray-100 bg-gray-50 text-gray-400' 
+                submitted
+                  ? 'border-gray-100 bg-gray-50 text-gray-400'
                   : 'border-gray-200 focus:border-blue-400'
               }`}
             />
@@ -140,6 +148,7 @@ export default function CoffeeChatReview() {
           </div>
 
           {/* 제출 완료 메시지 */}
+          {/* 제출 완료 메시지 */}
           {submitted && (
             <div className="flex items-center justify-center gap-2 mb-6 py-3 bg-green-50 rounded-xl border border-green-100">
               <CheckCircle className="w-5 h-5 text-green-500" />
@@ -147,8 +156,41 @@ export default function CoffeeChatReview() {
             </div>
           )}
 
-          {/* 버튼들 */}
-          <div className="flex flex-col gap-3">
+
+
+          {/* 추천 멘토 섹션 ← 맨 아래 */}
+          {recommendedMentors.length > 0 && (
+            <div className="mt-8 pt-8 border-t border-gray-100">
+              <h3 className="font-bold text-gray-900 mb-4 text-center">
+                🤝 비슷한 직무의 멘토와도 대화해보세요!
+              </h3>
+              <div className="flex flex-col gap-3">
+                {recommendedMentors.map(mentor => (
+                  <div
+                    key={mentor.mentor_id}
+                    onClick={() => navigate(`/mentors/apply/${mentor.mentor_id}`)}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-blue-50 cursor-pointer transition border border-gray-100 hover:border-blue-200"
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold shrink-0">
+                      {mentor.profile_image
+                        ? <img src={mentor.profile_image} alt="" className="w-full h-full object-cover" />
+                        : mentor.name?.slice(0, 1)
+                      }
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 text-sm">{mentor.name}</p>
+                      <p className="text-xs text-gray-500">{mentor.job_title}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      <span className="text-xs text-gray-600">{mentor.avg_rating?.toFixed(1) || '0.0'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col gap-3 mt-8">
             <button
               onClick={handleSubmit}
               disabled={submitting || submitted}
@@ -161,7 +203,7 @@ export default function CoffeeChatReview() {
               <Send className="w-5 h-5" />
               {submitting ? '제출 중...' : submitted ? '리뷰 완료' : '리뷰 제출하기'}
             </button>
-
+              
             {/* ✨ 여기가 수정된 AI 요약 버튼입니다! ✨ */}
             {/* 리뷰 제출 전: 경고 알림 / 리뷰 제출 후: 리포트 페이지로 이동 */}
             <button

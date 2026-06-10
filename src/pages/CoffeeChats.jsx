@@ -38,6 +38,9 @@ export default function CoffeeChats() {
 
     if (!booking.booking_date || !booking.booking_time) return 'upcoming';
 
+    // PAID = 멘토 수락 전 -> 대기 상태 혹은 내부 로직에 맞춤 (여기서는 일단 'waiting' 반환)
+    //if (booking.status === 'PAID') return 'waiting';
+    
     const now = new Date();
     const [year, month, day] = booking.booking_date.split('-');
     const [hour, minute] = booking.booking_time.split(':');
@@ -45,7 +48,6 @@ export default function CoffeeChats() {
     
     const diffMin = (dt - now) / 1000 / 60;
     
-    // 🚨 여기서 예약 시간이 '과거'면 diffMin이 음수가 되어 무조건 'completed'로 빠집니다!
     if (diffMin > 5) return 'upcoming';
     if (diffMin <= 5 && diffMin >= -30) return 'ongoing';
     return 'completed';
@@ -96,6 +98,8 @@ export default function CoffeeChats() {
 
   const renderChatCard = (chat) => {
     const mentorName    = chat.mentor_name || chat.partner_name || '알 수 없는 멘토';
+    
+    // 🚨 [핵심 수정 2] 여기서도 chat.tab_status 대신 getTabStatus(chat)를 호출합니다!
     const currentStatus = getTabStatus(chat);
     const hasReview     = chat.has_review;
     const chatId        = chat.id || chat.booking_id;
@@ -107,8 +111,11 @@ export default function CoffeeChats() {
           if (currentStatus === 'upcoming') navigate(`/coffee-chat-detail/${chatId}`);
           if (currentStatus === 'ongoing')  navigate(`/coffee-chat/${chatId}`);
           if (currentStatus === 'completed') {
-            if (hasReview) navigate(`/coffee-chat-report/${chatId}`);
-            else navigate(`/coffee-chat-review/${chatId}`);
+            if (hasReview) {
+              navigate(`/coffee-chat-report/${chatId}`);
+            } else {
+              navigate(`/coffee-chat-review/${chatId}`);
+            }
           }
         }}
         className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm transition-all duration-300 flex flex-col justify-between min-h-[280px] group cursor-pointer hover:shadow-lg hover:-translate-y-1"
