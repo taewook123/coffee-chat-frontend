@@ -31,34 +31,32 @@ export default function CoffeeChatReview() {
       .catch(err => console.error(err));
   }, [chatId]);
 
-  const handleSubmit = async () => {
-    if (rating === 0) {
-      alert('별점을 선택해주세요!');
-      return;
-    }
-    if (!reviewText.trim()) {
-      alert('리뷰를 작성해주세요!');
-      return;
-    }
+    const handleSubmit = async () => {
+      if (rating === 0) { alert('별점을 선택해주세요!'); return; }
+      if (!reviewText.trim()) { alert('리뷰를 작성해주세요!'); return; }
 
-    setSubmitting(true);
-    try {
-      const userId = localStorage.getItem('userId');
-      await axios.post(`${BACKEND_URL}/api/booking/review/create`, {
-        booking_id: Number(chatId),
-        user_id: Number(userId),
-        mentor_id: booking?.mentor_id || 0,
-        rating: rating,
-        review: reviewText
-      });
-      setSubmitted(true); 
-    } catch (err) {
-      console.error('리뷰 제출 실패:', err);
-      alert('리뷰 제출에 실패했어요');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      setSubmitting(true);
+      try {
+        const userId = localStorage.getItem('userId');
+
+        // 1. 리뷰 제출
+        await axios.post(`${BACKEND_URL}/api/review/create`, {
+          booking_id: Number(chatId),
+          rating: rating,
+          review: reviewText
+        });
+
+        // ✅ 2. 요약 생성 API 호출 (여기가 핵심!)
+        await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
+
+        setSubmitted(true);
+      } catch (err) {
+        console.error('리뷰 제출 실패:', err);
+        alert('리뷰 제출에 실패했어요');
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
   const ratingLabels = ['', '별로예요', '그저 그래요', '괜찮아요', '좋아요', '최고예요!'];
 
