@@ -3,6 +3,24 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Coffee, Calendar, Clock, ChevronLeft, ChevronRight, MessageSquare, Star, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 
+// 💡 [안전장치] 대시보드와 동일하게 내 유저 ID를 정확하게 뽑아오는 함수
+function getCleanUserId() {
+  let finalUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
+  if (!finalUserId || finalUserId === 'null' || finalUserId === 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        finalUserId = payload.user_id || payload.id;
+        if (finalUserId) localStorage.setItem('userId', finalUserId);
+      } catch (e) {
+        console.error('토큰 디코딩 실패:', e);
+      }
+    }
+  }
+  return finalUserId ? parseInt(String(finalUserId).replace(/[^0-9]/g, ''), 10) : null;
+}
+
 export default function CoffeeChats() {
   const [activeTab, setActiveTab] = useState('upcoming');
   const navigate = useNavigate();
@@ -11,8 +29,13 @@ export default function CoffeeChats() {
   
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-  // 💡 백엔드 계산을 무시하고, 프론트엔드(브라우저) 시간 기준으로 완벽하게 판별하는 함수!
+  // 💡 백엔드 계산 무시, 프론트엔드 시간 기준으로 완벽 판별
   const getTabStatus = (booking) => {
+    // 거절되거나 취소된 예약은 무조건 종료 탭으로
+    if (booking.status === 'REJECTED' || booking.status === 'CANCELLED') return 'completed';
+    // 이미 완료된 예약
+    if (booking.status === 'COMPLETED' || booking.status === 'REVIEWED') return 'completed';
+
     if (!booking.booking_date || !booking.booking_time) return 'upcoming';
 
     const now = new Date();
@@ -20,23 +43,25 @@ export default function CoffeeChats() {
     const [hour, minute] = booking.booking_time.split(':');
     const dt = new Date(year, month - 1, day, hour, minute);
     
-    if (booking.status === 'COMPLETED' || booking.status === 'REVIEWED') return 'completed';
-
     const diffMin = (dt - now) / 1000 / 60;
     
+    // 🚨 여기서 예약 시간이 '과거'면 diffMin이 음수가 되어 무조건 'completed'로 빠집니다!
     if (diffMin > 5) return 'upcoming';
     if (diffMin <= 5 && diffMin >= -30) return 'ongoing';
     return 'completed';
   };
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
+    const userId = getCleanUserId();
     if (!userId) { setLoading(false); return; }
     
+    // 💡 핵심: 백엔드 API에서 CONFIRMED 상태만 골라오도록 로직 처리
     axios.get(`${BACKEND_URL}/api/booking/${userId}`)
       .then(res => {
         if (Array.isArray(res.data)) {
-          setBookings(res.data);
+          // 💡 상태가 CONFIRMED인 예약만 골라서 관리
+          const confirmedBookings = res.data.filter(b => b.status === 'CONFIRMED');
+          setBookings(confirmedBookings);
         } else {
           setBookings([]);
         }
@@ -45,7 +70,6 @@ export default function CoffeeChats() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 🚨 [핵심 수정 1] b.tab_status 대신 getTabStatus(b) 함수를 호출해서 정확하게 분류합니다!
   const upcomingChats  = bookings.filter(b => getTabStatus(b) === 'upcoming');
   const ongoingChats   = bookings.filter(b => getTabStatus(b) === 'ongoing');
   const completedChats = bookings.filter(b => getTabStatus(b) === 'completed');
@@ -66,16 +90,13 @@ export default function CoffeeChats() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) return 'D-Day';
-    if (diffDays > 0) return `D-${diffDays}`;
-    return `D+${Math.abs(diffDays)}`;
+    if (diffDays < 0) return `종료`;
+    return `D-${diffDays}`;
   };
 
   const renderChatCard = (chat) => {
     const mentorName    = chat.mentor_name || chat.partner_name || '알 수 없는 멘토';
-    
-    // 🚨 [핵심 수정 2] 여기서도 chat.tab_status 대신 getTabStatus(chat)를 호출합니다!
     const currentStatus = getTabStatus(chat);
-    
     const hasReview     = chat.has_review;
     const chatId        = chat.id || chat.booking_id;
 
@@ -103,7 +124,10 @@ export default function CoffeeChats() {
                   {mentorName} 멘토
                 </h3>
                 <div className="mt-1 flex items-center gap-1.5">
-                  {currentStatus === 'upcoming' && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">예정</span>}
+                  {/* 💡 수락 대기중(PAID) 상태와 확정(CONFIRMED) 상태의 뱃지를 구분합니다 */}
+                  {currentStatus === 'upcoming' && chat.status === 'PAID' && <span className="px-2 py-0.5 bg-yellow-50 text-yellow-600 rounded text-[10px] font-bold">수락 대기중</span>}
+                  {currentStatus === 'upcoming' && chat.status !== 'PAID' && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">예정</span>}
+                  
                   {currentStatus === 'ongoing' && <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded text-[10px] font-bold animate-pulse">진행중</span>}
                   
                   {currentStatus === 'completed' && !hasReview && (
