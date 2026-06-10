@@ -68,13 +68,12 @@ export default function CoffeeChats() {
         onClick={() => {
           if (currentStatus === 'upcoming') navigate(`/coffee-chat-detail/${chat.booking_id}`);
           if (currentStatus === 'completed') {
-            // 💡 [수정] 리뷰가 있으면 리포트 페이지로, 없으면 리뷰 작성 페이지로 이동
-            if (hasReview) {
-              navigate(`/coffee-chat-report/${chat.booking_id}`);
-            } else {
-              navigate(`/coffee-chat-review/${chat.booking_id}`);
-            }
+          if (hasReview) {
+            navigate(`/coffee-chat-report/${chat.booking_id}`);
+          } else {
+            navigate(`/coffee-chat-review/${chat.booking_id}`);
           }
+        }
         }}
         // 💡 [수정] 이미 작성된 카드도 다시 클릭 가능하게 (투명도 제거, hover 효과 복구)
         className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm transition-all duration-300 flex flex-col justify-between min-h-[280px] group cursor-pointer hover:shadow-lg hover:-translate-y-1"
@@ -163,6 +162,7 @@ export default function CoffeeChats() {
             {currentStatus === 'completed' && (
               hasReview ? (
                 <button
+                  // 이렇게
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/coffee-chat-report/${chat.booking_id}`);
