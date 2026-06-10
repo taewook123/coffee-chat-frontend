@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Coffee, Calendar, Clock, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { Coffee, Calendar, Clock, ChevronLeft, ChevronRight, MessageSquare, Star, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 
 export default function CoffeeChats() {
@@ -9,7 +9,6 @@ export default function CoffeeChats() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // 백엔드 주소 (실제 배포된 주소 사용)
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   const getTabStatus = (booking) => {
@@ -34,17 +33,15 @@ export default function CoffeeChats() {
       .finally(() => setLoading(false));
   }, []);
 
-  // tab_status 기준으로 분류
   const upcomingChats = bookings.filter(b => getTabStatus(b) === 'upcoming');
   const ongoingChats = bookings.filter(b => getTabStatus(b) === 'ongoing');
   const completedChats = bookings.filter(b => getTabStatus(b) === 'completed');
 
   const handleJoinChat = (e, chatId) => {
-    e.stopPropagation(); // 카드 클릭 이벤트 막기
+    e.stopPropagation(); 
     navigate(`/coffee-chat/${chatId}`);
   };
 
-  // D-Day 자동 계산 함수
   const getDDay = (dateString) => {
     if (!dateString) return '';
     const today = new Date();
@@ -60,45 +57,53 @@ export default function CoffeeChats() {
     return `D+${Math.abs(diffDays)}`;
   };
 
-  // 세련된 카드 UI
   const renderChatCard = (chat) => {
-    // 💡 핵심 수정: 백엔드에서 주는 변수명(partner_name)에 맞춤
     const mentorName = chat.partner_name || '알 수 없는 멘토';
-    // 💡 핵심 수정: 객체에 없는 tab_status 속성 대신 함수 호출 결과를 변수로 저장
     const currentStatus = getTabStatus(chat);
+    const hasReview = chat.has_review;
 
     return (
       <div
         key={chat.booking_id}
         onClick={() => {
           if (currentStatus === 'upcoming') navigate(`/coffee-chat-detail/${chat.booking_id}`);
-          if (currentStatus === 'completed') navigate(`/coffee-chat-review/${chat.booking_id}`);
+          if (currentStatus === 'completed') {
+            // 💡 [수정] 리뷰가 있으면 리포트 페이지로, 없으면 리뷰 작성 페이지로 이동
+            if (hasReview) {
+              navigate(`/coffee-chat-report/${chat.booking_id}`);
+            } else {
+              navigate(`/coffee-chat-review/${chat.booking_id}`);
+            }
+          }
         }}
-        className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[280px] cursor-pointer group"
+        // 💡 [수정] 이미 작성된 카드도 다시 클릭 가능하게 (투명도 제거, hover 효과 복구)
+        className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm transition-all duration-300 flex flex-col justify-between min-h-[280px] group cursor-pointer hover:shadow-lg hover:-translate-y-1"
       >
         <div>
           {/* 상단: 프로필 & 뱃지 */}
           <div className="flex items-start justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner">
-                {/* 💡 첫 글자만 따오기 */}
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner shrink-0">
                 {mentorName.slice(0, 1)}
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 m-0">
-                  {/* 💡 파트너 이름 표시 */}
-                  {mentorName}
+                  {mentorName} 멘토
                 </h3>
-                {/* 진행 상태 뱃지 */}
-                <div className="mt-1">
+                <div className="mt-1 flex items-center gap-1.5">
                   {currentStatus === 'upcoming' && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">예정</span>}
                   {currentStatus === 'ongoing' && <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded text-[10px] font-bold animate-pulse">진행중</span>}
-                  {currentStatus === 'completed' && <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">종료</span>}
+                  
+                  {currentStatus === 'completed' && !hasReview && (
+                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">종료 (리뷰 미작성)</span>
+                  )}
+                  {currentStatus === 'completed' && hasReview && (
+                    <span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-[10px] font-bold">리뷰 작성 완료</span>
+                  )}
                 </div>
               </div>
             </div>
             
-            {/* 디데이 뱃지 */}
             <div className="flex flex-col items-end gap-1">
               <span className={`text-xs font-black ${currentStatus === 'completed' ? 'text-gray-400' : 'text-red-500'}`}>
                 {getDDay(chat.booking_date)}
@@ -106,8 +111,9 @@ export default function CoffeeChats() {
             </div>
           </div>
 
-          {/* 중단: 작성한 사전 질문 (말풍선 스타일) */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-5 relative group-hover:bg-blue-50/30 transition-colors">
+          <div className={`p-4 rounded-xl border mb-5 relative transition-colors ${
+            hasReview ? 'bg-purple-50/30 border-purple-100/50' : 'bg-slate-50 border-slate-100 group-hover:bg-blue-50/30'
+          }`}>
             <MessageSquare className="w-4 h-4 text-gray-300 absolute top-4 right-4" />
             <p className="text-xs text-gray-600 leading-relaxed line-clamp-3 m-0 font-medium pr-6">
               {chat.questions || "작성된 사전 질문이 없습니다."}
@@ -138,17 +144,44 @@ export default function CoffeeChats() {
             </div>
             
             {/* 상태별 액션 버튼 처리 */}
-            {currentStatus === 'ongoing' ? (
+            {currentStatus === 'ongoing' && (
               <button
                 onClick={(e) => handleJoinChat(e, chat.booking_id)}
                 className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
               >
                 <Coffee className="w-3.5 h-3.5" /> 입장하기
               </button>
-            ) : (
+            )}
+
+            {currentStatus === 'upcoming' && (
               <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors text-gray-400">
                 <ChevronRight className="w-4 h-4" />
               </div>
+            )}
+
+            {/* 💡 [수정] 종료된 탭 액션 버튼: 리포트 페이지 이동 추가 */}
+            {currentStatus === 'completed' && (
+              hasReview ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/coffee-chat-report/${chat.booking_id}`);
+                  }}
+                  className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> 리포트 보기
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/coffee-chat-review/${chat.booking_id}`);
+                  }}
+                  className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
+                >
+                  <Star className="w-3.5 h-3.5" /> 리뷰 쓰기
+                </button>
+              )
             )}
           </div>
         </div>
@@ -158,7 +191,6 @@ export default function CoffeeChats() {
 
   return (
     <div className="min-h-screen bg-[#fdfdfd]">
-      {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <Link
@@ -181,7 +213,6 @@ export default function CoffeeChats() {
           </div>
         </div>
 
-        {/* 로딩 중 */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -191,7 +222,6 @@ export default function CoffeeChats() {
 
         {!loading && (
           <>
-            {/* 탭 버튼 */}
             <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200 pb-4">
               <button
                 onClick={() => setActiveTab('upcoming')}
@@ -225,7 +255,6 @@ export default function CoffeeChats() {
               </button>
             </div>
 
-            {/* 카드 목록 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeTab === 'upcoming' && (
                 upcomingChats.length > 0

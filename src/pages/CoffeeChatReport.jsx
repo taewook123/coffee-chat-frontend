@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
-export default function CoffeeChatReport() {
+export default function CoffeeChatReport() {``
   const { chatId } = useParams();
   const navigate = useNavigate();
   
@@ -27,7 +27,7 @@ export default function CoffeeChatReport() {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
 
-    axios.get(`${BACKEND_URL}/api/bookings/${userId}`)
+    axios.get(`${BACKEND_URL}/api/booking/detail/${userId}`)
       .then(res => {
         const found = res.data.find(b => String(b.id) === String(chatId));
         if (found) setBooking(found);

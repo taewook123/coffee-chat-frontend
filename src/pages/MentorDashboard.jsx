@@ -244,7 +244,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <SectionHeader title="다가오는 예약" action="예약 내역" onAction={() => setActiveTab('history')} />
           {upcomingBookings.length === 0
-            ? <EmptyState icon={Calendar} message="예정된 커피챗이 없어요." cta="멘토 찾기" onCta={() => navigate('/host-list')} />
+            ? <EmptyState icon={Calendar} message="예정된 커피챗이 없어요." cta="멘토 찾기" onCta={() => navigate('/mentors')} />
             : <ul className="space-y-2">
                 {upcomingBookings.slice(0,4).map((b, i) => (
                   <li key={b.id||i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
