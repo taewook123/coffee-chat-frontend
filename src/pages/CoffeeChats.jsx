@@ -11,11 +11,17 @@ export default function CoffeeChats() {
   
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
+  // 💡 백엔드 계산을 무시하고, 프론트엔드(브라우저) 시간 기준으로 완벽하게 판별하는 함수!
   const getTabStatus = (booking) => {
+    if (!booking.booking_date || !booking.booking_time) return 'upcoming';
+
     const now = new Date();
     const [year, month, day] = booking.booking_date.split('-');
     const [hour, minute] = booking.booking_time.split(':');
     const dt = new Date(year, month - 1, day, hour, minute);
+    
+    if (booking.status === 'COMPLETED' || booking.status === 'REVIEWED') return 'completed';
+
     const diffMin = (dt - now) / 1000 / 60;
     
     if (diffMin > 5) return 'upcoming';
@@ -27,18 +33,25 @@ export default function CoffeeChats() {
     const userId = localStorage.getItem('userId');
     if (!userId) { setLoading(false); return; }
     
-    axios.get(`${BACKEND_URL}/api/booking/mentee/${userId}`)
-      .then(res => setBookings(res.data))
+    axios.get(`${BACKEND_URL}/api/booking/${userId}`)
+      .then(res => {
+        if (Array.isArray(res.data)) {
+          setBookings(res.data);
+        } else {
+          setBookings([]);
+        }
+      })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
   }, []);
 
-  const upcomingChats = bookings.filter(b => getTabStatus(b) === 'upcoming');
-  const ongoingChats = bookings.filter(b => getTabStatus(b) === 'ongoing');
+  // 🚨 [핵심 수정 1] b.tab_status 대신 getTabStatus(b) 함수를 호출해서 정확하게 분류합니다!
+  const upcomingChats  = bookings.filter(b => getTabStatus(b) === 'upcoming');
+  const ongoingChats   = bookings.filter(b => getTabStatus(b) === 'ongoing');
   const completedChats = bookings.filter(b => getTabStatus(b) === 'completed');
 
   const handleJoinChat = (e, chatId) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     navigate(`/coffee-chat/${chatId}`);
   };
 
@@ -58,28 +71,28 @@ export default function CoffeeChats() {
   };
 
   const renderChatCard = (chat) => {
-    const mentorName = chat.partner_name || '알 수 없는 멘토';
+    const mentorName    = chat.mentor_name || chat.partner_name || '알 수 없는 멘토';
+    
+    // 🚨 [핵심 수정 2] 여기서도 chat.tab_status 대신 getTabStatus(chat)를 호출합니다!
     const currentStatus = getTabStatus(chat);
-    const hasReview = chat.has_review;
+    
+    const hasReview     = chat.has_review;
+    const chatId        = chat.id || chat.booking_id;
 
     return (
       <div
-        key={chat.booking_id}
+        key={chatId}
         onClick={() => {
-          if (currentStatus === 'upcoming') navigate(`/coffee-chat-detail/${chat.booking_id}`);
+          if (currentStatus === 'upcoming') navigate(`/coffee-chat-detail/${chatId}`);
+          if (currentStatus === 'ongoing')  navigate(`/coffee-chat/${chatId}`);
           if (currentStatus === 'completed') {
-          if (hasReview) {
-            navigate(`/coffee-chat-report/${chat.booking_id}`);
-          } else {
-            navigate(`/coffee-chat-review/${chat.booking_id}`);
+            if (hasReview) navigate(`/coffee-chat-report/${chatId}`);
+            else navigate(`/coffee-chat-review/${chatId}`);
           }
-        }
         }}
-        // 💡 [수정] 이미 작성된 카드도 다시 클릭 가능하게 (투명도 제거, hover 효과 복구)
         className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm transition-all duration-300 flex flex-col justify-between min-h-[280px] group cursor-pointer hover:shadow-lg hover:-translate-y-1"
       >
         <div>
-          {/* 상단: 프로필 & 뱃지 */}
           <div className="flex items-start justify-between mb-5">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner shrink-0">
@@ -120,7 +133,6 @@ export default function CoffeeChats() {
           </div>
         </div>
 
-        {/* 하단: 날짜/시간 및 액션 버튼 */}
         <div>
           {currentStatus === 'ongoing' && (
             <div className="mb-4">
@@ -142,10 +154,9 @@ export default function CoffeeChats() {
               </div>
             </div>
             
-            {/* 상태별 액션 버튼 처리 */}
             {currentStatus === 'ongoing' && (
               <button
-                onClick={(e) => handleJoinChat(e, chat.booking_id)}
+                onClick={(e) => handleJoinChat(e, chatId)}
                 className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
               >
                 <Coffee className="w-3.5 h-3.5" /> 입장하기
@@ -158,25 +169,17 @@ export default function CoffeeChats() {
               </div>
             )}
 
-            {/* 💡 [수정] 종료된 탭 액션 버튼: 리포트 페이지 이동 추가 */}
             {currentStatus === 'completed' && (
               hasReview ? (
                 <button
-                  // 이렇게
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/coffee-chat-report/${chat.booking_id}`);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/coffee-chat-report/${chatId}`); }}
                   className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
                 >
                   <CheckCircle className="w-3.5 h-3.5" /> 리포트 보기
                 </button>
               ) : (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/coffee-chat-review/${chat.booking_id}`);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/coffee-chat-review/${chatId}`); }}
                   className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
                 >
                   <Star className="w-3.5 h-3.5" /> 리뷰 쓰기
@@ -226,9 +229,7 @@ export default function CoffeeChats() {
               <button
                 onClick={() => setActiveTab('upcoming')}
                 className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
-                  activeTab === 'upcoming'
-                    ? 'bg-gray-900 text-white shadow-md'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                  activeTab === 'upcoming' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
                 예정 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{upcomingChats.length}</span>
@@ -236,9 +237,7 @@ export default function CoffeeChats() {
               <button
                 onClick={() => setActiveTab('ongoing')}
                 className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
-                  activeTab === 'ongoing'
-                    ? 'bg-gray-900 text-white shadow-md'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                  activeTab === 'ongoing' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
                 진행중 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'ongoing' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{ongoingChats.length}</span>
@@ -246,9 +245,7 @@ export default function CoffeeChats() {
               <button
                 onClick={() => setActiveTab('completed')}
                 className={`px-6 py-2.5 font-bold rounded-xl text-sm transition-all duration-200 ${
-                  activeTab === 'completed'
-                    ? 'bg-gray-900 text-white shadow-md'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                  activeTab === 'completed' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
                 종료 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'completed' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{completedChats.length}</span>
@@ -256,26 +253,25 @@ export default function CoffeeChats() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeTab === 'upcoming' && (
-                upcomingChats.length > 0
-                  ? upcomingChats.map(renderChatCard)
-                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                      <p className="text-gray-500 font-medium">예정된 티타임이 없습니다.</p>
-                    </div>
+              {activeTab === 'upcoming' && upcomingChats.map(renderChatCard)}
+              {activeTab === 'upcoming' && upcomingChats.length === 0 && (
+                <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                  <p className="text-gray-500 font-medium">예정된 티타임이 없습니다.</p>
+                </div>
               )}
-              {activeTab === 'ongoing' && (
-                ongoingChats.length > 0
-                  ? ongoingChats.map(renderChatCard)
-                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                      <p className="text-gray-500 font-medium">현재 진행중인 티타임이 없습니다.</p>
-                    </div>
+              
+              {activeTab === 'ongoing' && ongoingChats.map(renderChatCard)}
+              {activeTab === 'ongoing' && ongoingChats.length === 0 && (
+                <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                  <p className="text-gray-500 font-medium">현재 진행중인 티타임이 없습니다.</p>
+                </div>
               )}
-              {activeTab === 'completed' && (
-                completedChats.length > 0
-                  ? completedChats.map(renderChatCard)
-                  : <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                      <p className="text-gray-500 font-medium">종료된 티타임 기록이 없습니다.</p>
-                    </div>
+              
+              {activeTab === 'completed' && completedChats.map(renderChatCard)}
+              {activeTab === 'completed' && completedChats.length === 0 && (
+                <div className="col-span-full py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                  <p className="text-gray-500 font-medium">종료된 티타임 기록이 없습니다.</p>
+                </div>
               )}
             </div>
           </>
