@@ -12,16 +12,21 @@ export default function CoffeeChats() {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   const getTabStatus = (booking) => {
+    // paid = 멘토 수락 전 -> 숨김
+    if (booking.status === 'PAID') return 'waiting';
+    
     const now = new Date();
     const [year, month, day] = booking.booking_date.split('-');
     const [hour, minute] = booking.booking_time.split(':');
     const dt = new Date(year, month - 1, day, hour, minute);
     const diffMin = (dt - now) / 1000 / 60;
     
+
     if (diffMin > 5) return 'upcoming';
     if (diffMin <= 5 && diffMin >= -30) return 'ongoing';
     return 'completed';
-  };
+};
+
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -71,7 +76,7 @@ export default function CoffeeChats() {
           if (hasReview) {
             navigate(`/coffee-chat-report/${chat.booking_id}`);
           } else {
-            navigate(`/coffee-chat-review/${chat.booking_id}`);
+            navigate(`/coffee-chat-detail/${chat.booking_id}`);
           }
         }
         }}
@@ -175,7 +180,7 @@ export default function CoffeeChats() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/coffee-chat-review/${chat.booking_id}`);
+                    navigate(`/coffee-chat-detail/${chat.booking_id}`);
                   }}
                   className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
                 >
