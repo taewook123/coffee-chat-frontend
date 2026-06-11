@@ -65,6 +65,14 @@ export default function CoffeeChatRoom() {
     '대화가 시작되면 AI가 맥락에 맞는 추천 질문을 생성합니다.',
   ]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+                  // 새로고침 버튼 클릭 시
+const fetchRecommendedQuestion = async () => {
+  const res = await axios.post(`${BACKEND_URL}/api/chat/recommend-question`, {
+    booking_id: Number(chatId),
+    stt_text: sttText  // 현재 STT 텍스트
+  });
+  setRecommendedQuestions(res.data.questions);
+};
   // STT final 텍스트 누적 버퍼
   const sttBufferRef       = useRef('');
   const lastFinalCountRef  = useRef(0);
