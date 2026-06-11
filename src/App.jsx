@@ -27,6 +27,9 @@ import ProfileImageUpload from './components/ProfileImageUpload';
 
 import { Coffee } from 'lucide-react';
 import CoffeeChatReport from './pages/CoffeeChatReport';
+import Announcements from './pages/Announcements';
+import WriteAnnouncement from './pages/WriteAnnouncement';
+
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [userName, setUserName] = useState(localStorage.getItem('userName') || "회원");
@@ -107,7 +110,9 @@ const App = () => {
         <Route path="/mentor-registration" element={<MentorRegistration />} />
         <Route path="/booking-history" element={<BookingHistory />} />
         <Route path="/profile-image-upload" element={<ProfileImageUpload />} />
-        <Route path = "/coffee-chat-report/:chatId" element={<CoffeeChatReport />} />"
+        <Route path = "/coffee-chat-report/:chatId" element={<CoffeeChatReport />} />
+        <Route path="/announcements" element={<Announcements />} />
+        <Route path="/announcements/write" element={<WriteAnnouncement />} />"
       </Routes>
       <Footer />
     </Router>

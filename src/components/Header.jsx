@@ -188,6 +188,13 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
             >
               커피챗
             </li>
+            {/* 💡 이 부분을 추가하세요 */}
+            <li 
+              onClick={() => navigate('/announcements')} 
+              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/announcements' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+            >
+              공지사항
+            </li>
           </ul>
         </div>
 
