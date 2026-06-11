@@ -69,7 +69,6 @@ const BookingHistory = () => {
       
       if (response.ok) {
         alert("🎉 커피챗 예약이 최종 확정되었습니다!");
-        // 💡 [수정] 확정하는 즉시 화면(배열)에서 완전히 치워버립니다.
         setBookings(prev => prev.filter(b => b.booking_id !== bookingId));
       } else {
         alert("확정 처리에 실패했습니다.");
@@ -92,7 +91,6 @@ const BookingHistory = () => {
 
       if (response.ok) {
         alert("커피챗 예약이 거절되었습니다.");
-        // 💡 [수정] 거절하는 즉시 화면(배열)에서 완전히 치워버립니다.
         setBookings(prev => prev.filter(b => b.booking_id !== bookingId));
       } else {
         alert("거절 처리에 실패했습니다.");
@@ -121,45 +119,48 @@ const BookingHistory = () => {
     );
   }
 
-  // 💡 [핵심 추가] '신청받은 내역' 탭일 때는 오직 PAID(수락 대기중)인 항목만 보여줍니다.
   const displayedBookings = Array.isArray(bookings) 
     ? bookings.filter(b => {
         if (activeTab === 'received') return b.status === 'PAID';
-        return true; // 내가 신청한 내역(requested)은 모든 상태를 보여줍니다.
+        return true; 
       })
     : [];
 
   return (
-    <div className="font-sans w-full max-w-5xl">
+    <div className="font-sans w-full max-w-5xl mx-auto">
       
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit mb-8 shadow-inner">
-        <button
-          onClick={() => setActiveTab('requested')}
-          className={`px-7 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
-            activeTab === 'requested' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          내가 신청한 내역
-        </button>
-        <button
-          onClick={() => setActiveTab('received')}
-          className={`px-7 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
-            activeTab === 'received' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          신청받은 내역
-        </button>
+      {/* 탭 헤더: 중앙 정렬하여 시각적 안정감 부여 */}
+      <div className="flex justify-center mb-10">
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full max-w-md shadow-inner">
+          <button
+            onClick={() => setActiveTab('requested')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
+              activeTab === 'requested' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            내가 신청한 내역
+          </button>
+          <button
+            onClick={() => setActiveTab('received')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
+              activeTab === 'received' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            신청받은 내역
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-md">
+      {/* 타이틀 영역 */}
+      <div className="flex items-center gap-4 mb-8 px-2">
+        <div className="p-3.5 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-md">
           <Calendar className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 m-0">
+          <h1 className="text-2xl font-extrabold text-gray-900 m-0 tracking-tight">
             {activeTab === 'received' ? '신청받은 커피챗 내역' : '내가 신청한 커피챗 내역'}
           </h1>
-          <p className="text-gray-500 text-sm mt-1 mb-0">
+          <p className="text-gray-500 text-sm mt-1 mb-0 font-medium">
             {activeTab === 'received' 
               ? '새롭게 들어온 커피챗 제안을 확인하고 수락/거절해 주세요.' 
               : '호스트(멘토)에게 보낸 내 예약 현황입니다.'}
@@ -167,7 +168,8 @@ const BookingHistory = () => {
         </div>
       </div>
 
-      <div className="space-y-5">
+      {/* 리스트 영역 */}
+      <div className="space-y-6">
         {displayedBookings.map((booking) => {
           const displayName = booking.partner_name || booking.mentee_name || "알 수 없음";
           const displayImage = booking.partner_image || booking.mentee_image || "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
@@ -175,36 +177,38 @@ const BookingHistory = () => {
           return (
             <div
               key={booking.booking_id}
-              className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 hover:shadow-lg hover:border-blue-200 transition-all duration-300 flex flex-col lg:flex-row lg:items-center gap-6 group"
+              className="bg-white rounded-3xl shadow-sm border border-slate-200/70 hover:shadow-lg hover:border-blue-300 transition-all duration-300 flex flex-col md:flex-row group overflow-hidden"
             >
               
-              <div className="flex items-center gap-4 lg:w-[220px] flex-shrink-0">
-                <div className="relative">
+              {/* 1. 프로필 구역 (좌측 고정 비율) */}
+              <div className="md:w-1/4 min-w-[200px] p-6 bg-slate-50/50 flex flex-row md:flex-col items-center md:items-start gap-4 border-b md:border-b-0 md:border-r border-slate-100">
+                <div className="relative shrink-0">
                   <img
                     src={displayImage}
                     onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
                     alt={displayName}
-                    className="w-16 h-16 rounded-full object-cover ring-4 ring-slate-50 group-hover:ring-blue-50 transition-colors bg-gray-100"
+                    className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover ring-4 ring-white shadow-sm"
                   />
-                  <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></span>
+                  <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></span>
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-lg m-0">{displayName}</h4>
-                  <span className="text-[11px] font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md mt-1 inline-block">
+                  <h4 className="font-extrabold text-gray-900 text-lg m-0">{displayName}</h4>
+                  <span className="text-[11px] font-bold px-2.5 py-1 bg-white border border-slate-200 text-slate-500 rounded-lg mt-2 inline-block shadow-sm">
                     커피챗 크루
                   </span>
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col gap-3 min-w-0">
+              {/* 2. 콘텐츠 구역 (중앙 유동 비율) */}
+              <div className="flex-1 p-6 flex flex-col justify-center gap-4">
                 <div className="flex items-center">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100/50">
-                    <Clock className="w-3.5 h-3.5" />
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3.5 py-2 rounded-xl border border-blue-100">
+                    <Clock className="w-4 h-4" />
                     {getDisplayDateTime(booking.booking_date, booking.booking_time, booking.candidate_times)}
                   </span>
                 </div>
                 
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative group-hover:bg-slate-100/70 transition-colors">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative group-hover:bg-blue-50/30 transition-colors">
                   <MessageSquare className="w-4 h-4 text-slate-300 absolute top-4 right-4" />
                   <p className="m-0 text-sm text-slate-700 leading-relaxed pr-8 line-clamp-2">
                     <span className="font-black text-blue-500 mr-2">Q.</span>
@@ -213,36 +217,35 @@ const BookingHistory = () => {
                 </div>
               </div>
 
-              <div className="flex flex-row lg:flex-col items-center lg:items-end justify-end gap-3 flex-shrink-0 lg:w-[140px] pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100 mt-2 lg:mt-0">
+              {/* 3. 액션 구역 (우측 고정 비율) */}
+              <div className="md:w-[180px] p-6 bg-white flex flex-row md:flex-col items-center justify-center gap-3 border-t md:border-t-0 md:border-l border-slate-100">
                 {activeTab === 'received' ? (
-                  // 💡 '신청받은 내역' 탭은 displayedBookings 덕분에 무조건 PAID 상태만 오므로, 뱃지를 그릴 필요 없이 버튼만 깔끔하게 노출합니다.
-                  <div className="flex w-full lg:flex-col gap-2">
-                    <button 
-                      onClick={() => handleReject(booking.booking_id)} 
-                      className="flex-1 lg:w-full px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-red-500 transition-all border border-slate-200 hover:border-red-500"
-                    >
-                      거절하기
-                    </button>
+                  <div className="flex w-full flex-row md:flex-col gap-2">
                     <button
                       onClick={() => handleConfirm(booking.booking_id)}
-                      className="flex-1 lg:w-full bg-slate-900 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all border-0"
+                      className="flex-1 w-full bg-[#1a2332] hover:bg-blue-600 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-md transition-all border-0"
                     >
                       확정하기
                     </button>
+                    <button 
+                      onClick={() => handleReject(booking.booking_id)} 
+                      className="flex-1 w-full px-4 py-3 rounded-xl text-sm font-bold text-slate-500 hover:text-white hover:bg-red-500 transition-all border border-slate-200 hover:border-red-500"
+                    >
+                      거절하기
+                    </button>
                   </div>
                 ) : (
-                  // 💡 '내가 신청한 내역'은 기존처럼 모든 상태를 배지로 예쁘게 보여줍니다.
-                  <div className="w-full text-right flex justify-end">
+                  <div className="w-full flex justify-center md:justify-end">
                     {booking.status === "CONFIRMED" ? (
-                       <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 px-4 py-2.5 rounded-xl border border-green-100">
-                          <CheckCircle className="w-4 h-4" /> 예약 확정됨
+                       <span className="flex items-center gap-1.5 text-sm font-bold text-green-600 bg-green-50 px-4 py-2.5 rounded-xl border border-green-100 w-full justify-center">
+                          <CheckCircle className="w-4 h-4" /> 예약 확정
                        </span>
                     ) : booking.status === "REJECTED" ? (
-                       <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 bg-red-50 px-4 py-2.5 rounded-xl border border-red-100">
+                       <span className="flex items-center gap-1.5 text-sm font-bold text-red-500 bg-red-50 px-4 py-2.5 rounded-xl border border-red-100 w-full justify-center">
                           <XCircle className="w-4 h-4" /> 거절됨
                        </span>
                     ) : (
-                       <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-4 py-2.5 rounded-xl">
+                       <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500 bg-slate-100 px-4 py-2.5 rounded-xl w-full justify-center">
                           <Clock className="w-4 h-4" /> 수락 대기중
                        </span>
                     )}
@@ -254,16 +257,10 @@ const BookingHistory = () => {
           );
         })}
 
+        {/* 내역이 없을 때 빈 화면 처리 */}
         {displayedBookings.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-              <MessageSquare className="w-8 h-8 text-slate-300" />
-            </div>
-            <p className="text-slate-500 text-base font-semibold m-0">
-              {activeTab === 'received' 
-                ? '현재 처리해야 할 커피챗 제안이 없습니다.' 
-                : '아직 신청한 커피챗 예약 내역이 없습니다.'}
-            </p>
+          <div className="text-center py-28 bg-white rounded-3xl border-2 border-dashed border-slate-200/80">
+            <p className="text-slate-400 text-base font-medium m-0">현재 해당하는 커피챗 예약 신청이 없습니다.</p>
           </div>
         )}
       </div>
