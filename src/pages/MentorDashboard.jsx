@@ -116,7 +116,7 @@ export default function Dashboard() {
       try {
         // 💡 0. 서버에서 내 진짜 유저 이름부터 받아와서 세팅합니다!
         try {
-          const userRes = await axios.get(`${BACKEND_URL}/api/users/${uid}`);
+          const userRes = await axios.get(`${BACKEND_URL}/api/user/${uid}`);
           if (userRes.data && userRes.data.name) {
             setUserName(userRes.data.name);
             localStorage.setItem('userName', userRes.data.name);
