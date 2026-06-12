@@ -16,17 +16,19 @@ export default function CoffeeChatReport() {
   const [session, setSession] = useState(null);
   const [aiAdvice, setAiAdvice] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false); // ✅ 추가
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false); 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
   const printRef = useRef(null);
 
   useEffect(() => {
     if (!chatId) return;
 
+    // 1. 예약 상세 데이터 로드
     axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => setBooking(res.data))
       .catch(err => console.error("예약 상세 로드 실패:", err));
 
+    // 2. 커피챗 세션 메타데이터 로드
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
       .then(res => {
         setSession(res.data);
@@ -35,22 +37,27 @@ export default function CoffeeChatReport() {
         }
       })
       .catch(err => console.error("세션 데이터 로드 실패:", err));
+
+    // ✨ [수정 완료 1] 페이지 진입 시 DB에 이미 저장된 리포트(요약 & 어드바이스)를 불러옵니다.
+    axios.get(`${BACKEND_URL}/api/coffee-chat-report/${chatId}`)
+      .then(res => {
+        if (res.data) {
+          if (res.data.summary) setSummary(res.data.summary);
+          if (res.data.ai_advice) setAiAdvice(res.data.ai_advice);
+        }
+      })
+      .catch(err => console.error("리포트 데이터 로드 실패:", err));
   }, [chatId]);
 
-  // ✅ 로딩 상태 추가 + 에러 로그 강화
+  // 요약 생성 API 호출
   const generateSummary = async () => {
     if (!chatId) return;
     setIsSummaryLoading(true);
     try {
       console.log("요약 생성 요청 시작...");
-      // ✨ 1. POST 요청의 결과를 res 변수에 바로 담습니다.
       const res = await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
       
-      // ✨ 2. 불필요한 GET 요청(const res = await axios.get...)은 삭제합니다.
-
       console.log("요약 결과:", res.data.ai_summary);
-      
-      // ✨ 3. POST 응답으로 받은 ai_summary를 바로 상태에 업데이트합니다.
       if (res.data.ai_summary) {
         setSummary(res.data.ai_summary);
       }
@@ -62,13 +69,21 @@ export default function CoffeeChatReport() {
     }
   };
 
+  // AI 어드바이스 생성 API 호출
   const generateAiAdvice = async () => {
     if (!chatId) return;
     setIsAiLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`);
-      if (response.data && response.data.report) {
-        setAiAdvice(response.data.report);
+      
+      // ✨ [수정 완료 2] 백엔드 규격(ai_advice)에 맞춰 받아오도록 수정했습니다.
+      if (response.data) {
+        if (response.data.ai_advice) {
+          setAiAdvice(response.data.ai_advice);
+        }
+        if (response.data.summary) {
+          setSummary(response.data.summary);
+        }
       }
     } catch (error) {
       console.error("AI 어드바이스 생성 실패:", error);
@@ -128,11 +143,11 @@ export default function CoffeeChatReport() {
           {/* ✅ printRef 시작: 요약본과 어드바이스를 모두 감쌉니다 */}
           <div ref={printRef} className="bg-white">
 
-            {/* --- 1. 대화내용 요약본 영역 --- */}
+            {/* 대화내용 요약본 */}
             <div className="mb-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="font-bold text-gray-900">대화내용 요약본</p>
-                {/* PDF 다운로드 버튼 */}
+                {/* ✅ PDF 다운로드 버튼: summary 있으면 항상 표시 */}
                 {summary && (
                   <button
                     onClick={handleDownloadPdf}
@@ -144,7 +159,7 @@ export default function CoffeeChatReport() {
                 )}
               </div>
 
-              {/* 요약 생성 버튼 또는 요약 내용 */}
+              {/* ✅ 요약 생성 버튼 또는 요약 내용 */}
               {isSummaryLoading ? (
                 <div className="w-full min-h-[8rem] px-5 py-4 bg-blue-50 border border-blue-200 rounded-xl animate-pulse flex items-center justify-center text-blue-400">
                   요약 생성 중...
@@ -165,10 +180,8 @@ export default function CoffeeChatReport() {
               )}
             </div>
 
-            {/* --- 2. AI 어드바이스 영역 (버튼 위, 콘텐츠 아래) --- */}
+            {/* --- 2. AI 어드바이스 영역 --- */}
             <div className="mb-6">
-              
-              {/* 타이틀 및 작동 버튼 */}
               <div className="flex items-center justify-between mb-3">
                 <p className="font-bold text-gray-900">AI 페이스메이커 어드바이스</p>
                 <button
@@ -187,7 +200,6 @@ export default function CoffeeChatReport() {
                 </button>
               </div>
 
-              {/* 로딩 스켈레톤 OR 어드바이스 마크다운 콘텐츠 */}
               {isAiLoading ? (
                 <div className="w-full h-64 p-5 bg-blue-50/30 border-2 border-blue-100 rounded-xl animate-pulse flex flex-col gap-4">
                   <div className="h-4 bg-blue-200/50 rounded w-3/4"></div>
@@ -217,7 +229,7 @@ export default function CoffeeChatReport() {
             </div>
 
           </div>
-          {/* ✅ printRef 끝 */}
+          {/* printRef 끝 */}
 
           {/* --- 3. 하단 목록 버튼 --- */}
           <button
