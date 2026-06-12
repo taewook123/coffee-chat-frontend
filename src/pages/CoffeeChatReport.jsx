@@ -125,14 +125,14 @@ export default function CoffeeChatReport() {
             )}
           </div>
 
-          {/* ✅ printRef — 여기 딱 한 번만, 요약본 + 어드바이스 전체 감쌈 */}
+          {/* ✅ printRef 시작: 요약본과 어드바이스를 모두 감쌉니다 */}
           <div ref={printRef} className="bg-white">
 
-            {/* 대화내용 요약본 */}
+            {/* --- 1. 대화내용 요약본 영역 --- */}
             <div className="mb-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="font-bold text-gray-900">대화내용 요약본</p>
-                {/* ✅ PDF 다운로드 버튼: summary 있으면 항상 표시 */}
+                {/* PDF 다운로드 버튼 */}
                 {summary && (
                   <button
                     onClick={handleDownloadPdf}
@@ -144,7 +144,7 @@ export default function CoffeeChatReport() {
                 )}
               </div>
 
-              {/* ✅ 요약 생성 버튼 또는 요약 내용 */}
+              {/* 요약 생성 버튼 또는 요약 내용 */}
               {isSummaryLoading ? (
                 <div className="w-full min-h-[8rem] px-5 py-4 bg-blue-50 border border-blue-200 rounded-xl animate-pulse flex items-center justify-center text-blue-400">
                   요약 생성 중...
@@ -165,21 +165,53 @@ export default function CoffeeChatReport() {
               )}
             </div>
 
-            {/* AI 어드바이스 콘텐츠 */}
-            <div className="w-full h-auto px-5 py-4 bg-white border-2 border-blue-100 rounded-xl text-gray-700 shadow-inner">
-              {aiAdvice ? (
-                <div className="prose prose-sm max-w-none prose-blue
-                  prose-headings:font-bold prose-headings:text-gray-900
-                  prose-a:text-blue-600 prose-li:marker:text-blue-500
-                  prose-table:border-collapse prose-table:w-full
-                  prose-th:bg-blue-50 prose-th:border prose-th:border-gray-300 prose-th:p-2
-                  prose-td:border prose-td:border-gray-300 prose-td:p-3 break-keep"
+            {/* --- 2. AI 어드바이스 영역 (버튼 위, 콘텐츠 아래) --- */}
+            <div className="mb-6">
+              
+              {/* 타이틀 및 작동 버튼 */}
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-bold text-gray-900">AI 페이스메이커 어드바이스</p>
+                <button
+                  onClick={generateAiAdvice}
+                  disabled={isAiLoading || aiAdvice !== ''}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all border-0 ${
+                    aiAdvice !== ''
+                      ? 'bg-green-100 text-green-700 cursor-default'
+                      : isAiLoading
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
+                  }`}
                 >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAdvice}</ReactMarkdown>
+                  <Sparkles className="w-4 h-4" />
+                  {aiAdvice !== '' ? '생성 완료' : isAiLoading ? '분석 중...' : '어드바이스 받기 ✨'}
+                </button>
+              </div>
+
+              {/* 로딩 스켈레톤 OR 어드바이스 마크다운 콘텐츠 */}
+              {isAiLoading ? (
+                <div className="w-full h-64 p-5 bg-blue-50/30 border-2 border-blue-100 rounded-xl animate-pulse flex flex-col gap-4">
+                  <div className="h-4 bg-blue-200/50 rounded w-3/4"></div>
+                  <div className="h-4 bg-blue-200/50 rounded w-full"></div>
+                  <div className="h-4 bg-blue-200/50 rounded w-5/6"></div>
+                  <div className="h-4 bg-blue-200/50 rounded w-1/2 mt-4"></div>
                 </div>
               ) : (
-                <div className="h-32 flex items-center justify-center text-gray-400">
-                  상단의 버튼을 눌러 나만의 실전 커리어 가이드를 받아보세요!
+                <div className="w-full h-auto min-h-[8rem] px-5 py-4 bg-white border-2 border-blue-100 rounded-xl text-gray-700 shadow-inner">
+                  {aiAdvice ? (
+                    <div className="prose prose-sm max-w-none prose-blue
+                      prose-headings:font-bold prose-headings:text-gray-900
+                      prose-a:text-blue-600 prose-li:marker:text-blue-500
+                      prose-table:border-collapse prose-table:w-full
+                      prose-th:bg-blue-50 prose-th:border prose-th:border-gray-300 prose-th:p-2
+                      prose-td:border prose-td:border-gray-300 prose-td:p-3 break-keep"
+                    >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAdvice}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <div className="h-full min-h-[8rem] flex items-center justify-center text-gray-400">
+                      상단의 버튼을 눌러 나만의 실전 커리어 가이드를 받아보세요!
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -187,39 +219,10 @@ export default function CoffeeChatReport() {
           </div>
           {/* ✅ printRef 끝 */}
 
-          {/* AI 어드바이스 버튼 영역 — printRef 밖 */}
-          <div className="flex items-center justify-between mt-4 mb-6">
-            <p className="font-bold text-gray-900">AI 페이스메이커 어드바이스</p>
-            <button
-              onClick={generateAiAdvice}
-              disabled={isAiLoading || aiAdvice !== ''}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all border-0 cursor-pointer ${
-                aiAdvice !== ''
-                  ? 'bg-green-100 text-green-700'
-                  : isAiLoading
-                  ? 'bg-gray-200 text-gray-500'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              {aiAdvice !== '' ? '생성 완료' : isAiLoading ? '분석 중...' : '어드바이스 받기 ✨'}
-            </button>
-          </div>
-
-          {/* 로딩 스켈레톤 */}
-          {isAiLoading && (
-            <div className="w-full h-64 p-5 bg-blue-50/30 border-2 border-blue-100 rounded-xl animate-pulse flex flex-col gap-4 mb-6">
-              <div className="h-4 bg-blue-200/50 rounded w-3/4"></div>
-              <div className="h-4 bg-blue-200/50 rounded w-full"></div>
-              <div className="h-4 bg-blue-200/50 rounded w-5/6"></div>
-              <div className="h-4 bg-blue-200/50 rounded w-1/2 mt-4"></div>
-            </div>
-          )}
-
-          {/* 목록 버튼 */}
+          {/* --- 3. 하단 목록 버튼 --- */}
           <button
             onClick={() => navigate('/coffee-chats')}
-            className="w-full py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-3"
+            className="w-full mt-6 py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-3"
           >
             <Check className="w-5 h-5" />
             목록으로 돌아가기
