@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sparkles, Check, Download } from 'lucide-react';
+import { Sparkles, Check, Download, FileText } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -20,25 +20,23 @@ export default function CoffeeChatReport() {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
   const printRef = useRef(null);
 
+  // ==========================================
+  // 🚨 백엔드 로직 (절대 건드리지 않음) 🚨
+  // ==========================================
   useEffect(() => {
     if (!chatId) return;
 
-    // 1. 예약 상세 데이터 로드
     axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => setBooking(res.data))
       .catch(err => console.error("예약 상세 로드 실패:", err));
 
-    // 2. 커피챗 세션 메타데이터 로드
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
       .then(res => {
         setSession(res.data);
-        if (res.data.ai_summary) {
-          setSummary(res.data.ai_summary);
-        }
+        if (res.data.ai_summary) setSummary(res.data.ai_summary);
       })
       .catch(err => console.error("세션 데이터 로드 실패:", err));
 
-    // ✨ [수정 완료 1] 페이지 진입 시 DB에 이미 저장된 리포트(요약 & 어드바이스)를 불러옵니다.
     axios.get(`${BACKEND_URL}/api/coffee-chat-report/${chatId}`)
       .then(res => {
         if (res.data) {
@@ -49,44 +47,29 @@ export default function CoffeeChatReport() {
       .catch(err => console.error("리포트 데이터 로드 실패:", err));
   }, [chatId]);
 
-  // 요약 생성 API 호출
   const generateSummary = async () => {
     if (!chatId) return;
     setIsSummaryLoading(true);
     try {
-      console.log("요약 생성 요청 시작...");
       const res = await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
-      
-      console.log("요약 결과:", res.data.ai_summary);
-      if (res.data.ai_summary) {
-        setSummary(res.data.ai_summary);
-      }
+      if (res.data.ai_summary) setSummary(res.data.ai_summary);
     } catch (err) {
-      console.error("요약 생성 실패 상세:", err.response?.data || err.message);
       alert(`요약 생성 실패: ${err.response?.data?.detail || err.message}`);
     } finally {
       setIsSummaryLoading(false);
     }
   };
 
-  // AI 어드바이스 생성 API 호출
   const generateAiAdvice = async () => {
     if (!chatId) return;
     setIsAiLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`);
-      
-      // ✨ [수정 완료 2] 백엔드 규격(ai_advice)에 맞춰 받아오도록 수정했습니다.
       if (response.data) {
-        if (response.data.ai_advice) {
-          setAiAdvice(response.data.ai_advice);
-        }
-        if (response.data.summary) {
-          setSummary(response.data.summary);
-        }
+        if (response.data.ai_advice) setAiAdvice(response.data.ai_advice);
+        if (response.data.summary) setSummary(response.data.summary);
       }
     } catch (error) {
-      console.error("AI 어드바이스 생성 실패:", error);
       alert("AI 어드바이스를 불러오는데 실패했습니다.");
     } finally {
       setIsAiLoading(false);
@@ -114,136 +97,160 @@ export default function CoffeeChatReport() {
       }
       pdf.save(`커피챗_AI리포트_${booking?.mentor_name || '멘토'}.pdf`);
     } catch (error) {
-      console.error("PDF 다운로드 실패:", error);
       alert("PDF 저장 중 문제가 발생했습니다.");
     }
   };
 
+  // ==========================================
+  // 🎨 UI/UX 렌더링 영역 (SaaS 대시보드 디자인) 🎨
+  // ==========================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <div className="bg-white rounded-3xl shadow-2xl p-12">
-          
-          {/* 헤더 */}
-          <div className="text-center mb-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-6">
-              {booking?.mentor_name?.slice(0, 1) || '멘'}
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">커피챗 AI 분석 리포트</h1>
-            <p className="text-gray-600">
-              {booking?.mentor_name || '멘토'} 님과의 대화가 성공적으로 분석되었습니다
-            </p>
-            {session?.duration_sec && (
-              <p className="text-sm text-gray-400 mt-1">
-                진행 시간: {Math.floor(session.duration_sec / 60)}분 {session.duration_sec % 60}초
-              </p>
-            )}
+    /* 1. 폰트 강제 적용 및 배경 톤 다운 (Slate 50) */
+    <div 
+      style={{ fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif" }} 
+      className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-12 font-sans"
+    >
+      {/* 화면 전체를 넓게 쓰는 대시보드 컨테이너 */}
+      <div className="max-w-7xl mx-auto w-full">
+        
+        {/* --- 헤더 (본문 카드와 완벽 분리) --- */}
+        <div className="flex flex-col items-center mb-12 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-slate-800 rounded-2xl shadow-lg flex items-center justify-center text-white font-extrabold text-3xl mb-6">
+            {booking?.mentor_name?.slice(0, 1) || '멘'}
           </div>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-3">
+            커피챗 AI 분석 리포트
+          </h1>
+          <p className="text-lg text-slate-500 font-medium">
+            {booking?.mentor_name || '멘토'} 님과의 대화가 성공적으로 분석되었습니다
+          </p>
+          {session?.duration_sec && (
+            <div className="mt-4 px-4 py-1.5 bg-slate-200/50 text-slate-600 rounded-full text-sm font-semibold">
+              진행 시간: {Math.floor(session.duration_sec / 60)}분 {session.duration_sec % 60}초
+            </div>
+          )}
+        </div>
 
-          {/* ✅ printRef 시작: 요약본과 어드바이스를 모두 감쌉니다 */}
-          <div ref={printRef} className="bg-white">
-
-            {/* --- 1. 대화내용 요약본 영역 --- */}
-            <div className="mb-10">
-              <div className="flex items-center justify-between mb-3">
-                <p className="font-bold text-gray-900">대화내용 요약본</p>
-                {/* PDF 다운로드 버튼 */}
+        {/* --- PDF 캡처 기준점 (양쪽 분할 레이아웃 - md 기준으로 낮춤) --- */}
+        <div ref={printRef} className="grid grid-cols-1 md:grid-cols-12 gap-8 bg-slate-50 items-start">
+          
+          {/* ⬅️ 왼쪽 패널: 대화내용 요약본 (md:col-span-4 로 변경) */}
+          <div className="md:col-span-4 flex flex-col gap-6 h-full">
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8 flex flex-col h-full sticky top-6">
+              
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-500" />
+                  대화 요약
+                </h2>
                 {summary && (
                   <button
                     onClick={handleDownloadPdf}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
                   >
                     <Download className="w-4 h-4" />
-                    PDF 다운로드
+                    PDF 저장
                   </button>
                 )}
               </div>
 
-              {/* 요약 생성 버튼 또는 요약 내용 */}
               {isSummaryLoading ? (
-                <div className="w-full min-h-[8rem] px-5 py-4 bg-blue-50 border border-blue-200 rounded-xl animate-pulse flex items-center justify-center text-blue-400">
-                  요약 생성 중...
+                <div className="w-full h-full min-h-[12rem] px-6 py-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl animate-pulse flex items-center justify-center text-indigo-400 font-semibold">
+                  요약 데이터를 생성하고 있습니다...
                 </div>
               ) : summary ? (
-                <div className="w-full min-h-[8rem] px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 whitespace-pre-wrap leading-relaxed shadow-sm">
+                // 🌟 요약본에도 강제 줄바꿈(whitespace-pre-wrap)과 넓은 줄간격(leading-[2.2]) 적용
+                <div className="w-full h-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 whitespace-pre-wrap leading-[2.2] text-base">
                   {summary}
                 </div>
               ) : (
-                <div className="w-full min-h-[8rem] px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center">
+                <div className="w-full h-full min-h-[12rem] bg-slate-50 border border-slate-100 border-dashed rounded-2xl flex flex-col items-center justify-center p-6 text-center">
+                  <p className="text-slate-400 mb-4 text-sm">아직 요약된 데이터가 없습니다.</p>
                   <button
                     onClick={generateSummary}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700"
+                    className="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition shadow-md"
                   >
-                    ✨ 요약 생성하기
+                    요약 생성하기
                   </button>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* --- 2. AI 어드바이스 영역 --- */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <p className="font-bold text-gray-900">AI 페이스메이커 어드바이스</p>
+          {/* ➡️ 오른쪽 패널: AI 어드바이스 (md:col-span-8 로 변경) */}
+          <div className="md:col-span-8 flex flex-col gap-6 h-full">
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8 md:p-10 min-h-[600px] flex flex-col">
+              
+              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
+                <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 text-indigo-600" />
+                  페이스메이커 어드바이스
+                </h2>
                 <button
                   onClick={generateAiAdvice}
                   disabled={isAiLoading || aiAdvice !== ''}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all border-0 ${
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                     aiAdvice !== ''
-                      ? 'bg-green-100 text-green-700 cursor-default'
+                      ? 'bg-emerald-50 text-emerald-600 cursor-default border border-emerald-100'
                       : isAiLoading
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
                   }`}
                 >
-                  <Sparkles className="w-4 h-4" />
-                  {aiAdvice !== '' ? '생성 완료' : isAiLoading ? '분석 중...' : '어드바이스 받기 ✨'}
+                  {aiAdvice !== '' ? '분석 완료' : isAiLoading ? 'AI가 분석 중입니다...' : '실전 가이드 생성 ✨'}
                 </button>
               </div>
 
               {isAiLoading ? (
-                <div className="w-full h-64 p-5 bg-blue-50/30 border-2 border-blue-100 rounded-xl animate-pulse flex flex-col gap-4">
-                  <div className="h-4 bg-blue-200/50 rounded w-3/4"></div>
-                  <div className="h-4 bg-blue-200/50 rounded w-full"></div>
-                  <div className="h-4 bg-blue-200/50 rounded w-5/6"></div>
-                  <div className="h-4 bg-blue-200/50 rounded w-1/2 mt-4"></div>
+                <div className="w-full flex-1 p-6 bg-slate-50 rounded-2xl animate-pulse flex flex-col gap-6">
+                  <div className="h-5 bg-slate-200 rounded w-3/4"></div>
+                  <div className="h-5 bg-slate-200 rounded w-full"></div>
+                  <div className="h-5 bg-slate-200 rounded w-5/6"></div>
+                  <div className="h-5 bg-slate-200 rounded w-1/2 mt-8"></div>
                 </div>
               ) : (
-                <div className="w-full h-auto min-h-[8rem] px-5 py-4 bg-white border-2 border-blue-100 rounded-xl text-gray-700 shadow-inner">
+                <div className="w-full flex-1 h-auto text-slate-800">
                   {aiAdvice ? (
-                    <div className="prose prose-base max-w-none prose-blue
-                      prose-p:leading-[2.2] prose-p:mt-8 prose-p:mb-8
-                      prose-li:leading-[2.2] prose-li:mt-10 prose-li:mb-10
-                      prose-ol:mt-8 prose-ul:mt-8
-                      prose-strong:text-gray-900 prose-strong:font-extrabold
-                      prose-a:text-blue-600 prose-li:marker:text-blue-600 prose-li:marker:font-bold
-                      prose-table:border-collapse prose-table:w-full prose-table:my-12
-                      prose-th:bg-blue-50 prose-th:border prose-th:border-gray-300 prose-th:p-4
-                      prose-td:border prose-td:border-gray-300 prose-td:p-4 break-keep"
+                    // 🌟 핵심: whitespace-pre-wrap 을 추가하여 AI가 빈 줄을 안 넣어도 강제로 줄이 나뉘게 만듭니다.
+                    // 🌟 둥근 테두리 옵션을 빼고, 단단한 실선(border-solid) 옵션을 강제로 넣었습니다!
+                    <div className="prose prose-base max-w-none whitespace-pre-wrap
+                      prose-p:leading-[2.2] prose-p:mt-6 prose-p:mb-6 prose-p:text-slate-700
+                      prose-li:leading-[2.2] prose-li:mt-6 prose-li:mb-6 prose-li:text-slate-700
+                      prose-ol:mt-6 prose-ul:mt-6
+                      prose-headings:text-slate-900 prose-headings:font-extrabold prose-headings:tracking-tight
+                      prose-h3:text-indigo-800 prose-h3:mt-10
+                      prose-strong:text-slate-900 prose-strong:font-extrabold
+                      prose-a:text-indigo-600 prose-li:marker:text-indigo-500 prose-li:marker:font-bold
+                      prose-table:border-collapse prose-table:border prose-table:border-solid prose-table:border-slate-300 prose-table:w-full prose-table:my-10
+                      prose-th:bg-slate-100 prose-th:border prose-th:border-solid prose-th:border-slate-300 prose-th:p-4 prose-th:text-slate-900 prose-th:font-bold
+                      prose-td:border prose-td:border-solid prose-td:border-slate-300 prose-td:p-5 break-keep"
                     >
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAdvice}</ReactMarkdown>
                     </div>
                   ) : (
-                    <div className="h-full min-h-[8rem] flex items-center justify-center text-gray-400">
-                      상단의 버튼을 눌러 나만의 실전 커리어 가이드를 받아보세요!
+                    <div className="h-full min-h-[20rem] flex flex-col items-center justify-center text-slate-400 gap-4">
+                      <Sparkles className="w-12 h-12 text-slate-200" />
+                      <p className="text-lg">상단의 생성 버튼을 눌러 나만의 실전 커리어 가이드를 받아보세요.</p>
                     </div>
                   )}
                 </div>
               )}
             </div>
-
           </div>
-          {/* printRef 끝 */}
+          
+        </div>
 
-          {/* --- 3. 하단 목록 버튼 --- */}
+        {/* --- 하단 네비게이션 (프린트 영역 밖) --- */}
+        <div className="mt-12 flex justify-center">
           <button
             onClick={() => navigate('/coffee-chats')}
-            className="w-full mt-6 py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-3"
+            className="px-8 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-3"
           >
             <Check className="w-5 h-5" />
             목록으로 돌아가기
           </button>
-
         </div>
+
       </div>
     </div>
   );
