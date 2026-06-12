@@ -198,12 +198,14 @@ export default function CoffeeChatReport() {
               ) : (
                 <div className="w-full h-auto min-h-[8rem] px-5 py-4 bg-white border-2 border-blue-100 rounded-xl text-gray-700 shadow-inner">
                   {aiAdvice ? (
-                    <div className="prose prose-sm max-w-none prose-blue
-                      prose-headings:font-bold prose-headings:text-gray-900
+                    <div className="prose max-w-none prose-blue
+                      prose-p:leading-loose prose-p:mb-7
+                      prose-headings:mt-12 prose-headings:mb-6 prose-headings:font-bold prose-headings:text-gray-900
+                      prose-li:mb-3 prose-li:leading-relaxed
                       prose-a:text-blue-600 prose-li:marker:text-blue-500
-                      prose-table:border-collapse prose-table:w-full
-                      prose-th:bg-blue-50 prose-th:border prose-th:border-gray-300 prose-th:p-2
-                      prose-td:border prose-td:border-gray-300 prose-td:p-3 break-keep"
+                      prose-table:border-collapse prose-table:w-full prose-table:my-10
+                      prose-th:bg-blue-50 prose-th:border prose-th:border-gray-300 prose-th:p-4
+                      prose-td:border prose-td:border-gray-300 prose-td:p-4 break-keep"
                     >
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAdvice}</ReactMarkdown>
                     </div>
