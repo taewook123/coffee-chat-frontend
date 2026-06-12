@@ -17,24 +17,31 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
+    const savedName = localStorage.getItem('userName');
+    
+    if (userName) {
+      setCurrentName(userName); 
+    } else if (savedName) {
+      setCurrentName(savedName);
+    } else {
+      setCurrentName('회원'); 
+    }
+
     if (isLoggedIn) {
       const rawUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
       const cleanUserId = rawUserId ? parseInt(rawUserId.toString().replace(/[^0-9]/g, ''), 10) : null;
 
       if (cleanUserId) {
-        // 💡 [핵심 수정] 회원님이 만드신 완벽한 단수형 API(/api/user/{id})를 호출합니다!
         axios.get(`${BACKEND_URL}/api/user/${cleanUserId}`)
           .then(res => {
             if (res.data && res.data.name) {
               setCurrentName(res.data.name);
               localStorage.setItem('userName', res.data.name);
-              // 백엔드 API에서 is_mentor 값도 내려주고 있으므로 바로 활용 가능합니다!
               setIsMentor(res.data.is_mentor || false);
             }
           })
           .catch(error => {
             console.error("❌ 내 정보 불러오기 실패:", error);
-            // 에러 시 로컬 스토리지에 있는 이름으로 대체
             setCurrentName(userName || localStorage.getItem('userName') || '회원');
           });
       }
@@ -71,33 +78,57 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     return () => clearInterval(interval);
   }, [isLoggedIn]);
 
-  const handleNotificationClick = async (id) => {
+  const handleNotificationClick = async (notif) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${BACKEND_URL}/api/notifications/${id}/read`, {
+      
+      const response = await fetch(`${BACKEND_URL}/api/notifications/${notif.id}/read`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      if (response.ok) {
-        const updated = notifications.map(n => n.id === id ? { ...n, is_read: true } : n);
-        setNotifications(updated);
-        setHasUnread(updated.some(n => !n.is_read));
+      
+      if (!response.ok) {
+        console.warn(`읽음 처리 서버 응답 에러: ${response.status}`);
+      } else {
+        setNotifications(prev => 
+          prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
+        );
       }
     } catch (error) {
-      console.error("❌ 알림 읽음 처리 실패:", error);
+      console.error("알림 읽음 처리 통신 실패:", error);
     }
+
+    const targetBookingId = notif.bookingId || notif.booking_id;
+    const msg = notif.message || ""; 
+
+    if (notif.type === 'BOOKING_REQUEST' || msg.includes('신청') || msg.includes('요청')) {
+      navigate('/dashboard', { 
+        state: { activeTab: 'history', subTab: 'received', bookingId: targetBookingId } 
+      });
+      setIsOpen(false); 
+    } 
+    else if (notif.type === 'BOOKING_CONFIRMED' || msg.includes('확정')) {
+      navigate('/dashboard', { 
+        state: { activeTab: 'history', subTab: 'requested', bookingId: targetBookingId } 
+      });
+      setIsOpen(false); 
+    } 
   };
 
   const handleDeleteNotification = async (e, id) => {
     e.stopPropagation(); 
     setNotifications(prev => prev.filter(n => n.id !== id));
+    
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
+      const response = await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (!response.ok) {
+        console.error(`서버 응답 에러 (${response.status}): 개별 삭제 실패`);
+      }
     } catch (error) {
       console.error("❌ 알림 영구 삭제 중 에러 발생:", error);
     }
@@ -106,12 +137,17 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   const handleDeleteAll = async (e) => {
     e.stopPropagation();
     setNotifications([]);
+    
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${BACKEND_URL}/api/notifications/all`, {
+      const response = await fetch(`${BACKEND_URL}/api/notifications/all`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (!response.ok) {
+        console.error(`서버 응답 에러 (${response.status}): 전체 삭제 실패`);
+      }
     } catch (error) {
       console.error("❌ 알림 전체 영구 삭제 중 에러 발생:", error);
     }
@@ -152,6 +188,13 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
             >
               커피챗
             </li>
+            {/* 💡 이 부분을 추가하세요 */}
+            <li 
+              onClick={() => navigate('/announcements')} 
+              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/announcements' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+            >
+              공지사항
+            </li>
           </ul>
         </div>
 
@@ -189,7 +232,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
                       </button>
                     )}
                   </div>
-
+                  
                   <div className="max-h-60 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="px-4 py-8 text-center text-sm text-gray-400">새로운 알림이 없습니다.</div>
@@ -197,12 +240,12 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
                       notifications.map((notif) => (
                         <div 
                           key={notif.id}
-                          onClick={() => handleNotificationClick(notif.id)}
+                          onClick={() => handleNotificationClick(notif)}
                           className={`group relative px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50/60 font-semibold' : 'opacity-60'}`}
                         >
                           <p className="m-0 text-gray-700 pr-6">{notif.message}</p>
                           <span className="text-[10px] text-gray-400 block mt-1">방금 전</span>
-
+                          
                           <button
                             onClick={(e) => handleDeleteNotification(e, notif.id)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-transparent border-0 cursor-pointer"
