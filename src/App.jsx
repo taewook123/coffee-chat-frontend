@@ -23,12 +23,12 @@ import MentorRegistration from './pages/MentorRegistration';
 import MainContent from './components/MainContent';
 import BookingHistory from './pages/BookingHistory';
 import ProfileImageUpload from './components/ProfileImageUpload';
-
-
 import { Coffee } from 'lucide-react';
 import CoffeeChatReport from './pages/CoffeeChatReport';
 import Announcements from './pages/Announcements';
-import WriteAnnouncement from './pages/WriteAnnouncement';
+import AnnouncementWrite from './pages/AnnouncementWrite';
+import AnnouncementDetail from './pages/AnnouncementDetail'; // 👈 상세 페이지
+import AnnouncementEdit from './pages/AnnouncementEdit';
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -112,7 +112,9 @@ const App = () => {
         <Route path="/profile-image-upload" element={<ProfileImageUpload />} />
         <Route path = "/coffee-chat-report/:chatId" element={<CoffeeChatReport />} />
         <Route path="/announcements" element={<Announcements />} />
-        <Route path="/announcements/write" element={<WriteAnnouncement />} />"
+        <Route path="/announcement/write" element={<AnnouncementWrite />} />"
+        <Route path="/announcements/:id" element={<AnnouncementDetail />} />
+        <Route path="/announcement/edit/:id" element={<AnnouncementEdit />} />
       </Routes>
       <Footer />
     </Router>
