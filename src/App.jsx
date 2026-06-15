@@ -27,10 +27,23 @@ import CoffeeChats from './pages/CoffeeChats';
 import CoffeeChatDetail from './pages/CoffeeChatDetail';
 import CoffeeChatRoom from './pages/CoffeeChatRoom';
 import CoffeeChatReview from './pages/CoffeeChatReview';
+import SignUpPage from './pages/SignUpPages';
+import ProfileSetup from './pages/ProfileSetup';
+import KakaoCallback from './components/KakaoCallback';
+import MentorRegistration from './pages/MentorRegistration';
+import MainContent from './components/MainContent';
+import BookingHistory from './pages/BookingHistory';
+import ProfileImageUpload from './components/ProfileImageUpload';
+
+
+import { Coffee } from 'lucide-react';
 import CoffeeChatReport from './pages/CoffeeChatReport';
 
 // 공지사항 및 고객센터 페이지
 import Announcements from './pages/Announcements';
+import AnnouncementWrite from './pages/AnnouncementWrite';
+import AnnouncementDetail from './pages/AnnouncementDetail'; // 👈 상세 페이지
+import AnnouncementEdit from './pages/AnnouncementEdit';
 import WriteAnnouncement from './pages/WriteAnnouncement';
 import CustomerCenter from './pages/CustomerCenter'; 
 // 🔥 1. 관리자용 고객센터 관리 컴포넌트 임포트 추가 (실제 파일 경로에 맞게 확인하세요)
@@ -132,6 +145,9 @@ const App = () => {
         
         {/* 게시판 및 고객 소통 단지 */}
         <Route path="/announcements" element={<Announcements />} />
+        <Route path="/announcement/write" element={<AnnouncementWrite />} />"
+        <Route path="/announcements/:id" element={<AnnouncementDetail />} />
+        <Route path="/announcement/edit/:id" element={<AnnouncementEdit />} />
         
         {/* 🔥 3. Announcements.jsx의 navigate('/announcement/write') 경로와 일치하도록 단수형(announcement)으로 수정 */}
         <Route path="/announcement/write" element={<WriteAnnouncement />} />

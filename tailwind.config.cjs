@@ -1,10 +1,16 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      // 👇 이 부분을 추가해 주세요!
+      fontFamily: {
+        sans: ["Pretendard", "Pretendard Variable", "sans-serif"],
+      },
+    },
   },
   plugins: [],
 }

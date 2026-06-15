@@ -161,8 +161,8 @@ export default function CoffeeChats() {
               )}
               {chat.tab_status === 'upcoming' && (
                 <button 
-                  onClick={() => navigate(isSent ? `/coffee-chat-detail/${chatId}` : `/booking-history`)}
-                  className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors ${isSent ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
+                  onClick={() => navigate(`/coffee-chat-detail/${chatId}`)} // 💡 이 경로로 통일합니다
+                  className="text-xs font-bold px-4 py-2 rounded-xl transition-colors bg-blue-50 text-blue-600 hover:bg-blue-100"
                 >
                   상세보기
                 </button>
