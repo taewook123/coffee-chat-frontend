@@ -1,16 +1,33 @@
+/* --- index.css (수정 후) --- */
 :root {
+  --teatimes-blue: #1A73E8; /* teatimess 로고의 핵심 블루 */
+  
+  /* 새로운 테마 배경색 정의 */
+  --bg-white: #FFFFFF;
+  --bg-light-blue-tint: #F0F7FF; /* 아주 연한 파란색 틴트 */
+
+  /* 기존 변수 재정의 (필요시) */
+  --accent: var(--teatimes-blue);
+  
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
+  --bg-navbar: #FFFFFF; /* 디자인 1: 흰색 네비바 */
+  --bg-light-blue-tint: #F0F7FF; /* 디자인 1: 연한 블루 틴트 (배경용) */
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  
+  /* teatimess 블루를 악센트 색상으로 */
+  --accent: var(--teatimes-blue);
+  --primary: var(--teatimes-blue); /* 추가 정의 */
+  --accent-bg: rgba(26, 115, 232, 0.1);
+  --accent-border: rgba(26, 115, 232, 0.5);
+  
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
+  /* 폰트 설정 (기존과 동일) */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -20,11 +37,8 @@
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
+  
+  /* @media 블록 (기존과 동일) */
   @media (max-width: 1024px) {
     font-size: 16px;
   }
