@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Coffee, Bell, X } from 'lucide-react'; 
+import { Bell, X } from 'lucide-react'; 
 import axios from 'axios';
 
 const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
@@ -82,7 +82,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     }
   }, [isLoggedIn, userName, location.pathname]); 
 
-  // 실시간 알림 폴링 (10초 주기)
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -129,113 +128,79 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
-        );
-      }
-    } catch (error) {
-      console.error("알림 읽음 처리 통신 실패:", error);
-    }
+      if (!response.ok) console.warn(`읽음 처리 서버 응답 에러: ${response.status}`);
+      else setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+    } catch (error) { console.error("알림 읽음 처리 통신 실패:", error); }
 
     const targetBookingId = notif.bookingId || notif.booking_id;
     const msg = notif.message || ""; 
 
     if (notif.type === 'BOOKING_REQUEST' || msg.includes('신청') || msg.includes('요청')) {
-      navigate('/dashboard', { 
-        state: { activeTab: 'history', subTab: 'received', bookingId: targetBookingId } 
-      });
+      navigate('/dashboard', { state: { activeTab: 'history', subTab: 'received', bookingId: targetBookingId } });
       setIsOpen(false); 
-    } 
-    else if (notif.type === 'BOOKING_CONFIRMED' || msg.includes('확정')) {
-      navigate('/dashboard', { 
-        state: { activeTab: 'history', subTab: 'requested', bookingId: targetBookingId } 
-      });
+    } else if (notif.type === 'BOOKING_CONFIRMED' || msg.includes('확정')) {
+      navigate('/dashboard', { state: { activeTab: 'history', subTab: 'requested', bookingId: targetBookingId } });
       setIsOpen(false); 
     } 
   };
 
-  // 알림 단건 삭제
-  const handleDeleteNotification = async (e, id) => {
+  const handleDeleteNotification = async (e, id) => { 
     e.stopPropagation(); 
     setNotifications(prev => prev.filter(n => n.id !== id));
-    
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!response.ok) console.error("개별 삭제 서버 반영 실패");
-    } catch (error) {
-      console.error("❌ 알림 영구 삭제 중 에러 발생:", error);
-    }
+      await fetch(`${BACKEND_URL}/api/notifications/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    } catch (error) { console.error("❌ 알림 영구 삭제 에러:", error); }
   };
 
-  // 알림 전체 삭제
-  const handleDeleteAll = async (e) => {
-    e.stopPropagation();
-    setNotifications([]);
-    
+  const handleDeleteAll = async (e) => { 
+    e.stopPropagation(); setNotifications([]);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${BACKEND_URL}/api/notifications/all`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) console.error("전체 삭제 서버 반영 실패");
-    } catch (error) {
-      console.error("❌ 알림 전체 영구 삭제 중 에러 발생:", error);
-    }
+      await fetch(`${BACKEND_URL}/api/notifications/all`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    } catch (error) { console.error("❌ 알림 전체 삭제 에러:", error); }
   };
 
-  const handleLogout = () => {
-    localStorage.clear(); 
-    setIsLoggedIn(false);
-    setIsMentor(false);
-    setIsAdmin(false); // 🔥 로그아웃 시 권한 초기화
-    setNotifications([]); 
-    setIsOpen(false);
-    alert("로그아웃 되었습니다.");
-    navigate('/');
+  const handleLogout = () => { 
+    localStorage.clear(); setIsLoggedIn(false); setIsMentor(false);
+    setNotifications([]); setHasUnread(false); setIsOpen(false);
+    alert("로그아웃 되었습니다."); navigate('/');
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#1a2332] text-white shadow-lg border-0">
+    <nav className="sticky top-0 z-50 bg-white text-gray-800 shadow-sm border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         
-        {/* 왼쪽 영역: 로고 + 메뉴 */}
         <div className="flex items-center gap-10">
-          <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => navigate('/')}>
-            <Coffee className="w-8 h-8 text-white" />
-            <span className="text-xl font-bold tracking-tight">TeaTimes</span>
+          <div className="flex items-center cursor-pointer select-none" onClick={() => navigate('/')}>
+            {/* 💡 엑스박스 뜨는 이미지 대신, 로고와 똑같이 생긴 텍스트를 적용했습니다! */}
+            <span className="text-3xl font-black text-[#1A73E8] tracking-tighter lowercase">
+              teatimes
+            </span>
           </div>
 
           <ul className="flex items-center gap-6 list-none m-0 p-0 text-sm font-medium">
             <li 
               onClick={() => navigate('/mentors')} 
-              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/mentors' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+              className={`hover:text-[#1A73E8] transition cursor-pointer ${location.pathname === '/mentors' ? 'text-[#1A73E8] font-bold' : 'text-gray-600'}`}
             >
               호스트 찾기
             </li>
             <li 
               onClick={() => navigate('/coffee-chats')} 
-              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/coffee-chats' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+              className={`hover:text-[#1A73E8] transition cursor-pointer ${location.pathname === '/coffee-chats' ? 'text-[#1A73E8] font-bold' : 'text-gray-600'}`}
             >
               커피챗
             </li>
             <li 
               onClick={() => navigate('/announcements')} 
-              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/announcements' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+              className={`hover:text-[#1A73E8] transition cursor-pointer ${location.pathname === '/announcements' ? 'text-[#1A73E8] font-bold' : 'text-gray-600'}`}
             >
               공지사항
             </li>
             <li 
               onClick={() => navigate('/customer-center')} 
-              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/customer-center' ? 'text-blue-400 font-bold' : 'text-white/80'}`}
+              className={`hover:text-blue-300 transition cursor-pointer ${location.pathname === '/customer-center' ? 'text-blue-400 font-bold' : 'text-gray-600'}`}
             >
               고객센터
             </li>
@@ -252,11 +217,10 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
           </ul>
         </div>
 
-        {/* 오른쪽 영역: 멤버 기능 및 회원 메뉴 */}
         <div className="auth-buttons flex items-center gap-4">
           {(!isLoggedIn || !isMentor) && (
             <button 
-              className="btn-register bg-transparent border border-white/30 hover:border-white px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer mr-2" 
+              className="bg-transparent border border-gray-300 hover:border-[#1A73E8] hover:text-[#1A73E8] text-gray-700 px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer mr-2" 
               onClick={() => navigate('/mentor-registration')}
             >
               호스트 등록하기
@@ -264,65 +228,46 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
           )}
           
           {isLoggedIn ? (
-            <div className="flex items-center gap-4">
-              
-              {/* 알림 아이콘 감싸는 래퍼 단위를 고정(relative)하여 위치 뒤틀림 방지 */}
-              <div className="relative mr-1" ref={notifRef}>
-                <div className="cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-                  <Bell className="w-6 h-6 text-white hover:text-blue-300 transition" />
-                  {hasUnread && (
-                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-[#1a2332] rounded-full"></span>
-                  )}
-                </div>
-
-                {/* 알림 레이어 창 */}
-                {isOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-                      <span className="font-bold text-xs text-gray-500">실시간 알림</span>
-                      {notifications.length > 0 && (
-                        <button 
-                          onClick={handleDeleteAll}
-                          className="text-[10px] text-gray-400 hover:text-red-500 font-semibold bg-transparent border-0 cursor-pointer hover:underline"
-                        >
-                          전체 삭제
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div className="max-h-60 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-sm text-gray-400">새로운 알림이 없습니다.</div>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div 
-                            key={notif.id}
-                            onClick={() => handleNotificationClick(notif)}
-                            className={`group relative px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50/60 font-semibold' : 'opacity-60'}`}
-                          >
-                            <p className="m-0 text-gray-700 pr-6">{notif.message}</p>
-                            <span className="text-[10px] text-gray-400 block mt-1">
-                              {formatRelativeTime(notif.created_at || notif.createdAt)}
-                            </span>
-                            
-                            <button
-                              onClick={(e) => handleDeleteNotification(e, notif.id)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-transparent border-0 cursor-pointer"
-                              title="삭제"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
+            <div className="flex items-center gap-4 relative">
+              <div className="relative cursor-pointer mr-1" onClick={() => setIsOpen(!isOpen)}>
+                <Bell className="w-6 h-6 text-gray-600 hover:text-[#1A73E8] transition" />
+                {hasUnread && (
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
                 )}
               </div>
 
+              {isOpen && (
+                <div className="absolute right-24 top-10 w-80 bg-white text-gray-800 rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-50 flex items-center justify-between">
+                    <span className="font-bold text-xs text-gray-500">실시간 알림</span>
+                    {notifications.length > 0 && (
+                      <button onClick={handleDeleteAll} className="text-[10px] text-gray-400 hover:text-red-500 font-semibold bg-transparent border-0 cursor-pointer hover:underline">
+                        전체 삭제
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="max-h-60 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-gray-400">새로운 알림이 없습니다.</div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`group relative px-4 py-3 text-xs border-b border-gray-50 transition cursor-pointer hover:bg-blue-50/50 ${!notif.is_read ? 'bg-blue-50/30 font-semibold' : 'opacity-70'}`}>
+                          <p className="m-0 text-gray-700 pr-6">{notif.message}</p>
+                          <span className="text-[10px] text-gray-400 block mt-1">방금 전</span>
+                          <button onClick={(e) => handleDeleteNotification(e, notif.id)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-transparent border-0 cursor-pointer" title="삭제">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
               <span 
                 onClick={() => navigate('/dashboard')} 
-                className="cursor-pointer text-sm font-bold text-amber-300 hover:text-amber-200 transition"
+                className="cursor-pointer text-sm font-bold text-gray-800 hover:text-[#1A73E8] transition"
                 title="마이 대시보드로 이동"
               >
                 {currentName}님
@@ -330,7 +275,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
               <button 
                 type="button"
                 onClick={handleLogout}
-                className="bg-red-500/80 hover:bg-red-600 px-5 py-2 rounded-full text-xs font-bold text-white transition border-0 cursor-pointer"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-full text-xs font-bold transition border-0 cursor-pointer"
               >
                 로그아웃
               </button>
@@ -339,7 +284,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
             <button 
               type="button"
               onClick={() => navigate('/login')}
-              className="bg-[#4a90e2] hover:bg-[#3a7bc8] px-6 py-2 rounded-full text-xs font-bold text-white transition border-0 cursor-pointer"
+              className="bg-[#1A73E8] hover:bg-blue-700 px-6 py-2 rounded-full text-xs font-bold text-white transition border-0 cursor-pointer"
             >
               로그인
             </button>

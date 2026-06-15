@@ -1,25 +1,93 @@
-/* index.css */
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+/* --- index.css 최상단 --- */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Thin.woff2') format('woff2');
+    font-weight: 100;
+    font-display: swap;
+}
 
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Light.woff2') format('woff2');
+    font-weight: 300;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Black.woff2') format('woff2');
+    font-weight: 900;
+    font-display: swap;
+}
+
+
+/* 2. 전역 변수 설정 */
 :root {
+  --teatimes-blue: #1A73E8; 
+  --bg-white: #FFFFFF;
+  --bg-light-blue-tint: #F0F7FF; 
+
+  --accent: var(--teatimes-blue);
+  
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  
+  --primary: var(--teatimes-blue); 
+  --accent-bg: rgba(26, 115, 232, 0.1);
+  --accent-border: rgba(26, 115, 232, 0.5);
+  
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  /* 💡 핵심: 변수 자체에 프리텐다드를 1순위로 세팅 */
-  --sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-  --heading: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  /* 💡 폰트 변수를 Pretendard로 전면 교체했습니다 */
+  --heading: 'Pretendard', system-ui, -apple-system, sans-serif;
+  --sans: 'Pretendard', system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -27,14 +95,20 @@
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
+  
   @media (max-width: 1024px) {
     font-size: 16px;
   }
+}
+
+/* 💡 [추가] 버튼, 입력창 등 상속 안 되는 모든 태그까지 Pretendard로 강제 통일 */
+body, h1, h2, h3, h4, h5, h6, p, span, a, input, button, textarea, select {
+  font-family: 'Pretendard', system-ui, sans-serif !important;
+}
+
+/* 💡 [추가] 단, 로고(글씨일 경우)만 예외 처리하여 원래 폰트 유지 */
+.logo, .logo-text, .logo-img {
+  font-family: system-ui, -apple-system, sans-serif !important;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,7 +136,7 @@ body {
 }
 
 #root {
-  width: 100%;
+  width: 100%; 
   margin: 0 auto;
   min-height: 100svh;
   display: flex;
