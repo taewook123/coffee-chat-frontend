@@ -1,26 +1,35 @@
-/* app.css - 기존 내용을 다 지우고 아래 내용만 넣으세요 */
 
-/* --- 사용자 설정 (기본 변수) --- */
+/* 2. 전역 변수 설정 */
 :root {
-  /* teatimess 로고의 블루 색상 추가 (#1A73E8) */
-  --teatimes-blue: #1A73E8;
+  --teatimes-blue: #1A73E8; 
+  --bg-white: #FFFFFF;
+  --bg-light-blue-tint: #F0F7FF;
+
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
   
-  /* 기존 변수를 teatimess 블루로 재정의 */
   --accent: var(--teatimes-blue);
-  --primary: var(--teatimes-blue); /* 추가로 정의 */
-}
+  --primary: var(--teatimes-blue); 
+  --accent-bg: rgba(26, 115, 232, 0.1);
+  --accent-border: rgba(26, 115, 232, 0.5);
+  
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-/* 폰트 초기화 (index.css에 있지만 한번 더 확실하게) */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+  /* 💡 3. 핵심! 기본 폰트를 머니그라피로 덮어씌웁니다 */
+  /* 제목(h1, h2)은 픽셀 폰트로, 일반 글씨는 라운드 폰트로 설정 */
+  --heading: 'Moneygraphy-Pixel', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'Moneygraphy-Rounded', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
 
-body {
-  margin: 0;
-  font-family: var(--sans);
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
-  -webkit-font-smoothing: antialiased;
 }
 
 /* --- 디자인 제안 1 (브랜드 코어 블루) 구현 --- */
