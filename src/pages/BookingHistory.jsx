@@ -123,7 +123,7 @@ export default function BookingHistory() {
       
       
 
-      <div className="flex-1 px-6 md:px-10 py-8 max-w-5xl mx-auto w-full">
+      <div className="flex-1 px-6 md:px-7 py-2 max-w-5xl mx-auto w-full">
         
         {/* ── 타이틀 & 탭 ── */}
         <div className="mb-8">
@@ -285,7 +285,7 @@ export default function BookingHistory() {
                             <CreditCard className="w-4 h-4 text-gray-400 shrink-0" />
                             <span className="text-sm text-gray-500 w-16">결제금액</span>
                             <span className="text-sm font-bold text-gray-900">
-                              {b.price ? `₩${b.price.toLocaleString()}` : "무료"}
+                              {b.price ? `₩${b.price.toLocaleString()}` : "15000원"}
                             </span>
                           </div>
 

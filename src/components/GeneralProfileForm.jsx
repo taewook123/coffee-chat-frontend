@@ -12,7 +12,10 @@ export default function GeneralProfileForm({
   handlePortfolioFileUpload,
   dbEmail,
   handleAddArrayItem,
-  handleRemoveArrayItem
+  handleRemoveArrayItem,
+  
+  // 🚀 [추가됨] 부모(ProfileSetup)에서 받아온 이미지 파일 선택 핸들러
+  handleProfileImageChange 
 }) {
   return (
     <div className="grid md:grid-cols-3 gap-8 items-start animate-fadeIn">
@@ -21,12 +24,10 @@ export default function GeneralProfileForm({
       <div className="md:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center sticky top-24">
         <label className="block text-sm font-bold text-gray-700 mb-4 text-left">프로필 이미지 <span className="text-gray-400 font-normal text-xs">(선택)</span></label>
         
+        {/* 💡 방금 바꾼 onFileSelect를 연결해줍니다 */}
         <ProfileImageUpload 
-          userId={userId} 
           currentImageUrl={formData.profile_image} 
-          onUploadSuccess={(newUrl) => {
-            setFormData({ ...formData, profile_image: newUrl });
-          }}
+          onFileSelect={handleProfileImageChange} 
         />
         
         <div className="mt-5 pt-4 border-t border-gray-100 bg-slate-50/50 rounded-xl p-3">
@@ -48,7 +49,7 @@ export default function GeneralProfileForm({
             <input
               type="text"
               value={formData.name || ''}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(newUrl) => setFormData({ ...formData, profile_image: newUrl })}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-blue-500 transition text-sm bg-white"
               placeholder="실명을 입력해 주세요."
               required
@@ -154,7 +155,6 @@ export default function GeneralProfileForm({
             />
           </div>
 
-          {/* 💡 [정렬 핵심 교체] 무조건 태그가 한 줄 깔려있다고 가정하고 grid 정렬 기준을 바닥(items-end)으로 락(Lock)을 겁니다. */}
           <div className="grid md:grid-cols-2 gap-4 items-end">
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-2">MBTI <span className="text-red-500">*</span></label>
@@ -183,4 +183,4 @@ export default function GeneralProfileForm({
       </div>
     </div>
   );
-}
+} 
