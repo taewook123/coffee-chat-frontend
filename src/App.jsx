@@ -33,6 +33,8 @@ import CoffeeChatReport from './pages/CoffeeChatReport';
 import Announcements from './pages/Announcements';
 import WriteAnnouncement from './pages/WriteAnnouncement';
 import CustomerCenter from './pages/CustomerCenter'; 
+// 🔥 1. 관리자용 고객센터 관리 컴포넌트 임포트 추가 (실제 파일 경로에 맞게 확인하세요)
+import AdminSupport from './pages/AdminSupport'; 
 
 // 글로벌 스타일
 import './App.css';
@@ -78,7 +80,7 @@ const App = () => {
     }
   }, []);
 
-  // 리다이렉트 컴포넌트 마운트 직후 안전하게 상태를 클리어해주는 훅 (안티패턴 해결)
+  // 리다이렉트 컴포넌트 마운트 직후 안전하게 상태를 클리어해주는 훅
   useEffect(() => {
     if (redirectToProfile) setRedirectToProfile(false);
     if (redirectToHome) setRedirectToHome(false);
@@ -102,6 +104,9 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/login/kakao/callback" element={<KakaoCallback />} />
+        
+        {/* 🔥 2. 위에서 import 해온 AdminSupport 컴포넌트 연결 위치 (정상 동작) */}
+        <Route path="/admin/support" element={<AdminSupport />} />
         
         {/* 프로필 및 계정 설정 */}
         <Route path="/profile-setup" element={<ProfileSetup />} />
@@ -127,7 +132,10 @@ const App = () => {
         
         {/* 게시판 및 고객 소통 단지 */}
         <Route path="/announcements" element={<Announcements />} />
-        <Route path="/announcements/write" element={<WriteAnnouncement />} />
+        
+        {/* 🔥 3. Announcements.jsx의 navigate('/announcement/write') 경로와 일치하도록 단수형(announcement)으로 수정 */}
+        <Route path="/announcement/write" element={<WriteAnnouncement />} />
+        
         <Route path="/customer-center" element={<CustomerCenter />} />
       </Routes>
       

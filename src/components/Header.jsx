@@ -10,6 +10,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   
   const [currentName, setCurrentName] = useState('회원');
   const [isMentor, setIsMentor] = useState(false); 
+  const [isAdmin, setIsAdmin] = useState(false); // 🔥 1. 관리자 권한 상태 추가
   const [notifications, setNotifications] = useState([]); 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -39,7 +40,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     }
   };
 
-  // 사용자 정보 바인딩 및 동기화
+  // 사용자 정보 바인딩 및 동기화 (권한 체크 포함)
   useEffect(() => {
     const savedName = localStorage.getItem('userName');
     
@@ -58,10 +59,15 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
       if (cleanUserId) {
         axios.get(`${BACKEND_URL}/api/user/${cleanUserId}`)
           .then(res => {
-            if (res.data && res.data.name) {
-              setCurrentName(res.data.name);
-              localStorage.setItem('userName', res.data.name);
+            if (res.data) {
+              if (res.data.name) {
+                setCurrentName(res.data.name);
+                localStorage.setItem('userName', res.data.name);
+              }
               setIsMentor(res.data.is_mentor || false);
+              
+              // 🔥 2. Announcements 페이지와 동일하게 role이 ADMIN / admin 인지 확인
+              setIsAdmin(res.data.role === 'ADMIN' || res.data.role === 'admin');
             }
           })
           .catch(error => {
@@ -72,6 +78,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     } else {
       setCurrentName('회원');
       setIsMentor(false);
+      setIsAdmin(false); // 🔥 로그아웃 상태면 관리자 권한도 false
     }
   }, [isLoggedIn, userName, location.pathname]); 
 
@@ -189,6 +196,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
     localStorage.clear(); 
     setIsLoggedIn(false);
     setIsMentor(false);
+    setIsAdmin(false); // 🔥 로그아웃 시 권한 초기화
     setNotifications([]); 
     setIsOpen(false);
     alert("로그아웃 되었습니다.");
@@ -231,6 +239,16 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
             >
               고객센터
             </li>
+            
+            {/* 🔥 3. 관리자(isAdmin)일 때만 헤더에 '고객센터 관리' 메뉴 노출 */}
+            {isAdmin && (
+              <li 
+                onClick={() => navigate('/admin/support')} 
+                className={`text-red-400 hover:text-red-300 font-bold transition cursor-pointer ${location.pathname === '/admin/support' ? 'underline' : ''}`}
+              >
+                고객센터 관리
+              </li>
+            )}
           </ul>
         </div>
 

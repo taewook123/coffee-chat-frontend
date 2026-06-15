@@ -15,9 +15,19 @@ import {
   Sparkles,
   Phone,
   Mail,
+  Eye,
 } from "lucide-react";
 
-/* ─── 1. 비즈니스 로직 함수 ────────────────────────────────────────────── */
+/* ─── 챗봇 로직 (AI 챗봇 작업 전까지 유지되는 사전 정의 답변) ────────────────────────────── */
+const DEFAULT_BOT_RESPONSES = {
+  default: "안녕하세요! 커피챗 AI 도우미입니다. 무엇을 도와드릴까요?",
+  "결제": "결제는 신용카드, 카카오페이, 네이버페이를 지원합니다. 환불 정책은 마이페이지의 이용 약관을 참고해 주세요.",
+  "멘토": "멘토 신청은 상단 메뉴의 '멘토 지원하기'를 통해 상시 접수받고 있습니다.",
+  "시간": "커피챗 세션 시간 변경은 매칭 완료 후 영업일 기준 최소 24시간 전까지 가능합니다."
+};
+
+const DEFAULT_QUICK_REPLIES = ["결제 방법은 어떻게 되나요?", "멘토 지원 조건이 궁금해요", "시간 변경하고 싶어요"];
+
 function getBotReply(input, responses) {
   for (const [key, val] of Object.entries(responses)) {
     if (key !== "default" && input.includes(key)) return val;
@@ -32,21 +42,70 @@ function now() {
 /* ═══════════════════════════════════════════════════════════════════════════
     MAIN PAGE COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export default function SupportPage({
-  faqCategories = DEFAULT_FAQ_CATEGORIES,
-  faqs = DEFAULT_FAQS,
-  inquiryCategories = DEFAULT_INQUIRY_CATEGORIES,
-  botResponses = DEFAULT_BOT_RESPONSES,
-  quickReplies = DEFAULT_QUICK_REPLIES,
-  customerServiceInfo = DEFAULT_CS_INFO,
-}) {
+export default function SupportPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("faq");
 
+  /* ── FAQ: DB에서 로드 (정상 작동) ─────────────────────────────────────── */
+  const [faqs, setFaqs]               = useState([]);
+  const [faqCategories, setFaqCategories] = useState(["전체"]);
+  const [faqLoading, setFaqLoading]   = useState(true);
+  const [faqError, setFaqError]       = useState(null);
+
+  /* ── 백엔드에 없는 데이터들은 고정 기본값(Mock)으로 설정하여 404 방지 ── */
+  const [inquiryCategories] = useState(["서비스 이용", "결제/환불", "계정/인증", "기타"]);
+  const [csInfo] = useState({
+    operatingHours: "평일 10:00 ~ 18:00 (주말/공휴일 제외)",
+    responseTimeHint: "15분 이내",
+    responseTimeDetail: "영업일 기준 평균 1~2시간 이내 답변",
+    email: "support@coffeechat.com"
+  });
+  const [botResponses] = useState(DEFAULT_BOT_RESPONSES);
+  const [quickReplies] = useState(DEFAULT_QUICK_REPLIES);
+
+useEffect(() => {
+    // 💡 프론트엔드(localhost)를 거치지 않고, 백엔드 실서버로 다이렉트 호출합니다.
+    const SERVER_URL = "http://48.211.169.52:8000";
+
+    /* 1. FAQ 카테고리 로드 */
+    fetch(`${SERVER_URL}/api/support/faqs/categories`)
+      .then((r) => { 
+        if (!r.ok) throw new Error(); 
+        return r.json(); 
+      })
+      .then((data) => {
+        setFaqCategories(["전체", ...data]);
+      })
+      .catch((err) => {
+        console.error("카테고리 에러:", err);
+        setFaqError("카테고리를 불러오지 못했습니다.");
+      });
+
+    /* 2. FAQ 목록 로드 */
+    fetch(`${SERVER_URL}/api/support/faqs`)
+      .then((r) => { 
+        if (!r.ok) throw new Error(); 
+        return r.json(); 
+      })
+      .then((data) => {
+        setFaqs(data.map((f) => ({
+          id: String(f.id),
+          category: f.category,
+          q: f.question,
+          a: f.answer,
+        })));
+        setFaqLoading(false);
+      })
+      .catch((err) => {
+        console.error("FAQ 목록 에러:", err);
+        setFaqError("FAQ를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setFaqLoading(false);
+      });
+  }, []);
+
   const TABS = [
-    { key: "faq",     label: "자주 묻는 질문", icon: <HelpCircle className="w-5 h-5" /> },
+    { key: "faq",     label: "자주 묻는 질문", icon: <HelpCircle    className="w-5 h-5" /> },
     { key: "inquiry", label: "1:1 문의",       icon: <MessageCircle className="w-5 h-5" /> },
-    { key: "chatbot", label: "AI 챗봇",        icon: <Bot className="w-5 h-5" /> },
   ];
 
   return (
@@ -70,7 +129,7 @@ export default function SupportPage({
         <div className="flex items-center gap-2">
           <Phone className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-            {customerServiceInfo.operatingHours}
+            {csInfo?.operatingHours ?? "로딩 중…"}
           </span>
         </div>
       </header>
@@ -120,9 +179,26 @@ export default function SupportPage({
 
       {/* ── Content ── */}
       <div className="flex-1 px-10 pb-12 max-w-5xl mx-auto w-full">
-        {tab === "faq"     && <FaqPanel categories={faqCategories} faqs={faqs} />}
-        {tab === "inquiry" && <InquiryPanel categories={inquiryCategories} info={customerServiceInfo} />}
-        {tab === "chatbot" && <ChatbotPanel responses={botResponses} quickReplies={quickReplies} />}
+        {tab === "faq" && (
+          <FaqPanel
+            categories={faqCategories}
+            faqs={faqs}
+            loading={faqLoading}
+            error={faqError}
+          />
+        )}
+        {tab === "inquiry" && (
+          <InquiryPanel
+            categories={inquiryCategories}
+            info={csInfo}
+          />
+        )}
+        {tab === "chatbot" && (
+          <ChatbotPanel
+            responses={botResponses}
+            quickReplies={quickReplies}
+          />
+        )}
       </div>
     </div>
   );
@@ -131,14 +207,14 @@ export default function SupportPage({
 /* ═══════════════════════════════════════════════════════════════════════════
     FAQ PANEL
 ══════════════════════════════════════════════════════════════════════════ */
-function FaqPanel({ categories, faqs }) {
+function FaqPanel({ categories, faqs, loading, error }) {
   const [activeCat, setActiveCat] = useState("전체");
-  const [query, setQuery] = useState("");
-  const [openId, setOpenId] = useState(null);
+  const [query, setQuery]         = useState("");
+  const [openId, setOpenId]       = useState(null);
 
   const filtered = faqs.filter((f) => {
     const matchCat = activeCat === "전체" || f.category === activeCat;
-    const matchQ = query.trim() === "" || f.q.includes(query) || f.a.includes(query);
+    const matchQ   = query.trim() === "" || f.q.includes(query) || f.a.includes(query);
     return matchCat && matchQ;
   });
 
@@ -180,61 +256,84 @@ function FaqPanel({ categories, faqs }) {
         })}
       </div>
 
-      {/* Accordion list */}
-      <div className="flex flex-col gap-2">
-        {filtered.map((faq) => {
-          const open = openId === faq.id;
-          return (
-            <div
-              key={faq.id}
-              className="rounded-2xl overflow-hidden transition-all duration-200"
-              style={{
-                background: open ? "rgba(74,144,226,0.06)" : "rgba(255,255,255,0.03)",
-                border: open ? "1px solid rgba(74,144,226,0.2)" : "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <button
-                onClick={() => setOpenId(open ? null : faq.id)}
-                className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                    style={{ background: "rgba(74,144,226,0.12)", color: "#4a90e2" }}
-                  >
-                    {faq.category}
-                  </span>
-                  <span
-                    className="text-sm font-semibold truncate"
-                    style={{ color: open ? "#fff" : "rgba(255,255,255,0.8)" }}
-                  >
-                    {faq.q}
-                  </span>
-                </div>
-                <ChevronDown
-                  className="w-4 h-4 flex-shrink-0 transition-transform duration-200"
-                  style={{ color: "rgba(255,255,255,0.3)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
-                />
-              </button>
-              {open && (
-                <div
-                  className="px-6 pb-5 text-sm leading-relaxed"
-                  style={{ color: "rgba(255,255,255,0.55)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
-                >
-                  <p className="pt-4">{faq.a}</p>
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* 로딩 */}
+      {loading && (
+        <div className="flex flex-col items-center py-16 gap-3">
+          <div
+            className="w-6 h-6 rounded-full border-2 animate-spin"
+            style={{ borderColor: "rgba(74,144,226,0.3)", borderTopColor: "#4a90e2" }}
+          />
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>FAQ를 불러오는 중…</p>
+        </div>
+      )}
 
-        {filtered.length === 0 && (
-          <div className="flex flex-col items-center py-16 gap-3">
-            <HelpCircle className="w-10 h-10" style={{ color: "rgba(255,255,255,0.1)" }} />
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>검색 결과가 없습니다</p>
-          </div>
-        )}
-      </div>
+      {/* 에러 */}
+      {!loading && error && (
+        <div
+          className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
+          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}
+        >
+          ⚠ {error}
+        </div>
+      )}
+
+      {/* Accordion */}
+      {!loading && !error && (
+        <div className="flex flex-col gap-2">
+          {filtered.map((faq) => {
+            const open = openId === faq.id;
+            return (
+              <div
+                key={faq.id}
+                className="rounded-2xl overflow-hidden transition-all duration-200"
+                style={{
+                  background: open ? "rgba(74,144,226,0.06)" : "rgba(255,255,255,0.03)",
+                  border:     open ? "1px solid rgba(74,144,226,0.2)" : "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <button
+                  onClick={() => setOpenId(open ? null : faq.id)}
+                  className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                      style={{ background: "rgba(74,144,226,0.12)", color: "#4a90e2" }}
+                    >
+                      {faq.category}
+                    </span>
+                    <span
+                      className="text-sm font-semibold truncate"
+                      style={{ color: open ? "#fff" : "rgba(255,255,255,0.8)" }}
+                    >
+                      {faq.q}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className="w-4 h-4 flex-shrink-0 transition-transform duration-200"
+                    style={{ color: "rgba(255,255,255,0.3)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+                {open && (
+                  <div
+                    className="px-6 pb-5 text-sm leading-relaxed"
+                    style={{ color: "rgba(255,255,255,0.55)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    <p className="pt-4">{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {filtered.length === 0 && (
+            <div className="flex flex-col items-center py-16 gap-3">
+              <HelpCircle className="w-10 h-10" style={{ color: "rgba(255,255,255,0.1)" }} />
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>검색 결과가 없습니다</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -243,38 +342,43 @@ function FaqPanel({ categories, faqs }) {
     1:1 INQUIRY PANEL
 ══════════════════════════════════════════════════════════════════════════ */
 function InquiryPanel({ categories, info }) {
-  const [category, setCategory] = useState("");
-  const [title, setTitle]       = useState("");
-  const [body, setBody]         = useState("");
-  const [email, setEmail]       = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [category, setCategory]     = useState("");
+  const [title, setTitle]           = useState("");
+  const [body, setBody]             = useState("");
+  const [email, setEmail]           = useState("");
+  const [submitted, setSubmitted]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const canSubmit = category && title.trim() && body.trim() && email.trim();
 
-  if (submitted) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-5">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg,#4a90e2,#6c63ff)", boxShadow: "0 0 50px rgba(74,144,226,0.35)" }}
-        >
-          <CheckCircle className="w-9 h-9 text-white" />
-        </div>
-        <div className="text-center">
-          <p className="text-xl font-bold text-white mb-2">문의가 접수되었습니다</p>
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-            영업일 기준 1~2일 내에 <span style={{ color: "#4a90e2" }}>{email}</span> 으로 답변드립니다.
-          </p>
-        </div>
-        <div
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm mt-2"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}
-        >
-          <Clock className="w-4 h-4" />
-          평균 응답 시간: {info.responseTimeHint}
-        </div>
-      </div>
-    );
+  async function handleSubmit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      // 💡 문의 접수 API 엔드포인트도 Swagger 명세와 매칭되는 /api/support/inquiries 로 수정
+      const res = await fetch("/api/support/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category,
+          title,
+          body,
+          email,
+          user_id: null, 
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.detail ?? "서버 오류가 발생했습니다.");
+      }
+      setSubmitted(true);
+    } catch (e) {
+      setSubmitError(e.message || "문의 접수 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -302,17 +406,14 @@ function InquiryPanel({ categories, info }) {
           </div>
         </div>
 
-        {/* Email */}
         <Field label="답변받을 이메일">
           <FieldInput value={email} onChange={setEmail} placeholder="example@email.com" type="email" />
         </Field>
 
-        {/* Title */}
         <Field label="제목">
           <FieldInput value={title} onChange={setTitle} placeholder="문의 제목을 입력하세요" maxLength={80} />
         </Field>
 
-        {/* Body */}
         <Field label="문의 내용">
           <textarea
             value={body}
@@ -333,7 +434,6 @@ function InquiryPanel({ categories, info }) {
           </p>
         </Field>
 
-        {/* Attach hint */}
         <button
           className="flex items-center gap-2 text-sm transition hover:opacity-80 self-start"
           style={{ color: "rgba(255,255,255,0.3)" }}
@@ -342,20 +442,40 @@ function InquiryPanel({ categories, info }) {
           파일 첨부 (선택, 최대 10MB)
         </button>
 
-        {/* Submit */}
+        {submitError && (
+          <div
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }}
+          >
+            ⚠ {submitError}
+          </div>
+        )}
+
         <button
-          onClick={() => canSubmit && setSubmitted(true)}
-          disabled={!canSubmit}
+          onClick={handleSubmit}
+          disabled={!canSubmit || submitting}
           className="flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition-all duration-200"
           style={{
-            background: canSubmit ? "linear-gradient(135deg,#4a90e2,#6c63ff)" : "rgba(255,255,255,0.06)",
-            color: canSubmit ? "#fff" : "rgba(255,255,255,0.2)",
-            boxShadow: canSubmit ? "0 6px 20px rgba(74,144,226,0.3)" : "none",
-            cursor: canSubmit ? "pointer" : "not-allowed",
+            background: canSubmit && !submitting ? "linear-gradient(135deg,#4a90e2,#6c63ff)" : "rgba(255,255,255,0.06)",
+            color:      canSubmit && !submitting ? "#fff" : "rgba(255,255,255,0.2)",
+            boxShadow:  canSubmit && !submitting ? "0 6px 20px rgba(74,144,226,0.3)" : "none",
+            cursor:     canSubmit && !submitting ? "pointer" : "not-allowed",
           }}
         >
-          <Send className="w-4 h-4" />
-          문의 제출하기
+          {submitting ? (
+            <>
+              <div
+                className="w-4 h-4 rounded-full border-2 animate-spin"
+                style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "transparent" }}
+              />
+              전송 중…
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" />
+              문의 제출하기
+            </>
+          )}
         </button>
       </div>
 
@@ -363,8 +483,8 @@ function InquiryPanel({ categories, info }) {
       <div className="flex flex-col gap-4">
         {[
           { icon: <Clock className="w-4 h-4" />, title: "평균 응답 시간", desc: info.responseTimeDetail, color: "#4a90e2" },
-          { icon: <Mail className="w-4 h-4" />, title: "이메일 지원", desc: info.email, color: "#a78bfa" },
-          { icon: <Phone className="w-4 h-4" />, title: "전화 상담", desc: info.operatingHours, color: "#34d399" },
+          { icon: <Mail  className="w-4 h-4" />, title: "이메일 지원",   desc: info.email,              color: "#a78bfa" },
+          { icon: <Phone className="w-4 h-4" />, title: "전화 상담",     desc: info.operatingHours,     color: "#34d399" },
         ].map((item) => (
           <div
             key={item.title}
@@ -399,19 +519,20 @@ function InquiryPanel({ categories, info }) {
     CHATBOT PANEL
 ══════════════════════════════════════════════════════════════════════════ */
 function ChatbotPanel({ responses, quickReplies }) {
+  const defaultMsg = responses?.default ?? "안녕하세요! 잠시만 기다려 주세요.";
   const [messages, setMessages] = useState([
-    { id: 0, role: "bot", text: responses.default, time: now() },
+    { id: 0, role: "bot", text: defaultMsg, time: now() },
   ]);
-  const [input, setInput] = useState("");
+  const [input, setInput]   = useState("");
   const [typing, setTyping] = useState(false);
-  const bottomRef = useRef(null);
+  const bottomRef           = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
   const sendMessage = (text) => {
-    if (!text.trim()) return;
+    if (!text.trim() || !responses) return;
     const userMsg = { id: Date.now(), role: "user", text: text.trim(), time: now() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
@@ -428,7 +549,7 @@ function ChatbotPanel({ responses, quickReplies }) {
       className="flex flex-col rounded-3xl overflow-hidden"
       style={{ height: 560, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
     >
-      {/* Chat header */}
+      {/* Header */}
       <div
         className="flex items-center gap-3 px-6 py-4 flex-shrink-0"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}
@@ -483,7 +604,6 @@ function ChatbotPanel({ responses, quickReplies }) {
           </div>
         ))}
 
-        {/* Typing indicator */}
         {typing && (
           <div className="flex gap-3">
             <div
@@ -514,7 +634,7 @@ function ChatbotPanel({ responses, quickReplies }) {
         className="flex gap-2 px-6 py-3 overflow-x-auto flex-shrink-0"
         style={{ borderTop: "1px solid rgba(255,255,255,0.05)", scrollbarWidth: "none" }}
       >
-        {quickReplies.map((qr) => (
+        {(quickReplies ?? []).map((qr) => (
           <button
             key={qr}
             onClick={() => sendMessage(qr)}
@@ -526,7 +646,7 @@ function ChatbotPanel({ responses, quickReplies }) {
         ))}
       </div>
 
-      {/* Input bar */}
+      {/* Input */}
       <div
         className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
@@ -545,8 +665,8 @@ function ChatbotPanel({ responses, quickReplies }) {
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150"
           style={{
             background: input.trim() ? "linear-gradient(135deg,#4a90e2,#6c63ff)" : "rgba(255,255,255,0.06)",
-            color: input.trim() ? "#fff" : "rgba(255,255,255,0.2)",
-            boxShadow: input.trim() ? "0 4px 12px rgba(74,144,226,0.35)" : "none",
+            color:      input.trim() ? "#fff" : "rgba(255,255,255,0.2)",
+            boxShadow:  input.trim() ? "0 4px 12px rgba(74,144,226,0.35)" : "none",
           }}
         >
           <Send className="w-4 h-4" />
@@ -556,7 +676,7 @@ function ChatbotPanel({ responses, quickReplies }) {
   );
 }
 
-/* ─── Helpers ───────────────────────────────────────────────────────────── */
+/* ─── Shared helpers ────────────────────────────────────────────────────── */
 function Label({ children }) {
   return (
     <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.35)" }}>
@@ -593,38 +713,3 @@ function FieldInput({ value, onChange, placeholder, type = "text", maxLength }) 
     />
   );
 }
-
-/* ─── 2. 기본 데이터셋 정의 (MOCK DATA / DEFAULT PROPS) ──────────────────── */
-const DEFAULT_FAQ_CATEGORIES = ["전체", "예약/결제", "멘토링", "계정", "환불"];
-
-const DEFAULT_FAQS = [
-  { id: "1", category: "예약/결제", q: "커피챗 세션을 예약하려면 어떻게 하나요?", a: "멘토 탐색 페이지에서 원하는 멘토를 선택한 후, 프로필 하단의 '커피챗 예약' 버튼을 클릭하세요. 날짜 선택 → 질문 작성 → 결제 순서로 진행됩니다. 결제가 완료되면 예약 확인 이메일이 발송됩니다." },
-  { id: "2", category: "예약/결제", q: "결제 수단은 어떤 것이 지원되나요?", a: "신용카드(VISA, Mastercard, 국내 카드사 전체), 카카오페이, 네이버페이, 토스페이를 지원합니다. 기업 계좌이체는 별도 문의를 통해 진행하실 수 있습니다." },
-  { id: "3", category: "환불", q: "예약 취소 및 환불 정책이 어떻게 되나요?", a: "세션 시작 48시간 전까지 취소 시 100% 환불됩니다. 24~48시간 전 취소 시 50% 환불, 24시간 이내 취소는 환불이 불가합니다. 멘토 사정으로 인한 취소는 항상 100% 환불됩니다." },
-  { id: "4", category: "멘토링", q: "커피챗 세션은 얼마나 진행되나요?", a: "기본 세션은 30분이며, 멘토에 따라 60분 옵션도 제공됩니다. 세션 시작 5분 전에 입장 링크가 발송되며, 예약 시간 이후에는 자동으로 세션이 시작됩니다." },
-  { id: "5", category: "멘토링", q: "멘토가 세션에 나타나지 않으면 어떻게 하나요?", a: "세션 시작 후 10분이 지나도 멘토가 입장하지 않을 경우, 고객센터 채팅으로 즉시 알려주세요. 전액 환불 또는 다른 멘토와의 세션을 우선 배정해드립니다." },
-  { id: "6", category: "계정", q: "멘토로 등록하려면 어떤 조건이 필요한가요?", a: "해당 분야 3년 이상의 경력 또는 현직 종사자이면 신청 가능합니다. 프로필 검토 후 영업일 기준 3~5일 내에 승인 여부를 이메일로 안내드립니다." },
-  { id: "7", category: "계정", q: "비밀번호를 잊어버렸어요. 어떻게 재설정하나요?", a: "로그인 화면에서 '비밀번호 찾기'를 클릭하고 가입 이메일을 입력하세요. 재설정 링크가 이메일로 발송됩니다. 이메일이 오지 않는다면 스팸 폴더도 확인해 주세요." },
-  { id: "8", category: "예약/결제", q: "세션 일정을 변경할 수 있나요?", a: "세션 시작 48시간 전까지 '커피챗 관리' 페이지에서 일정 변경을 요청할 수 있습니다. 변경은 멘토의 수락이 필요하며, 수락 후 새 일정으로 확정됩니다." },
-];
-
-const DEFAULT_INQUIRY_CATEGORIES = ["예약/결제", "환불", "멘토링 문제", "계정", "기타"];
-
-const DEFAULT_BOT_RESPONSES = {
-  default: "안녕하세요! 커피챗 고객센터 AI입니다 😊 예약, 결제, 환불, 멘토링에 관한 질문이 있으시면 편하게 물어보세요.",
-  예약: "예약은 멘토 탐색 페이지에서 원하는 멘토를 선택한 뒤 '커피챗 예약' 버튼을 클릭하면 됩니다. 날짜 → 질문 작성 → 결제 순서로 진행돼요.",
-  결제: "신용카드, 카카오페이, 네이버페이, 토스페이를 지원합니다. 결제 문제가 발생하면 사용하신 카드사나 간편결제사에 먼저 문의해 보세요.",
-  환불: "세션 48시간 전 취소 시 100% 환불, 24~48시간 전은 50% 환불, 24시간 이내는 환불이 어렵습니다. 멘토 귀책 사유일 경우 항상 100% 환불됩니다.",
-  취소: "'커피챗 관리' 페이지에서 해당 세션을 선택하고 '예약 취소'를 누르시면 됩니다. 취소 정책에 따라 환불 금액이 결정됩니다.",
-  멘토: "멘토 등록은 해당 분야 3년 이상 경력자이면 신청 가능합니다. 멘토 등록 페이지에서 신청서를 제출하면 3~5 영업일 내 검토 후 안내드립니다.",
-  비밀번호: "로그인 화면 하단의 '비밀번호 찾기'를 클릭하고 가입 이메일을 입력하면 재설정 링크를 받으실 수 있습니다.",
-};
-
-const DEFAULT_QUICK_REPLIES = ["예약 방법", "환불 정책", "결제 수단", "멘토 등록", "비밀번호 재설정"];
-
-const DEFAULT_CS_INFO = {
-  operatingHours: "평일 09:00 – 18:00",
-  email: "support@coffeechat.kr",
-  responseTimeHint: "4시간 이내 (영업일)",
-  responseTimeDetail: "영업일 기준 4시간 이내",
-};
