@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // 💡 [수정 1] useLocation 추가!
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   LayoutDashboard, Calendar, MessageSquare, User,
   TrendingUp, DollarSign, Clock, Repeat, Star,
   BookOpen, Award, ChevronRight, Coffee, Users,
-  Heart, ArrowUpRight, Sparkles, Bell
+  Heart, ArrowUpRight, Sparkles, Bell, Hourglass // 💡 Hourglass(모래시계) 아이콘 추가
 } from 'lucide-react';
 import ScheduleManager from './ScheduleManager';
 import BookingHistory from './BookingHistory';
@@ -103,11 +103,9 @@ export default function Dashboard() {
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
-  // 💡 [수정 2] 헤더 알림 클릭 등 외부에서 넘어온 state가 있다면 탭을 바로 바꿔줍니다!
   useEffect(() => {
     if (location.state && location.state.activeTab) {
       setActiveTab(location.state.activeTab);
-      // 브라우저 히스토리 상태를 지워줘서, 새로고침 시 계속 해당 탭에 고정되는 것을 방지합니다.
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -265,10 +263,14 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <StatCard icon={Coffee}    label="참여한 커피챗"    value={`${menteeStats?.total_chats||0}회`}          accent="bg-blue-500" />
-        <StatCard icon={Clock}     label="총 학습 시간"     value={`${menteeStats?.learning_hours||0}시간`}       accent="bg-cyan-500" />
-        <StatCard icon={Users}     label="만난 멘토"        value={`${menteeStats?.mentor_count||0}명`}          accent="bg-indigo-500" />
-        <StatCard icon={Heart}     label="관심 멘토"        value={`${menteeStats?.saved_mentors||0}명`}         accent="bg-rose-400" />
+        <StatCard icon={Coffee}        label="참여한 커피챗"    value={`${menteeStats?.total_chats||0}회`}         accent="bg-blue-500" />
+        <StatCard icon={Clock}         label="총 학습 시간"     value={`${menteeStats?.learning_hours||0}시간`}    accent="bg-cyan-500" />
+        
+        {/* 💡 [수정] 만난 멘토 -> 수락 대기 (오렌지색 모래시계) */}
+        <StatCard icon={Hourglass}     label="수락 대기"        value={`${menteeStats?.pending_requests||0}건`}    accent="bg-orange-400" />
+        
+        {/* 💡 [수정] 관심 멘토 -> 작성한 후기 (초록색 메시지창) */}
+        <StatCard icon={MessageSquare} label="작성한 후기"      value={`${menteeStats?.written_reviews||0}개`}     accent="bg-emerald-500" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
