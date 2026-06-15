@@ -1,21 +1,10 @@
 /* CoffeeChat.css */
-
 :root {
   --deep-navy: #1A2A40;
   --primary-blue: #3B82F6;
   --bg-sand: #F3E9DC;
   --text-white: #FFFFFF;
   --text-gray: #6B7280;
-}
-
-body {
-  margin: 0;
-  font-family: 'Pretendard', sans-serif;
-  background-color: #f9fafb;
-}
-
-.container {
-  width: 100%;
 }
 
 /* Navbar */
@@ -26,7 +15,6 @@ body {
   justify-content: space-between;
   align-items: center;
   color: var(--text-white);
-  
 }
 
 .logo {
@@ -122,6 +110,3 @@ body {
   border-radius: 50%;
   cursor: pointer;
 }
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
