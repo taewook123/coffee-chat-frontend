@@ -2,304 +2,273 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  Bell, Pin, Plus, Search, ChevronRight, Megaphone, Zap, RefreshCw, Wrench, Edit, Trash2,
-  ChevronLeft, ChevronsLeft, ChevronsRight
+  Bell, Pin, Plus, Search, Megaphone, Zap, RefreshCw, Wrench,
+  Edit, Trash2, ChevronLeft, ChevronsLeft, ChevronRight, ChevronsRight,
 } from "lucide-react";
 
-/* ─── Types & Data ──────────────────────────────────────────────────────── */
-const CAT_ICON = {
-  공지: <Megaphone className="w-3.5 h-3.5" />,
-  이벤트: <Zap className="w-3.5 h-3.5" />,
-  업데이트: <RefreshCw className="w-3.5 h-3.5" />,
-  점검: <Wrench className="w-3.5 h-3.5" />,
+/* ─── 카테고리 메타 ─────────────────────────────────────────────────────── */
+const CAT_META = {
+  공지:     { icon: <Megaphone className="w-3 h-3" />, color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
+  이벤트:   { icon: <Zap       className="w-3 h-3" />, color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
+  업데이트: { icon: <RefreshCw className="w-3 h-3" />, color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+  점검:     { icon: <Wrench    className="w-3 h-3" />, color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
 };
+const DEFAULT_META = CAT_META["공지"];
 
-// 💡 밝은 배경에 어울리도록 색상 미세 조정
-const CAT_COLOR = {
-  공지:     { color: "#2563eb", bg: "rgba(37,99,235,0.1)" },
-  이벤트:   { color: "#9333ea", bg: "rgba(147,51,234,0.1)" },
-  업데이트: { color: "#059669", bg: "rgba(5,150,105,0.1)" },
-  점검:     { color: "#ea580c", bg: "rgba(234,88,12,0.1)" },
-};
+function CategoryBadge({ category, size = "sm" }) {
+  const m = CAT_META[category] ?? DEFAULT_META;
+  return (
+    <span
+      className="inline-flex items-center gap-1 font-bold rounded"
+      style={{
+        fontSize: size === "sm" ? 11 : 12,
+        padding: size === "sm" ? "2px 8px" : "3px 10px",
+        color: m.color,
+        background: m.bg,
+        border: `1px solid ${m.border}`,
+        letterSpacing: "0.02em",
+      }}
+    >
+      {m.icon}
+      {category}
+    </span>
+  );
+}
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 export default function Announcements() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("전체");
   const [query, setQuery] = useState("");
-  
-  // API 연동 상태
   const [rawNotices, setRawNotices] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const limit = 10;
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+  const limit = 15;
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://48.211.169.52:8000";
 
-  // 1. 관리자 권한 및 공지사항 로드
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
+    const userId = localStorage.getItem("userId");
     if (userId) {
       axios.get(`${BACKEND_URL}/api/user/${userId}`)
-        .then(res => {
-          if (res.data.role === 'ADMIN' || res.data.role === 'admin') setIsAdmin(true);
-        }).catch(err => console.error(err));
+        .then(res => { if (["ADMIN", "admin"].includes(res.data.role)) setIsAdmin(true); })
+        .catch(() => {});
     }
   }, [BACKEND_URL]);
 
   useEffect(() => {
-    axios.get(`${BACKEND_URL}/api/announcements?skip=${(page - 1) * limit}&limit=${limit}`)
+    setLoading(true);
+    axios
+      .get(`${BACKEND_URL}/api/announcements?skip=${(page - 1) * limit}&limit=${limit}`)
       .then(res => {
         if (res.data.items) {
           setRawNotices(res.data.items);
           setTotalPages(res.data.total_pages || 1);
         } else {
           setRawNotices(res.data);
-          setTotalPages(10);
+          setTotalPages(1);
         }
       })
-      .catch(err => console.error("공지사항 로드 실패", err));
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [page, BACKEND_URL, limit]);
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm("정말 이 공지사항을 삭제하시겠습니까?")) return;
+    if (!window.confirm("정말 삭제하시겠습니까?")) return;
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const token = localStorage.getItem("token") || localStorage.getItem("access_token");
       await axios.delete(`${BACKEND_URL}/api/announcements/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      alert("삭제되었습니다.");
-      setRawNotices(rawNotices.filter(notice => notice.id !== id));
-    } catch (error) {
+      setRawNotices(prev => prev.filter(n => n.id !== id));
+    } catch {
       alert("삭제 중 오류가 발생했습니다.");
     }
   };
 
-  // 2. DB 데이터를 UI 형식으로 파싱
-  const parsedNotices = rawNotices.map((notice) => {
+  /* DB 데이터 파싱 */
+  const parsedNotices = rawNotices.map((n, idx) => {
     let category = "공지";
-    let cleanTitle = notice.title;
-    const match = notice.title.match(/^\[(.*?)\]\s*(.*)$/);
-    if (match && CAT_COLOR[match[1]]) {
-      category = match[1];
-      cleanTitle = match[2];
-    }
+    let cleanTitle = n.title;
+    const match = n.title.match(/^\[(.*?)\]\s*(.*)$/);
+    if (match && CAT_META[match[1]]) { category = match[1]; cleanTitle = match[2]; }
     return {
-      id: notice.id,
-      category: category,
+      id: n.id,
+      no: (page - 1) * limit + idx + 1,  // 게시판 번호
+      category,
       title: cleanTitle,
-      preview: notice.content,
-      date: new Date(notice.created_at).toLocaleDateString(),
-      author: "관리자",
-      views: 0,
-      isPinned: false, // DB에 핀 기능이 없으므로 임시 false
-      isNew: (new Date() - new Date(notice.created_at)) < 86400000 * 3 // 3일 이내면 NEW
+      preview: n.content,
+      date: new Date(n.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }),
+      isPinned: false,
+      isNew: (Date.now() - new Date(n.created_at)) < 86400000 * 3,
     };
   });
 
-  // 3. 검색 및 필터링
-  const filtered = parsedNotices.filter((a) => {
+  const filtered = parsedNotices.filter(a => {
     const matchCat = activeCategory === "전체" || a.category === activeCategory;
-    const matchQ = query.trim() === "" || a.title.includes(query) || a.preview.includes(query);
+    const matchQ   = !query.trim() || a.title.includes(query) || a.preview.includes(query);
     return matchCat && matchQ;
   });
 
-  const pinned = filtered.filter((a) => a.isPinned);
-  const normal = filtered.filter((a) => !a.isPinned);
+  const pinned = filtered.filter(a => a.isPinned);
+  const normal = filtered.filter(a => !a.isPinned);
 
-  const getPageNumbers = () => {
-    let startPage = Math.max(1, page - 2);
-    let endPage = Math.min(totalPages, page + 2);
-    if (endPage - startPage < 4) {
-      if (startPage === 1) endPage = Math.min(totalPages, 5);
-      else if (endPage === totalPages) startPage = Math.max(1, totalPages - 4);
-    }
-    return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
-  };
+  const pageNums = (() => {
+    let s = Math.max(1, page - 2), e = Math.min(totalPages, page + 2);
+    if (e - s < 4) { if (s === 1) e = Math.min(totalPages, 5); else s = Math.max(1, totalPages - 4); }
+    return Array.from({ length: e - s + 1 }, (_, i) => s + i);
+  })();
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{
-        background: "#f9fafb", // 💡 밝은 회색 배경
-        color: "#111827",      // 💡 텍스트 검정
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      {/* ── Top bar ── */}
-      <header
-        className="flex items-center justify-between px-10 py-5 flex-shrink-0 bg-white"
-        style={{ borderBottom: "1px solid #e5e7eb" }} // 💡 밝은 테두리
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#4a90e2,#6c63ff)" }}
-          >
-            <Bell className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-semibold tracking-tight text-gray-900">공지사항</span>
-        </div>
+    <div style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", fontFamily: "'Inter', 'Pretendard', sans-serif" }}>
 
-        {isAdmin && (
-          <button
-            onClick={() => navigate("/announcement/write")}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95"
-            style={{
-              background: "linear-gradient(135deg,#4a90e2,#6c63ff)",
-              boxShadow: "0 4px 16px rgba(74,144,226,0.3)",
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            공지 작성
-          </button>
-        )}
+      {/* ══ 상단 헤더 바 ═══════════════════════════════════════════════ */}
+      <header style={{ background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 32px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Bell style={{ width: 18, height: 18, color: "#2563eb" }} />
+            <span style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>공지사항</span>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/announcement/write")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                background: "#2563eb", color: "#fff", border: "none", cursor: "pointer",
+              }}
+            >
+              <Plus style={{ width: 14, height: 14 }} /> 공지 작성
+            </button>
+          )}
+        </div>
       </header>
 
-      <div className="flex-1 px-10 py-8 max-w-5xl w-full mx-auto">
-        {/* ── Hero ── */}
-        <div className="mb-10">
-          <p
-            className="text-xs font-semibold tracking-[0.15em] uppercase mb-3"
-            style={{ color: "#2563eb" }} // 💡 파란색 강조
-          >
-            Notice Board
-          </p>
-          <h1
-            className="leading-none tracking-tight mb-3"
-            style={{
-              fontSize: "clamp(2rem,4vw,3rem)",
-              fontWeight: 800,
-              color: "#111827", // 💡 검정색
-              letterSpacing: "-0.03em",
-            }}
-          >
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 32px 80px" }}>
+
+        {/* ══ 페이지 타이틀 ════════════════════════════════════════════ */}
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", margin: 0 }}>
             공지사항
           </h1>
-          <p className="text-sm" style={{ color: "#6b7280" }}>
+          <p style={{ marginTop: 6, fontSize: 14, color: "#64748b" }}>
             플랫폼 업데이트, 이벤트, 점검 일정을 확인하세요.
           </p>
         </div>
 
-        {/* ── Search + Filter row ── */}
-        <div className="flex items-center gap-3 mb-8 flex-wrap">
-          {/* Search */}
-          <div
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl flex-1 bg-white shadow-sm"
-            style={{ border: "1px solid #e5e7eb", minWidth: 200 }} // 💡 밝은 검색창
-          >
-            <Search className="w-4 h-4 flex-shrink-0 text-gray-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="공지사항 검색…"
-              className="flex-1 bg-transparent outline-none text-sm placeholder-gray-400 text-gray-900"
-            />
-          </div>
-
-          {/* Category pills */}
-          <div className="flex gap-2 flex-wrap">
-            {["전체", "공지", "이벤트", "업데이트", "점검"].map((cat) => {
+        {/* ══ 필터 + 검색 ══════════════════════════════════════════════ */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap", alignItems: "center" }}>
+          {/* 카테고리 탭 */}
+          <div style={{ display: "flex", gap: 4 }}>
+            {["전체", "공지", "이벤트", "업데이트", "점검"].map(cat => {
               const active = activeCategory === cat;
-              const meta = cat !== "전체" ? CAT_COLOR[cat] : null;
+              const m = CAT_META[cat];
               return (
                 <button
                   key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-150"
-                  style={
-                    active
-                      ? {
-                          background: meta ? meta.bg : "#f3f4f6",
-                          color: meta ? meta.color : "#111827",
-                          border: `1px solid ${meta ? meta.color + "40" : "#d1d5db"}`,
-                        }
-                      : {
-                          background: "#ffffff",
-                          color: "#6b7280",
-                          border: "1px solid #e5e7eb",
-                        }
-                  }
+                  onClick={() => { setActiveCategory(cat); setPage(1); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 4,
+                    padding: "6px 13px", borderRadius: 6, fontSize: 12, fontWeight: 700,
+                    border: active ? `1.5px solid ${m?.color ?? "#2563eb"}` : "1.5px solid #e2e8f0",
+                    background: active ? (m?.bg ?? "#eff6ff") : "#fff",
+                    color: active ? (m?.color ?? "#2563eb") : "#64748b",
+                    cursor: "pointer", transition: "all 0.12s",
+                  }}
                 >
-                  {cat !== "전체" && (
-                    <span style={{ color: active && meta ? meta.color : "#9ca3af" }}>
-                      {CAT_ICON[cat]}
-                    </span>
-                  )}
+                  {m && <span style={{ color: active ? m.color : "#94a3b8" }}>{m.icon}</span>}
                   {cat}
                 </button>
               );
             })}
           </div>
+
+          {/* 검색 */}
+          <div style={{ flex: 1, minWidth: 200, display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 8 }}>
+            <Search style={{ width: 14, height: 14, color: "#94a3b8", flexShrink: 0 }} />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="제목, 내용 검색"
+              style={{ flex: 1, border: "none", outline: "none", fontSize: 13, color: "#0f172a", background: "transparent" }}
+            />
+          </div>
         </div>
 
-        {/* ── Pinned ── */}
-        {pinned.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <Pin className="w-3.5 h-3.5" style={{ color: "#ea580c" }} />
-              <span className="text-xs font-bold uppercase tracking-[0.1em] text-gray-500">
-                고정된 공지
-              </span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {pinned.map((a) => (
-                <AnnouncementRow key={a.id} item={a} pinned isAdmin={isAdmin} onDelete={handleDelete} />
-              ))}
-            </div>
+        {/* ══ 게시판 테이블 ════════════════════════════════════════════ */}
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+
+          {/* 컬럼 헤더 */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "60px 1fr 90px 100px",
+            padding: "10px 24px", background: "#f8fafc",
+            borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700,
+            color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em",
+          }}>
+            <span>번호</span>
+            <span>제목</span>
+            <span style={{ textAlign: "center" }}>분류</span>
+            <span style={{ textAlign: "right" }}>날짜</span>
           </div>
-        )}
 
-        {/* ── Divider ── */}
-        {pinned.length > 0 && normal.length > 0 && (
-          <div className="mb-6" style={{ height: 1, background: "#e5e7eb" }} />
-        )}
+          {/* 고정 공지 */}
+          {pinned.map(item => (
+            <NoticeRow key={`pin-${item.id}`} item={item} pinned isAdmin={isAdmin} onDelete={handleDelete} />
+          ))}
 
-        {/* ── Normal list ── */}
-        {normal.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {normal.map((a) => (
-              <AnnouncementRow key={a.id} item={a} pinned={false} isAdmin={isAdmin} onDelete={handleDelete} />
-            ))}
-          </div>
-        )}
+          {/* 일반 목록 */}
+          {!loading && normal.map(item => (
+            <NoticeRow key={item.id} item={item} pinned={false} isAdmin={isAdmin} onDelete={handleDelete} />
+          ))}
 
-        {/* ── Empty ── */}
-        {filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-28 gap-4 bg-white rounded-3xl border border-gray-100 mt-4">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center bg-gray-50">
-              <Bell className="w-7 h-7 text-gray-300" />
+          {/* 로딩 */}
+          {loading && (
+            <div style={{ padding: "48px 0", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+              불러오는 중…
             </div>
-            <p className="text-sm text-gray-400 font-medium">
-              검색 결과가 없습니다
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* ── Pagination ── */}
+          {/* 빈 상태 */}
+          {!loading && filtered.length === 0 && (
+            <div style={{ padding: "64px 0", textAlign: "center" }}>
+              <Bell style={{ width: 32, height: 32, color: "#e2e8f0", margin: "0 auto 12px" }} />
+              <p style={{ fontSize: 14, color: "#94a3b8" }}>공지사항이 없습니다.</p>
+            </div>
+          )}
+        </div>
+
+        {/* ══ 페이지네이션 ═════════════════════════════════════════════ */}
         {totalPages > 1 && (
-          <div className="mt-10 flex justify-center items-center gap-2 pb-10">
-            <button disabled={page === 1} onClick={() => setPage(1)} className="p-2 bg-white border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition shadow-sm text-gray-600"><ChevronsLeft className="w-4 h-4" /></button>
-            <button disabled={page === 1} onClick={() => setPage(page - 1)} className="p-2 bg-white border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition shadow-sm text-gray-600"><ChevronLeft className="w-4 h-4" /></button>
-            
-            <div className="flex gap-1.5 mx-2">
-              {getPageNumbers().map(num => (
-                <button
-                  key={num}
-                  onClick={() => setPage(num)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all ${
-                    page === num ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-sm'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 4, marginTop: 28 }}>
+            {[
+              { onClick: () => setPage(1),        disabled: page === 1,          icon: <ChevronsLeft  style={{ width: 14, height: 14 }} /> },
+              { onClick: () => setPage(p => p-1), disabled: page === 1,          icon: <ChevronLeft   style={{ width: 14, height: 14 }} /> },
+            ].map((btn, i) => (
+              <button key={i} onClick={btn.onClick} disabled={btn.disabled}
+                style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", color: btn.disabled ? "#cbd5e1" : "#475569", cursor: btn.disabled ? "default" : "pointer" }}>
+                {btn.icon}
+              </button>
+            ))}
 
-            <button disabled={page === totalPages} onClick={() => setPage(page + 1)} className="p-2 bg-white border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition shadow-sm text-gray-600"><ChevronRight className="w-4 h-4" /></button>
-            <button disabled={page === totalPages} onClick={() => setPage(totalPages)} className="p-2 bg-white border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition shadow-sm text-gray-600"><ChevronsRight className="w-4 h-4" /></button>
+            {pageNums.map(num => (
+              <button key={num} onClick={() => setPage(num)}
+                style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, fontSize: 13, fontWeight: 700, border: page === num ? "none" : "1px solid #e2e8f0", background: page === num ? "#2563eb" : "#fff", color: page === num ? "#fff" : "#475569", cursor: "pointer" }}>
+                {num}
+              </button>
+            ))}
+
+            {[
+              { onClick: () => setPage(p => p+1),      disabled: page === totalPages, icon: <ChevronRight  style={{ width: 14, height: 14 }} /> },
+              { onClick: () => setPage(totalPages),     disabled: page === totalPages, icon: <ChevronsRight style={{ width: 14, height: 14 }} /> },
+            ].map((btn, i) => (
+              <button key={i} onClick={btn.onClick} disabled={btn.disabled}
+                style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", color: btn.disabled ? "#cbd5e1" : "#475569", cursor: btn.disabled ? "default" : "pointer" }}>
+                {btn.icon}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -307,106 +276,74 @@ export default function Announcements() {
   );
 }
 
-/* ─── Row ───────────────────────────────────────────────────────────────── */
-function AnnouncementRow({ item, pinned, isAdmin, onDelete }) {
+/* ─── 게시판 행 ─────────────────────────────────────────────────────────── */
+function NoticeRow({ item, pinned, isAdmin, onDelete }) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
-  const meta = CAT_COLOR[item.category] || CAT_COLOR["공지"];
 
   return (
     <div
+      onClick={() => navigate(`/announcements/${item.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => navigate(`/announcements/${item.id}`)}
-      className="relative w-full text-left flex items-center gap-5 px-6 py-5 rounded-2xl transition-all duration-200 cursor-pointer group bg-white shadow-sm"
+      className="group"
       style={{
-        border: pinned ? "1px solid rgba(234,88,12,0.3)" : hovered ? "1px solid #d1d5db" : "1px solid #e5e7eb",
-        transform: hovered ? "translateX(4px)" : "translateX(0)",
+        display: "grid", gridTemplateColumns: "60px 1fr 90px 100px",
+        alignItems: "center", padding: "0 24px",
+        borderBottom: "1px solid #f1f5f9",
+        background: pinned ? "#fffbeb" : hovered ? "#f8fafc" : "#fff",
+        cursor: "pointer", transition: "background 0.1s",
+        minHeight: 52,
       }}
     >
-      {/* Left accent */}
-      <div
-        className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full transition-all duration-200"
-        style={{ background: hovered || pinned ? meta.color : "transparent" }}
-      />
+      {/* 번호 */}
+      <span style={{ fontSize: 13, color: pinned ? "#d97706" : "#94a3b8", fontWeight: pinned ? 700 : 400 }}>
+        {pinned ? <Pin style={{ width: 13, height: 13, display: "inline" }} /> : item.no}
+      </span>
 
-      {/* Category icon bubble */}
-      <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: meta.bg, color: meta.color }}
-      >
-        {CAT_ICON[item.category] || CAT_ICON["공지"]}
-      </div>
-
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-          <span
-            className="text-xs font-bold px-2.5 py-0.5 rounded-full"
-            style={{ background: meta.bg, color: meta.color }}
-          >
-            {item.category}
+      {/* 제목 영역 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, padding: "12px 0" }}>
+        <CategoryBadge category={item.category} />
+        <span style={{
+          fontSize: 14, fontWeight: 600, color: "#0f172a",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          textDecoration: hovered ? "underline" : "none",
+          textDecorationColor: "#94a3b8",
+        }}>
+          {item.title}
+        </span>
+        {item.isNew && (
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#2563eb", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>
+            NEW
           </span>
-          {pinned && (
-            <span
-              className="text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1"
-              style={{ background: "rgba(234,88,12,0.1)", color: "#ea580c" }}
-            >
-              <Pin className="w-3 h-3" />
-              고정
-            </span>
-          )}
-          {item.isNew && (
-            <span
-              className="text-xs font-extrabold px-2.5 py-0.5 rounded-full"
-              style={{ background: "rgba(37,99,235,0.1)", color: "#2563eb" }}
-            >
-              NEW
-            </span>
-          )}
-        </div>
-        <p className="font-extrabold text-base text-gray-900 truncate">{item.title}</p>
-        <p
-          className="text-sm mt-1 truncate font-medium text-gray-500"
-          style={{ maxWidth: 560 }}
-        >
-          {item.preview}
-        </p>
-      </div>
+        )}
 
-      {/* Meta & Admin Controls */}
-      <div className="flex items-center gap-4">
-        {/* Admin Buttons (Hover 시 노출) */}
-        {isAdmin && (
-          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* 관리자 버튼 - 호버 시 노출 */}
+        {isAdmin && hovered && (
+          <div style={{ marginLeft: "auto", display: "flex", gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
             <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/announcement/edit/${item.id}`); }}
-              className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition bg-gray-50 border border-gray-100"
-              title="수정"
+              onClick={e => { e.stopPropagation(); navigate(`/announcement/edit/${item.id}`); }}
+              style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid #bfdbfe", background: "#eff6ff", color: "#2563eb", cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
             >
-              <Edit className="w-4 h-4" />
+              <Edit style={{ width: 11, height: 11 }} /> 수정
             </button>
             <button
-              onClick={(e) => onDelete(e, item.id)}
-              className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition bg-gray-50 border border-gray-100"
-              title="삭제"
+              onClick={e => onDelete(e, item.id)}
+              style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid #fecaca", background: "#fff5f5", color: "#dc2626", cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 style={{ width: 11, height: 11 }} /> 삭제
             </button>
           </div>
         )}
-
-        {/* Date / Author */}
-        <div className="flex flex-col items-end gap-1 flex-shrink-0 text-xs font-semibold text-gray-400">
-          <span>{item.date}</span>
-          <span>{item.author}</span>
-        </div>
-
-        <ChevronRight
-          className="w-5 h-5 flex-shrink-0 transition-transform duration-200 text-gray-300"
-          style={{ transform: hovered ? "translateX(4px)" : "translateX(0)" }}
-        />
       </div>
+
+      {/* 분류 (모바일 숨김용 영역) */}
+      <span style={{ textAlign: "center", fontSize: 12, color: "#94a3b8" }} />
+
+      {/* 날짜 */}
+      <span style={{ textAlign: "right", fontSize: 12, color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>
+        {item.date}
+      </span>
     </div>
   );
 }

@@ -27,13 +27,7 @@ import CoffeeChats from './pages/CoffeeChats';
 import CoffeeChatDetail from './pages/CoffeeChatDetail';
 import CoffeeChatRoom from './pages/CoffeeChatRoom';
 import CoffeeChatReview from './pages/CoffeeChatReview';
-import SignUpPage from './pages/SignUpPages';
-import ProfileSetup from './pages/ProfileSetup';
-import KakaoCallback from './components/KakaoCallback';
-import MentorRegistration from './pages/MentorRegistration';
-import MainContent from './components/MainContent';
-import BookingHistory from './pages/BookingHistory';
-import ProfileImageUpload from './components/ProfileImageUpload';
+
 
 
 import { Coffee } from 'lucide-react';
@@ -44,7 +38,7 @@ import Announcements from './pages/Announcements';
 import AnnouncementWrite from './pages/AnnouncementWrite';
 import AnnouncementDetail from './pages/AnnouncementDetail'; // 👈 상세 페이지
 import AnnouncementEdit from './pages/AnnouncementEdit';
-import WriteAnnouncement from './pages/WriteAnnouncement';
+import WriteAnnouncement from "./pages/AnnouncementWrite";
 import CustomerCenter from './pages/CustomerCenter'; 
 // 🔥 1. 관리자용 고객센터 관리 컴포넌트 임포트 추가 (실제 파일 경로에 맞게 확인하세요)
 import AdminSupport from './pages/AdminSupport'; 
