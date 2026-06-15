@@ -196,12 +196,7 @@ export default function CoffeeChats() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 m-0 mb-2">티타임 관리</h1>
-            <p className="text-sm text-gray-500 m-0">신청한 커피챗 일정을 한눈에 확인하고 관리하세요.</p>
-          </div>
-        </div>
+        
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">

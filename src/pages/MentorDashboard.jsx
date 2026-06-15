@@ -239,7 +239,9 @@ export default function Dashboard() {
                         <span className="text-xs font-semibold text-[#1a2332]">{r.author_name || r.mentee_name || '익명'}</span>
                         <StarRating rating={r.rating || 5} />
                       </div>
-                      <p className="text-xs text-gray-500 line-clamp-2">{r.content || '리뷰 내용'}</p>
+                      <p className="text-xs text-gray-500 line-clamp-2">
+                        {r.content || r.review || r.review_text || r.comment || '작성된 내용이 없습니다.'}
+                      </p>
                     </li>
                   ))}
                 </ul>
