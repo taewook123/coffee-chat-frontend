@@ -1,30 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+// 공통 레이아웃 컴포넌트
 import Header from './components/Header';
-import Hero from './components/Hero';
-import MentorList from './components/MentorList';
-import Login from './Login';
-import './App.css';
 import Footer from './components/Footer';
-import Mentors from './pages/Mentors';
+import MainContent from './components/MainContent';
+
+// 인증 및 계정 관련 페이지
+import Login from './Login';
+import SignUpPage from './pages/SignUpPages';
+import ProfileSetup from './pages/ProfileSetup';
 import ProfileEdit from './pages/ProfileEdit';
-import './styles/index.css';
+import ProfileImageUpload from './components/ProfileImageUpload';
+import KakaoCallback from './components/KakaoCallback';
+
+// 호스트(멘토) 및 예약 관련 페이지
+import Mentors from './pages/Mentors';
 import MentorApply from './pages/MentorApply';
-import BookingFlow from './pages/BookingFlow';
+import MentorRegistration from './pages/MentorRegistration';
 import MentorDashboard from './pages/MentorDashboard';
+import BookingFlow from './pages/BookingFlow';
+import BookingHistory from './pages/BookingHistory';
+
+// 커피챗 대화방 및 리뷰/신고 관련 페이지
 import CoffeeChats from './pages/CoffeeChats';
 import CoffeeChatDetail from './pages/CoffeeChatDetail';
 import CoffeeChatRoom from './pages/CoffeeChatRoom';
 import CoffeeChatReview from './pages/CoffeeChatReview';
-import SignUpPage from './pages/SignUpPages';
-import ProfileSetup from './pages/ProfileSetup';
-import KakaoCallback from './components/KakaoCallback';
-import MentorRegistration from './pages/MentorRegistration';
-import MainContent from './components/MainContent';
-import BookingHistory from './pages/BookingHistory';
-import ProfileImageUpload from './components/ProfileImageUpload';
-import { Coffee } from 'lucide-react';
 import CoffeeChatReport from './pages/CoffeeChatReport';
+
+// 공지사항 및 고객센터 페이지
+import Announcements from './pages/Announcements';
+import WriteAnnouncement from './pages/WriteAnnouncement';
+import CustomerCenter from './pages/CustomerCenter'; 
+
+// 글로벌 스타일
+import './App.css';
+import './styles/index.css';
+
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [userName, setUserName] = useState(localStorage.getItem('userName') || "회원");
@@ -33,6 +46,7 @@ const App = () => {
   const [redirectToHome, setRedirectToHome] = useState(false);
   const [profileQueryParams, setProfileQueryParams] = useState("");
 
+  // 소셜 로그인 세션 및 토큰 파싱
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
@@ -64,6 +78,12 @@ const App = () => {
     }
   }, []);
 
+  // 리다이렉트 컴포넌트 마운트 직후 안전하게 상태를 클리어해주는 훅 (안티패턴 해결)
+  useEffect(() => {
+    if (redirectToProfile) setRedirectToProfile(false);
+    if (redirectToHome) setRedirectToHome(false);
+  }, [redirectToProfile, redirectToHome]);
+
   return (
     <Router>
       <Header 
@@ -72,41 +92,45 @@ const App = () => {
         userName={userName} 
       />
       
-      {redirectToProfile && (
-        <Navigate 
-          to={`/profile-setup${profileQueryParams}`} 
-          replace 
-          state={(() => { setRedirectToProfile(false); return {}; })()} 
-        />
-      )}
-      {redirectToHome && (
-        <Navigate 
-          to="/" 
-          replace 
-          state={(() => { setRedirectToHome(false); return {}; })()} 
-        />
-      )}
+      {/* 안전한 조건부 리다이렉션 제어 */}
+      {redirectToProfile && <Navigate to={`/profile-setup${profileQueryParams}`} replace />}
+      {redirectToHome && <Navigate to="/" replace />}
 
       <Routes>
+        {/* 메인 및 인증 */}
         <Route path="/" element={<MainContent />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/login/kakao/callback" element={<KakaoCallback />} />
+        
+        {/* 프로필 및 계정 설정 */}
+        <Route path="/profile-setup" element={<ProfileSetup />} />
+        <Route path="/profile/edit" element={<ProfileEdit />} />
+        <Route path="/profile-image-upload" element={<ProfileImageUpload />} />
+        
+        {/* 호스트(멘토) 찾기 및 신청/등록 */}
         <Route path="/mentors" element={<Mentors />} />
         <Route path="/mentors/apply/:id" element={<MentorApply />} />
-        <Route path="/profile/edit" element={<ProfileEdit />} />
-        <Route path="/booking/:mentorId" element={<BookingFlow />} />
+        <Route path="/mentor-registration" element={<MentorRegistration />} />
         <Route path="/dashboard" element={<MentorDashboard />} />
+        
+        {/* 예약 및 구매 이력 */}
+        <Route path="/booking/:mentorId" element={<BookingFlow />} />
+        <Route path="/booking-history" element={<BookingHistory />} />
+        
+        {/* 커피챗 대화 및 사후 관리 */}
         <Route path="/coffee-chats" element={<CoffeeChats />} />
         <Route path="/coffee-chat-detail/:id" element={<CoffeeChatDetail />} />
         <Route path="/coffee-chat/:chatId" element={<CoffeeChatRoom />} />
         <Route path="/coffee-chat-review/:chatId" element={<CoffeeChatReview />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="/profile-setup" element={<ProfileSetup />} />
-        <Route path="/login/kakao/callback" element={<KakaoCallback />} />
-        <Route path="/mentor-registration" element={<MentorRegistration />} />
-        <Route path="/booking-history" element={<BookingHistory />} />
-        <Route path="/profile-image-upload" element={<ProfileImageUpload />} />
-        <Route path = "/coffee-chat-report/:chatId" element={<CoffeeChatReport />} />"
+        <Route path="/coffee-chat-report/:chatId" element={<CoffeeChatReport />} />
+        
+        {/* 게시판 및 고객 소통 단지 */}
+        <Route path="/announcements" element={<Announcements />} />
+        <Route path="/announcements/write" element={<WriteAnnouncement />} />
+        <Route path="/customer-center" element={<CustomerCenter />} />
       </Routes>
+      
       <Footer />
     </Router>
   );

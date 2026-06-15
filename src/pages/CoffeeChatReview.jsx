@@ -6,6 +6,7 @@ import axios from 'axios';
 export default function CoffeeChatReview() {
   const { chatId } = useParams();
   const navigate = useNavigate();
+  
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
@@ -38,35 +39,33 @@ export default function CoffeeChatReview() {
       .catch(err => console.error(err));
   }, [chatId]);
 
-  const handleSubmit = async () => {
-    if (rating === 0) {
-      alert('별점을 선택해주세요!');
-      return;
-    }
-    if (!reviewText.trim()) {
-      alert('리뷰를 작성해주세요!');
-      return;
-    }
+    const handleSubmit = async () => {
+      if (rating === 0) { alert('별점을 선택해주세요!'); return; }
+      if (!reviewText.trim()) { alert('리뷰를 작성해주세요!'); return; }
 
-    setSubmitting(true);
-    try {
-      const userId = localStorage.getItem('userId');
-      await axios.post(`${BACKEND_URL}/api/booking/review/create`, {
-        booking_id: Number(chatId),
-        user_id: Number(userId),
-        mentor_id: booking?.mentor_id || 0,
-        rating: rating,
-        review: reviewText
-      });
+      setSubmitting(true);
+      try {
+        const userId = localStorage.getItem('userId');
+
+        // 1. 리뷰 제출
+        await axios.post(`${BACKEND_URL}/api/review/create`, {
+          booking_id: Number(chatId),
+          rating: rating,
+          review: reviewText
+        });
       setSubmitted(true);
-      setSubmitted(true); 
-    } catch (err) {
-      console.error('리뷰 제출 실패:', err);
-      alert('리뷰 제출에 실패했어요');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
+        // ✅ 2. 요약 생성 API 호출 (여기가 핵심!)
+        await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
+
+        setSubmitted(true);
+      } catch (err) {
+        console.error('리뷰 제출 실패:', err);
+        alert('리뷰 제출에 실패했어요');
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
   const ratingLabels = ['', '별로예요', '그저 그래요', '괜찮아요', '좋아요', '최고예요!'];
 
@@ -207,7 +206,7 @@ export default function CoffeeChatReview() {
             {/* ✨ 여기가 수정된 AI 요약 버튼입니다! ✨ */}
             {/* 리뷰 제출 전: 경고 알림 / 리뷰 제출 후: 리포트 페이지로 이동 */}
             <button
-              onClick={() => submitted ? navigate(`/coffee-chats/report/${chatId}`) : alert('리뷰를 먼저 제출해주세요!')}
+              onClick={() => submitted ? navigate(`/coffee-chat-report/${chatId}`) : alert('리뷰를 먼저 제출해주세요!')}
               className={`w-full py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
                 submitted
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg'

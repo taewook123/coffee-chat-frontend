@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // 💡 [수정 1] useLocation 추가!
 import axios from 'axios';
 import {
   LayoutDashboard, Calendar, MessageSquare, User,
@@ -88,6 +88,7 @@ function StarRating({ rating }) {
 // ── 메인 ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
 
@@ -102,6 +103,15 @@ export default function Dashboard() {
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
+  // 💡 [수정 2] 헤더 알림 클릭 등 외부에서 넘어온 state가 있다면 탭을 바로 바꿔줍니다!
+  useEffect(() => {
+    if (location.state && location.state.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // 브라우저 히스토리 상태를 지워줘서, 새로고침 시 계속 해당 탭에 고정되는 것을 방지합니다.
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   useEffect(() => {
     const uid = getCleanUserId();
     
@@ -114,9 +124,9 @@ export default function Dashboard() {
     async function load() {
       setLoading(true);
       try {
-        // 💡 0. 서버에서 내 진짜 유저 이름부터 받아와서 세팅합니다!
+        // 0. 서버에서 내 진짜 유저 이름부터 받아와서 세팅
         try {
-          const userRes = await axios.get(`${BACKEND_URL}/api/users/${uid}`);
+          const userRes = await axios.get(`${BACKEND_URL}/api/user/${uid}`);
           if (userRes.data && userRes.data.name) {
             setUserName(userRes.data.name);
             localStorage.setItem('userName', userRes.data.name);
@@ -125,7 +135,7 @@ export default function Dashboard() {
           console.error("유저 이름 동기화 실패");
         }
 
-        // 💡 1. 멘토 권한 확인
+        // 1. 멘토 권한 확인
         let checkIsMentor = false;
         try {
           const mentorsRes = await axios.get(`${BACKEND_URL}/api/mentors/list`);
@@ -135,7 +145,7 @@ export default function Dashboard() {
           console.error("멘토 검증 실패:", err);
         }
 
-        // 💡 2. 멘토 대시보드 로드 (🚨 해결: actualMentorId가 아니라 uid(2번)를 던집니다!)
+        // 2. 멘토 대시보드 로드
         if (checkIsMentor) {
           try {
             const { data } = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${uid}`);
@@ -148,7 +158,7 @@ export default function Dashboard() {
           }
         }
 
-        // 💡 3. 멘티 대시보드 로드 (여기도 uid 2번을 던집니다)
+        // 3. 멘티 대시보드 로드
         try {
           const { data } = await axios.get(`${BACKEND_URL}/api/mentee/dashboard/${uid}`);
           const s = data.stats || {};
@@ -201,8 +211,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-4 gap-4 mb-5">
           <StatCard icon={DollarSign} label="이번 달 수익" value={`₩${Number(mentorStats?.monthly_earnings||0).toLocaleString()}`} accent="bg-emerald-500" sub="↑ 지난달 대비" />
           <StatCard icon={Star}       label="평균 평점"    value={`${mentorStats?.average_rating||'—'}`}                            accent="bg-amber-400" />
-          <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours||0}시간`}                          accent="bg-orange-400" />
-          <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate||0}%`}                              accent="bg-violet-500" />
+          <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours||0}시간`}                         accent="bg-orange-400" />
+          <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate||0}%`}                             accent="bg-violet-500" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
