@@ -3,12 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   LayoutDashboard, Calendar, MessageSquare, User,
-  TrendingUp, DollarSign, Clock, Repeat, Star,
+  DollarSign, Clock, Repeat, Star,
   BookOpen, Award, ChevronRight, Coffee, Users,
-  Heart, ArrowUpRight, Sparkles, Bell, Hourglass // 💡 Hourglass(모래시계) 아이콘 추가
+  ArrowUpRight, Sparkles, Bell, Hourglass
 } from 'lucide-react';
 import ScheduleManager from './ScheduleManager';
 import BookingHistory from './BookingHistory';
+// 💡 [수정] ProfileSetup 컴포넌트를 불러옵니다. (경로가 다르다면 알맞게 수정해주세요!)
+import ProfileSetup from './ProfileSetup'; 
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
@@ -75,12 +77,13 @@ function EmptyState({ icon: Icon, message, cta, onCta }) {
 }
 
 function StarRating({ rating }) {
+  const safeRating = isNaN(Number(rating)) ? 0 : Number(rating);
   return (
     <div className="flex items-center gap-0.5">
       {[1,2,3,4,5].map(i => (
-        <Star key={i} className={`w-3.5 h-3.5 ${i <= Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}`} />
+        <Star key={i} className={`w-3.5 h-3.5 ${i <= Math.round(safeRating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}`} />
       ))}
-      <span className="text-xs text-gray-500 ml-1">{rating}</span>
+      <span className="text-xs text-gray-500 ml-1">{safeRating.toFixed(1)}</span>
     </div>
   );
 }
@@ -95,11 +98,11 @@ export default function Dashboard() {
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '회원');
 
   const [isMentor, setIsMentor] = useState(false);
-  const [mentorStats, setMentorStats] = useState(null);
+  const [mentorStats, setMentorStats] = useState({});
   const [upcomingChats, setUpcomingChats] = useState([]);
   const [recentReviews, setRecentReviews] = useState([]);
 
-  const [menteeStats, setMenteeStats] = useState(null);
+  const [menteeStats, setMenteeStats] = useState({});
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [mentorHistory, setMentorHistory] = useState([]);
 
@@ -122,7 +125,6 @@ export default function Dashboard() {
     async function load() {
       setLoading(true);
       try {
-        // 0. 서버에서 내 진짜 유저 이름부터 받아와서 세팅
         try {
           const userRes = await axios.get(`${BACKEND_URL}/api/user/${uid}`);
           if (userRes.data && userRes.data.name) {
@@ -133,7 +135,6 @@ export default function Dashboard() {
           console.error("유저 이름 동기화 실패");
         }
 
-        // 1. 멘토 권한 확인
         let checkIsMentor = false;
         try {
           const mentorsRes = await axios.get(`${BACKEND_URL}/api/mentors/list`);
@@ -143,12 +144,10 @@ export default function Dashboard() {
           console.error("멘토 검증 실패:", err);
         }
 
-        // 2. 멘토 대시보드 로드
         if (checkIsMentor) {
           try {
             const { data } = await axios.get(`${BACKEND_URL}/api/mentor/dashboard/${uid}`);
-            const s = data.stats || {};
-            setMentorStats(s);
+            setMentorStats(data.stats || {});
             setUpcomingChats(data.upcoming_chats || []);
             setRecentReviews(data.recent_reviews || []);
           } catch (err) {
@@ -156,16 +155,13 @@ export default function Dashboard() {
           }
         }
 
-        // 3. 멘티 대시보드 로드
         try {
           const { data } = await axios.get(`${BACKEND_URL}/api/mentee/dashboard/${uid}`);
-          const s = data.stats || {};
-          setMenteeStats(s);
+          setMenteeStats(data.stats || {});
           setUpcomingBookings(data.upcoming_bookings || []);
-          setMentorHistory(data.mentor_history || []);
+          setMentorHistory(data.mentor_history || data.recent_mentors || []);
         } catch (err) {
           console.error("멘티 대시보드 데이터 로드 실패", err);
-          setMenteeStats(null);
         }
       } finally {
         setLoading(false);
@@ -189,7 +185,7 @@ export default function Dashboard() {
             <p className="text-sm text-gray-500">경험을 나누고 수익을 얻을 수 있어요. 지금 바로 시작해보세요.</p>
           </div>
           <button
-            onClick={() => navigate('/profile-setup')}
+            onClick={() => setActiveTab('profile')} // 💡 탭 전환으로 변경
             className="flex-shrink-0 ml-6 bg-blue-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-600 transition-colors flex items-center gap-2"
           >
             시작하기 <ArrowUpRight className="w-4 h-4" />
@@ -207,10 +203,10 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-4 gap-4 mb-5">
-          <StatCard icon={DollarSign} label="이번 달 수익" value={`₩${Number(mentorStats?.monthly_earnings||0).toLocaleString()}`} accent="bg-emerald-500" sub="↑ 지난달 대비" />
-          <StatCard icon={Star}       label="평균 평점"    value={`${mentorStats?.average_rating||'—'}`}                            accent="bg-amber-400" />
-          <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours||0}시간`}                         accent="bg-orange-400" />
-          <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate||0}%`}                             accent="bg-violet-500" />
+          <StatCard icon={DollarSign} label="이번 달 수익" value={`₩${Number(mentorStats?.monthly_earnings || mentorStats?.revenue || 0).toLocaleString()}`} accent="bg-emerald-500" sub="↑ 꾸준히 상승중" />
+          <StatCard icon={Star}       label="평균 평점"    value={`${mentorStats?.average_rating || '0.0'}`}                             accent="bg-amber-400" />
+          <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours || mentorStats?.total_hours || 0}시간`} accent="bg-orange-400" />
+          <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate || 0}%`}                                accent="bg-violet-500" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -222,10 +218,10 @@ export default function Dashboard() {
                   {upcomingChats.slice(0,4).map((c, i) => (
                     <li key={c.id||i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                       <div>
-                        <p className="text-sm font-semibold text-[#1a2332]">{c.mentee_name||'멘티'}</p>
-                        <p className="text-xs text-gray-400">{c.scheduled_time||'일정 미정'}</p>
+                        <p className="text-sm font-semibold text-[#1a2332]">{c.mentee_name || c.partner_name || '멘티'}</p>
+                        <p className="text-xs text-gray-400">{c.scheduled_time || c.booking_date || '일정 미정'}</p>
                       </div>
-                      <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-medium">{c.status||'예정'}</span>
+                      <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-medium">{c.status === 'CONFIRMED' ? '확정됨' : '예정'}</span>
                     </li>
                   ))}
                 </ul>
@@ -240,10 +236,10 @@ export default function Dashboard() {
                   {recentReviews.slice(0,3).map((r, i) => (
                     <li key={i} className="pb-3 border-b border-gray-50 last:border-0 last:pb-0">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-[#1a2332]">{r.mentee_name||'멘티'}</span>
-                        <StarRating rating={r.rating||5} />
+                        <span className="text-xs font-semibold text-[#1a2332]">{r.author_name || r.mentee_name || '익명'}</span>
+                        <StarRating rating={r.rating || 5} />
                       </div>
-                      <p className="text-xs text-gray-500 line-clamp-2">{r.content||'리뷰 내용'}</p>
+                      <p className="text-xs text-gray-500 line-clamp-2">{r.content || '리뷰 내용'}</p>
                     </li>
                   ))}
                 </ul>
@@ -263,14 +259,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <StatCard icon={Coffee}        label="참여한 커피챗"    value={`${menteeStats?.total_chats||0}회`}         accent="bg-blue-500" />
-        <StatCard icon={Clock}         label="총 학습 시간"     value={`${menteeStats?.learning_hours||0}시간`}    accent="bg-cyan-500" />
-        
-        {/* 💡 [수정] 만난 멘토 -> 수락 대기 (오렌지색 모래시계) */}
-        <StatCard icon={Hourglass}     label="수락 대기"        value={`${menteeStats?.pending_requests||0}건`}    accent="bg-orange-400" />
-        
-        {/* 💡 [수정] 관심 멘토 -> 작성한 후기 (초록색 메시지창) */}
-        <StatCard icon={MessageSquare} label="작성한 후기"      value={`${menteeStats?.written_reviews||0}개`}     accent="bg-emerald-500" />
+        <StatCard icon={Coffee}        label="참여한 커피챗"    value={`${menteeStats?.total_chats || menteeStats?.completed_sessions || 0}회`} accent="bg-blue-500" />
+        <StatCard icon={Clock}         label="총 학습 시간"     value={`${menteeStats?.learning_hours || 0}시간`}    accent="bg-cyan-500" />
+        <StatCard icon={Hourglass}     label="수락 대기"        value={`${menteeStats?.pending_requests || menteeStats?.pending_bookings || 0}건`} accent="bg-orange-400" />
+        <StatCard icon={MessageSquare} label="작성한 후기"      value={`${menteeStats?.written_reviews || menteeStats?.my_reviews || 0}개`}  accent="bg-emerald-500" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -282,10 +274,10 @@ export default function Dashboard() {
                 {upcomingBookings.slice(0,4).map((b, i) => (
                   <li key={b.id||i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <div>
-                      <p className="text-sm font-semibold text-[#1a2332]">{b.mentor_name||'멘토'}</p>
-                      <p className="text-xs text-gray-400">{b.scheduled_time||'일정 미정'}</p>
+                      <p className="text-sm font-semibold text-[#1a2332]">{b.mentor_name || b.partner_name || '멘토'}</p>
+                      <p className="text-xs text-gray-400">{b.scheduled_time || b.booking_date || '일정 미정'}</p>
                     </div>
-                    <span className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-medium">{b.status||'예정'}</span>
+                    <span className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-medium">{b.status === 'CONFIRMED' ? '확정됨' : '예정'}</span>
                   </li>
                 ))}
               </ul>
@@ -294,17 +286,17 @@ export default function Dashboard() {
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <SectionHeader title="최근 만난 멘토" />
-          {mentorHistory.length === 0
+          {(!Array.isArray(mentorHistory) || mentorHistory.length === 0)
             ? <EmptyState icon={BookOpen} message="아직 커피챗 기록이 없어요." cta="첫 커피챗 예약하기" onCta={() => navigate('/host-list')} />
             : <ul className="space-y-3">
                 {mentorHistory.slice(0,4).map((m, i) => (
                   <li key={i} className="flex items-center gap-3 pb-3 border-b border-gray-50 last:border-0 last:pb-0">
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      {(m.mentor_name||'M').slice(0,1)}
+                      {(m.name || m.mentor_name || 'M').slice(0,1)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#1a2332] truncate">{m.mentor_name||'멘토'}</p>
-                      <p className="text-xs text-gray-400 truncate">{m.topic||m.date||'—'}</p>
+                      <p className="text-sm font-semibold text-[#1a2332] truncate">{m.name || m.mentor_name || '멘토'}</p>
+                      <p className="text-xs text-gray-400 truncate">{m.topic || m.company || '—'}</p>
                     </div>
                     {m.my_rating && <StarRating rating={m.my_rating} />}
                   </li>
@@ -404,20 +396,26 @@ export default function Dashboard() {
 
             <div className="my-2 border-t border-white/10" />
 
+            {/* 💡 [수정] 탭 전환 방식으로 변경 */}
             <button
               type="button"
-              onClick={() => navigate(`/profile-setup?id=${getCleanUserId()}`)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium hover:bg-white/5 text-gray-400 hover:text-white"
+              onClick={() => setActiveTab('profile')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium ${
+                activeTab === 'profile'
+                  ? 'bg-blue-500 text-white'
+                  : 'hover:bg-white/5 text-gray-400 hover:text-white'
+              }`}
             >
               <User className="w-4 h-4" />
               프로필 설정
             </button>
 
+            {/* 💡 [수정] 탭 전환 방식으로 변경 */}
             {!isMentor && (
               <button
                 type="button"
-                onClick={() => navigate('/profile-setup')}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
+                onClick={() => setActiveTab('profile')}
+                className="mt-2 w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
               >
                 <Award className="w-4 h-4" />
                 멘토 등록하기
@@ -431,8 +429,9 @@ export default function Dashboard() {
       <main className="flex-1 min-w-0 p-8 overflow-x-hidden overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           {activeTab === 'dashboard' && renderDashboard()}
-          {activeTab === 'schedule' && <ScheduleManager />}
-          {activeTab === 'history'  && <BookingHistory />}
+          {activeTab === 'schedule'  && <ScheduleManager />}
+          {activeTab === 'history'   && <BookingHistory />}
+          {activeTab === 'profile'   && <ProfileSetup />} {/* 💡 [수정] 탭 전환 시 프로필 컴포넌트 렌더링 */}
         </div>
       </main>
     </div>
