@@ -63,8 +63,7 @@ export default function SupportPage() {
   const [botResponses] = useState(DEFAULT_BOT_RESPONSES);
   const [quickReplies] = useState(DEFAULT_QUICK_REPLIES);
 
-useEffect(() => {
-    // 💡 프론트엔드(localhost)를 거치지 않고, 백엔드 실서버로 다이렉트 호출합니다.
+  useEffect(() => {
     const SERVER_URL = "http://48.211.169.52:8000";
 
     /* 1. FAQ 카테고리 로드 */
@@ -110,25 +109,25 @@ useEffect(() => {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
-      style={{ background: "#0a0e17", color: "#e8eaf0", fontFamily: "'Inter', sans-serif" }}
+      className="min-h-screen flex flex-col transition-colors duration-300"
+      style={{ background: "linear-gradient(135deg, #f4f8ff 0%, #e6f0fa 100%)", color: "#1a1f27" }}
     >
       {/* ── Top bar ── */}
       <header
         className="flex items-center justify-between px-10 py-5 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        style={{ borderBottom: "1px solid rgba(47, 107, 251, 0.1)" }}
       >
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-sm transition hover:text-white"
-          style={{ color: "rgba(255,255,255,0.4)" }}
+          className="flex items-center gap-2 text-sm font-medium transition hover:text-blue-600"
+          style={{ color: "#718096" }}
         >
           <ArrowLeft className="w-4 h-4" />
           돌아가기
         </button>
         <div className="flex items-center gap-2">
-          <Phone className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <Phone className="w-4 h-4 text-blue-500" />
+          <span className="text-xs font-medium" style={{ color: "#718096" }}>
             {csInfo?.operatingHours ?? "로딩 중…"}
           </span>
         </div>
@@ -136,16 +135,16 @@ useEffect(() => {
 
       {/* ── Hero ── */}
       <div className="px-10 pt-10 pb-8 max-w-5xl mx-auto w-full">
-        <p className="text-xs font-semibold tracking-[0.15em] uppercase mb-3" style={{ color: "#4a90e2" }}>
+        <p className="text-xs font-bold tracking-[0.15em] uppercase mb-3 text-blue-600">
           Customer Support
         </p>
         <h1
           className="leading-none tracking-tight mb-3"
-          style={{ fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 800, color: "#fff", letterSpacing: "-0.03em" }}
+          style={{ fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 800, color: "#1a1f27", letterSpacing: "-0.03em" }}
         >
           고객센터
         </h1>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+        <p className="text-sm font-medium" style={{ color: "#718096" }}>
           궁금한 점이 있으신가요? 빠르게 도와드릴게요.
         </p>
       </div>
@@ -153,8 +152,8 @@ useEffect(() => {
       {/* ── Tab selector ── */}
       <div className="px-10 pb-8 max-w-5xl mx-auto w-full">
         <div
-          className="inline-flex gap-2 p-1.5 rounded-2xl"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+          className="inline-flex gap-2 p-1.5 rounded-2xl bg-white shadow-sm"
+          style={{ border: "1px solid rgba(47, 107, 251, 0.1)" }}
         >
           {TABS.map((t) => {
             const active = tab === t.key;
@@ -162,14 +161,14 @@ useEffect(() => {
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className="flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200"
+                className="flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-200"
                 style={
                   active
-                    ? { background: "rgba(74,144,226,0.18)", color: "#fff", border: "1px solid rgba(74,144,226,0.3)" }
-                    : { color: "rgba(255,255,255,0.35)", border: "1px solid transparent" }
+                    ? { background: "#eff6ff", color: "#2f6bfb", border: "1px solid rgba(47, 107, 251, 0.2)" }
+                    : { color: "#718096", border: "1px solid transparent" }
                 }
               >
-                <span style={{ color: active ? "#4a90e2" : "rgba(255,255,255,0.3)" }}>{t.icon}</span>
+                <span style={{ color: active ? "#2f6bfb" : "#a0aec0" }}>{t.icon}</span>
                 {t.label}
               </button>
             );
@@ -180,24 +179,13 @@ useEffect(() => {
       {/* ── Content ── */}
       <div className="flex-1 px-10 pb-12 max-w-5xl mx-auto w-full">
         {tab === "faq" && (
-          <FaqPanel
-            categories={faqCategories}
-            faqs={faqs}
-            loading={faqLoading}
-            error={faqError}
-          />
+          <FaqPanel categories={faqCategories} faqs={faqs} loading={faqLoading} error={faqError} />
         )}
         {tab === "inquiry" && (
-          <InquiryPanel
-            categories={inquiryCategories}
-            info={csInfo}
-          />
+          <InquiryPanel categories={inquiryCategories} info={csInfo} />
         )}
         {tab === "chatbot" && (
-          <ChatbotPanel
-            responses={botResponses}
-            quickReplies={quickReplies}
-          />
+          <ChatbotPanel responses={botResponses} quickReplies={quickReplies} />
         )}
       </div>
     </div>
@@ -222,16 +210,16 @@ function FaqPanel({ categories, faqs, loading, error }) {
     <div className="flex flex-col gap-6">
       {/* Search */}
       <div
-        className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+        className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-white shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all"
+        style={{ border: "1px solid rgba(47, 107, 251, 0.15)" }}
       >
-        <Search className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
+        <Search className="w-5 h-5 flex-shrink-0 text-blue-400" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="궁금한 내용을 검색하세요…"
-          className="flex-1 bg-transparent outline-none text-sm placeholder-white/25"
-          style={{ color: "#e8eaf0" }}
+          className="flex-1 bg-transparent outline-none text-sm placeholder-gray-400 font-medium"
+          style={{ color: "#1a1f27" }}
         />
       </div>
 
@@ -243,11 +231,11 @@ function FaqPanel({ categories, faqs, loading, error }) {
             <button
               key={cat}
               onClick={() => setActiveCat(cat)}
-              className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
+              className="px-4 py-2 rounded-full text-xs font-bold transition-all duration-150 shadow-sm"
               style={
                 active
-                  ? { background: "rgba(74,144,226,0.15)", color: "#4a90e2", border: "1px solid rgba(74,144,226,0.35)" }
-                  : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }
+                  ? { background: "#eff6ff", color: "#2f6bfb", border: "1px solid rgba(47, 107, 251, 0.3)" }
+                  : { background: "#ffffff", color: "#718096", border: "1px solid rgba(47, 107, 251, 0.1)" }
               }
             >
               {cat}
@@ -260,66 +248,63 @@ function FaqPanel({ categories, faqs, loading, error }) {
       {loading && (
         <div className="flex flex-col items-center py-16 gap-3">
           <div
-            className="w-6 h-6 rounded-full border-2 animate-spin"
-            style={{ borderColor: "rgba(74,144,226,0.3)", borderTopColor: "#4a90e2" }}
+            className="w-8 h-8 rounded-full border-2 animate-spin"
+            style={{ borderColor: "rgba(47, 107, 251, 0.2)", borderTopColor: "#2f6bfb" }}
           />
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>FAQ를 불러오는 중…</p>
+          <p className="text-sm font-medium" style={{ color: "#718096" }}>FAQ를 불러오는 중…</p>
         </div>
       )}
 
       {/* 에러 */}
       {!loading && error && (
-        <div
-          className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}
-        >
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-red-50 border border-red-200 text-red-500">
           ⚠ {error}
         </div>
       )}
 
       {/* Accordion */}
       {!loading && !error && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {filtered.map((faq) => {
             const open = openId === faq.id;
             return (
               <div
                 key={faq.id}
-                className="rounded-2xl overflow-hidden transition-all duration-200"
+                className="rounded-2xl overflow-hidden transition-all duration-200 shadow-sm"
                 style={{
-                  background: open ? "rgba(74,144,226,0.06)" : "rgba(255,255,255,0.03)",
-                  border:     open ? "1px solid rgba(74,144,226,0.2)" : "1px solid rgba(255,255,255,0.06)",
+                  background: open ? "#f8faff" : "#ffffff",
+                  border: open ? "1px solid rgba(47, 107, 251, 0.3)" : "1px solid rgba(47, 107, 251, 0.1)",
                 }}
               >
                 <button
                   onClick={() => setOpenId(open ? null : faq.id)}
-                  className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left"
+                  className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left hover:bg-blue-50/30 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <span
-                      className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                      style={{ background: "rgba(74,144,226,0.12)", color: "#4a90e2" }}
+                      className="text-xs font-bold px-2.5 py-1 rounded-md flex-shrink-0"
+                      style={{ background: "#eff6ff", color: "#2f6bfb" }}
                     >
                       {faq.category}
                     </span>
                     <span
-                      className="text-sm font-semibold truncate"
-                      style={{ color: open ? "#fff" : "rgba(255,255,255,0.8)" }}
+                      className="text-sm font-bold truncate"
+                      style={{ color: open ? "#2f6bfb" : "#1a1f27" }}
                     >
                       {faq.q}
                     </span>
                   </div>
                   <ChevronDown
-                    className="w-4 h-4 flex-shrink-0 transition-transform duration-200"
-                    style={{ color: "rgba(255,255,255,0.3)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+                    className="w-5 h-5 flex-shrink-0 transition-transform duration-200"
+                    style={{ color: open ? "#2f6bfb" : "#a0aec0", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
                   />
                 </button>
                 {open && (
                   <div
-                    className="px-6 pb-5 text-sm leading-relaxed"
-                    style={{ color: "rgba(255,255,255,0.55)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                    className="px-6 pb-6 text-sm leading-relaxed"
+                    style={{ color: "#4a5568", borderTop: "1px solid rgba(47, 107, 251, 0.05)" }}
                   >
-                    <p className="pt-4">{faq.a}</p>
+                    <p className="pt-4 font-medium">{faq.a}</p>
                   </div>
                 )}
               </div>
@@ -327,9 +312,9 @@ function FaqPanel({ categories, faqs, loading, error }) {
           })}
 
           {filtered.length === 0 && (
-            <div className="flex flex-col items-center py-16 gap-3">
-              <HelpCircle className="w-10 h-10" style={{ color: "rgba(255,255,255,0.1)" }} />
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>검색 결과가 없습니다</p>
+            <div className="flex flex-col items-center py-16 gap-3 bg-white rounded-2xl border border-blue-500/10 shadow-sm">
+              <HelpCircle className="w-12 h-12 text-gray-300" />
+              <p className="text-sm font-medium" style={{ color: "#a0aec0" }}>검색 결과가 없습니다</p>
             </div>
           )}
         </div>
@@ -357,17 +342,10 @@ function InquiryPanel({ categories, info }) {
     setSubmitting(true);
     setSubmitError("");
     try {
-      // 💡 문의 접수 API 엔드포인트도 Swagger 명세와 매칭되는 /api/support/inquiries 로 수정
       const res = await fetch("/api/support/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category,
-          title,
-          body,
-          email,
-          user_id: null, 
-        }),
+        body: JSON.stringify({ category, title, body, email, user_id: null }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
@@ -382,22 +360,22 @@ function InquiryPanel({ categories, info }) {
   }
 
   return (
-    <div className="grid gap-8" style={{ gridTemplateColumns: "1fr 280px" }}>
+    <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
       {/* Form */}
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6 bg-white p-8 rounded-3xl shadow-sm border border-blue-500/10">
         {/* Category */}
         <div>
           <Label>문의 유형</Label>
-          <div className="flex gap-2 flex-wrap mt-2">
+          <div className="flex gap-2 flex-wrap mt-3">
             {categories.map((c) => (
               <button
                 key={c}
                 onClick={() => setCategory(c)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
+                className="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150"
                 style={
                   category === c
-                    ? { background: "rgba(74,144,226,0.15)", color: "#4a90e2", border: "1px solid rgba(74,144,226,0.35)" }
-                    : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.07)" }
+                    ? { background: "#eff6ff", color: "#2f6bfb", border: "1px solid rgba(47, 107, 251, 0.3)" }
+                    : { background: "#f8faff", color: "#718096", border: "1px solid rgba(47, 107, 251, 0.1)" }
                 }
               >
                 {c}
@@ -419,34 +397,30 @@ function InquiryPanel({ categories, info }) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="문의 내용을 자세히 작성해주세요. 주문번호, 세션 날짜 등 관련 정보를 함께 적어주시면 더 빠른 답변이 가능합니다."
-            className="w-full bg-transparent outline-none resize-none text-sm leading-relaxed placeholder-white/20"
+            className="w-full bg-white outline-none resize-none text-sm leading-relaxed placeholder-gray-400 font-medium transition-all focus:ring-2 focus:ring-blue-500/20"
             style={{
-              color: "rgba(255,255,255,0.8)",
+              color: "#1a1f27",
               minHeight: 160,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(47, 107, 251, 0.15)",
               borderRadius: 16,
-              padding: "14px 16px",
+              padding: "16px",
             }}
           />
-          <p className="text-xs mt-1.5 text-right" style={{ color: "rgba(255,255,255,0.2)" }}>
+          <p className="text-xs mt-1.5 text-right font-medium" style={{ color: "#a0aec0" }}>
             {body.length}자
           </p>
         </Field>
 
         <button
-          className="flex items-center gap-2 text-sm transition hover:opacity-80 self-start"
-          style={{ color: "rgba(255,255,255,0.3)" }}
+          className="flex items-center gap-2 text-sm font-semibold transition hover:text-blue-600 self-start"
+          style={{ color: "#718096" }}
         >
           <Paperclip className="w-4 h-4" />
           파일 첨부 (선택, 최대 10MB)
         </button>
 
         {submitError && (
-          <div
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs"
-            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }}
-          >
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold bg-red-50 border border-red-200 text-red-500">
             ⚠ {submitError}
           </div>
         )}
@@ -454,18 +428,18 @@ function InquiryPanel({ categories, info }) {
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || submitting}
-          className="flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition-all duration-200"
+          className="flex items-center justify-center gap-2 py-4 mt-2 rounded-xl text-sm font-bold transition-all duration-200 shadow-md"
           style={{
-            background: canSubmit && !submitting ? "linear-gradient(135deg,#4a90e2,#6c63ff)" : "rgba(255,255,255,0.06)",
-            color:      canSubmit && !submitting ? "#fff" : "rgba(255,255,255,0.2)",
-            boxShadow:  canSubmit && !submitting ? "0 6px 20px rgba(74,144,226,0.3)" : "none",
+            background: canSubmit && !submitting ? "linear-gradient(135deg, #2f6bfb, #4a90e2)" : "#f1f5f9",
+            color:      canSubmit && !submitting ? "#fff" : "#a0aec0",
+            boxShadow:  canSubmit && !submitting ? "0 8px 20px rgba(47, 107, 251, 0.25)" : "none",
             cursor:     canSubmit && !submitting ? "pointer" : "not-allowed",
           }}
         >
           {submitting ? (
             <>
               <div
-                className="w-4 h-4 rounded-full border-2 animate-spin"
+                className="w-5 h-5 rounded-full border-2 animate-spin"
                 style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "transparent" }}
               />
               전송 중…
@@ -482,33 +456,33 @@ function InquiryPanel({ categories, info }) {
       {/* Side info */}
       <div className="flex flex-col gap-4">
         {[
-          { icon: <Clock className="w-4 h-4" />, title: "평균 응답 시간", desc: info.responseTimeDetail, color: "#4a90e2" },
-          { icon: <Mail  className="w-4 h-4" />, title: "이메일 지원",   desc: info.email,              color: "#a78bfa" },
-          { icon: <Phone className="w-4 h-4" />, title: "전화 상담",     desc: info.operatingHours,     color: "#34d399" },
+          { icon: <Clock className="w-5 h-5" />, title: "평균 응답 시간", desc: info.responseTimeDetail, color: "#2f6bfb" },
+          { icon: <Mail  className="w-5 h-5" />, title: "이메일 지원",   desc: info.email,              color: "#8b5cf6" },
+          { icon: <Phone className="w-5 h-5" />, title: "전화 상담",     desc: info.operatingHours,     color: "#10b981" },
         ].map((item) => (
           <div
             key={item.title}
-            className="flex items-start gap-3 p-4 rounded-2xl"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+            className="flex items-start gap-4 p-5 rounded-2xl bg-white shadow-sm"
+            style={{ border: "1px solid rgba(47, 107, 251, 0.1)" }}
           >
             <span
-              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: `${item.color}18`, color: item.color }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+              style={{ background: `${item.color}15`, color: item.color }}
             >
               {item.icon}
             </span>
             <div>
-              <p className="text-xs font-semibold text-white">{item.title}</p>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{item.desc}</p>
+              <p className="text-sm font-bold text-gray-900">{item.title}</p>
+              <p className="text-xs mt-1 font-medium leading-relaxed" style={{ color: "#718096" }}>{item.desc}</p>
             </div>
           </div>
         ))}
 
         <div
-          className="p-4 rounded-2xl text-xs leading-relaxed"
-          style={{ background: "rgba(74,144,226,0.06)", border: "1px solid rgba(74,144,226,0.15)", color: "rgba(255,255,255,0.4)" }}
+          className="p-5 rounded-2xl text-xs font-medium leading-relaxed shadow-sm mt-2"
+          style={{ background: "#eff6ff", border: "1px solid rgba(47, 107, 251, 0.2)", color: "#2f6bfb" }}
         >
-          💡 자주 묻는 질문에서 답변을 먼저 찾아보시면 더 빠르게 해결될 수 있어요.
+          💡 <strong>자주 묻는 질문</strong>에서 답변을 먼저 찾아보시면 더 빠르게 해결될 수 있어요.
         </div>
       </div>
     </div>
@@ -546,60 +520,59 @@ function ChatbotPanel({ responses, quickReplies }) {
 
   return (
     <div
-      className="flex flex-col rounded-3xl overflow-hidden"
-      style={{ height: 560, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
+      className="flex flex-col rounded-3xl overflow-hidden bg-white shadow-lg mx-auto max-w-3xl"
+      style={{ height: 600, border: "1px solid rgba(47, 107, 251, 0.15)" }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-3 px-6 py-4 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}
+        style={{ borderBottom: "1px solid rgba(47, 107, 251, 0.1)", background: "#f8faff" }}
       >
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg,#4a90e2,#6c63ff)" }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
+          style={{ background: "linear-gradient(135deg, #2f6bfb, #4a90e2)" }}
         >
-          <Sparkles className="w-4 h-4 text-white" />
+          <Sparkles className="w-5 h-5 text-white" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-white">커피챗 AI 도우미</p>
-          <p className="text-xs flex items-center gap-1.5" style={{ color: "#34d399" }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <p className="text-sm font-bold" style={{ color: "#1a1f27" }}>커피챗 AI 도우미</p>
+          <p className="text-xs font-semibold flex items-center gap-1.5 mt-0.5" style={{ color: "#10b981" }}>
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             온라인
           </p>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4" style={{ scrollbarWidth: "none" }}>
+      <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-5" style={{ scrollbarWidth: "none", background: "#ffffff" }}>
         {messages.map((msg) => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
             {msg.role === "bot" ? (
               <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 self-end"
-                style={{ background: "linear-gradient(135deg,#4a90e2,#6c63ff)" }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 self-end shadow-sm"
+                style={{ background: "linear-gradient(135deg, #2f6bfb, #4a90e2)" }}
               >
-                <Bot className="w-4 h-4 text-white" />
+                <Bot className="w-5 h-5 text-white" />
               </div>
             ) : (
               <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 self-end"
-                style={{ background: "rgba(255,255,255,0.08)" }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 self-end bg-gray-100"
               >
-                <User className="w-4 h-4 text-white" />
+                <User className="w-5 h-5 text-gray-500" />
               </div>
             )}
-            <div className={`flex flex-col gap-1 max-w-[75%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
+            <div className={`flex flex-col gap-1.5 max-w-[75%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
               <div
-                className="px-4 py-3 rounded-2xl text-sm leading-relaxed"
+                className="px-4 py-3 rounded-2xl text-sm font-medium leading-relaxed shadow-sm"
                 style={
                   msg.role === "bot"
-                    ? { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.8)", borderBottomLeftRadius: 6 }
-                    : { background: "linear-gradient(135deg,#4a90e2,#6c63ff)", color: "#fff", borderBottomRightRadius: 6 }
+                    ? { background: "#f1f5f9", color: "#1a1f27", borderBottomLeftRadius: 6 }
+                    : { background: "linear-gradient(135deg, #2f6bfb, #4a90e2)", color: "#fff", borderBottomRightRadius: 6 }
                 }
               >
                 {msg.text}
               </div>
-              <span className="text-xs px-1" style={{ color: "rgba(255,255,255,0.2)" }}>{msg.time}</span>
+              <span className="text-[11px] font-semibold px-1" style={{ color: "#a0aec0" }}>{msg.time}</span>
             </div>
           </div>
         ))}
@@ -607,19 +580,19 @@ function ChatbotPanel({ responses, quickReplies }) {
         {typing && (
           <div className="flex gap-3">
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "linear-gradient(135deg,#4a90e2,#6c63ff)" }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+              style={{ background: "linear-gradient(135deg, #2f6bfb, #4a90e2)" }}
             >
-              <Bot className="w-4 h-4 text-white" />
+              <Bot className="w-5 h-5 text-white" />
             </div>
             <div
-              className="flex items-center gap-1.5 px-4 py-3 rounded-2xl"
-              style={{ background: "rgba(255,255,255,0.06)", borderBottomLeftRadius: 6 }}
+              className="flex items-center gap-1.5 px-5 py-4 rounded-2xl"
+              style={{ background: "#f1f5f9", borderBottomLeftRadius: 6 }}
             >
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce"
+                  className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
                   style={{ animationDelay: `${i * 0.15}s` }}
                 />
               ))}
@@ -631,15 +604,15 @@ function ChatbotPanel({ responses, quickReplies }) {
 
       {/* Quick replies */}
       <div
-        className="flex gap-2 px-6 py-3 overflow-x-auto flex-shrink-0"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.05)", scrollbarWidth: "none" }}
+        className="flex gap-2 px-6 py-4 overflow-x-auto flex-shrink-0"
+        style={{ borderTop: "1px solid rgba(47, 107, 251, 0.05)", background: "#ffffff", scrollbarWidth: "none" }}
       >
         {(quickReplies ?? []).map((qr) => (
           <button
             key={qr}
             onClick={() => sendMessage(qr)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition hover:opacity-80"
-            style={{ background: "rgba(74,144,226,0.12)", color: "#4a90e2", border: "1px solid rgba(74,144,226,0.25)" }}
+            className="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0 transition-colors shadow-sm hover:bg-blue-100"
+            style={{ background: "#eff6ff", color: "#2f6bfb", border: "1px solid rgba(47, 107, 251, 0.2)" }}
           >
             {qr}
           </button>
@@ -648,28 +621,28 @@ function ChatbotPanel({ responses, quickReplies }) {
 
       {/* Input */}
       <div
-        className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        className="flex items-center gap-3 px-5 py-4 flex-shrink-0 bg-white"
+        style={{ borderTop: "1px solid rgba(47, 107, 251, 0.1)" }}
       >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
           placeholder="메시지를 입력하세요…"
-          className="flex-1 bg-transparent outline-none text-sm placeholder-white/25"
-          style={{ color: "#e8eaf0" }}
+          className="flex-1 bg-gray-50 rounded-xl px-4 py-3 outline-none text-sm placeholder-gray-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all border border-transparent focus:border-blue-500/20"
+          style={{ color: "#1a1f27" }}
         />
         <button
           onClick={() => sendMessage(input)}
           disabled={!input.trim()}
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150"
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 shadow-sm"
           style={{
-            background: input.trim() ? "linear-gradient(135deg,#4a90e2,#6c63ff)" : "rgba(255,255,255,0.06)",
-            color:      input.trim() ? "#fff" : "rgba(255,255,255,0.2)",
-            boxShadow:  input.trim() ? "0 4px 12px rgba(74,144,226,0.35)" : "none",
+            background: input.trim() ? "linear-gradient(135deg, #2f6bfb, #4a90e2)" : "#f1f5f9",
+            color:      input.trim() ? "#fff" : "#a0aec0",
+            boxShadow:  input.trim() ? "0 4px 12px rgba(47, 107, 251, 0.3)" : "none",
           }}
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-5 h-5" />
         </button>
       </div>
     </div>
@@ -679,7 +652,7 @@ function ChatbotPanel({ responses, quickReplies }) {
 /* ─── Shared helpers ────────────────────────────────────────────────────── */
 function Label({ children }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.35)" }}>
+    <p className="text-xs font-bold uppercase tracking-[0.05em] mb-1" style={{ color: "#718096" }}>
       {children}
     </p>
   );
@@ -687,7 +660,7 @@ function Label({ children }) {
 
 function Field({ label, children }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
       {children}
     </div>
@@ -702,13 +675,12 @@ function FieldInput({ value, onChange, placeholder, type = "text", maxLength }) 
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       maxLength={maxLength}
-      className="w-full outline-none text-sm placeholder-white/20"
+      className="w-full bg-white outline-none text-sm placeholder-gray-400 font-medium transition-all focus:ring-2 focus:ring-blue-500/20"
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 14,
-        padding: "12px 16px",
-        color: "#e8eaf0",
+        border: "1px solid rgba(47, 107, 251, 0.15)",
+        borderRadius: "14px",
+        padding: "14px 16px",
+        color: "#1a1f27",
       }}
     />
   );

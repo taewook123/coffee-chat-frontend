@@ -43,7 +43,7 @@ export default function CoffeeChatRoom() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
 
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [showChat, setShowChat] = useState(false);
   const [isSTTExpanded, setIsSTTExpanded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -374,8 +374,9 @@ const fetchRecommendedQuestion = async () => {
         .map((q, i) => ({ text: q.replace(/^[-•]\s*/, '').trim(), tag: `질문 ${i + 1}` }))
     : [{ text: '작성된 질문이 없어요', tag: '질문' }];
 
-  // ── 테마 변수 ─────────────────────────────────────────
+  // 💡 수정됨: 랜딩 페이지 브랜드 컬러에 맞춘 테마 변수 (themeStyles)
   const themeStyles = theme === 'dark' ? {
+    // 다크모드 (필요시 유지 또는 랜딩페이지에 맞춘 네이비톤으로 수정 가능)
     '--bg-gradient':       'linear-gradient(135deg, #0d1520 0%, #111d2e 50%, #0a1628 100%)',
     '--panel-bg':          'rgba(255,255,255,0.03)',
     '--panel-border':      'rgba(255,255,255,0.08)',
@@ -387,16 +388,17 @@ const fetchRecommendedQuestion = async () => {
     '--btn-border-active': 'rgba(255,255,255,0.2)',
     '--chat-overlay':      'rgba(13,21,32,0.97)',
   } : {
-    '--bg-gradient':       'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%)',
-    '--panel-bg':          'rgba(255,255,255,0.8)',
-    '--panel-border':      'rgba(0,0,0,0.1)',
-    '--text-main':         '#0f172a',
-    '--text-muted':        '#64748b',
-    '--btn-bg':            'rgba(0,0,0,0.05)',
-    '--btn-active':        'rgba(0,0,0,0.1)',
-    '--btn-border':        'rgba(0,0,0,0.05)',
-    '--btn-border-active': 'rgba(0,0,0,0.15)',
-    '--chat-overlay':      'rgba(241,245,249,0.97)',
+    // ✨ 라이트모드 (랜딩 페이지 기반: 아주 연한 푸른빛 배경 + 깨끗한 흰색 패널 + 브랜드 블루 포인트)
+    '--bg-gradient':       'linear-gradient(135deg, #f4f8ff 0%, #e6f0fa 100%)', // 아주 연한 하늘색 배경
+    '--panel-bg':          '#ffffff', // 패널은 완전한 흰색으로 깔끔하게
+    '--panel-border':      'rgba(47, 107, 251, 0.1)', // 테두리에 연한 브랜드 블루 추가
+    '--text-main':         '#1a1f27', // 완전 검정이 아닌 고급스러운 다크 그레이
+    '--text-muted':        '#718096', 
+    '--btn-bg':            '#ffffff',
+    '--btn-active':        '#eff6ff', // 활성화 시 연한 파란색 배경
+    '--btn-border':        'rgba(47, 107, 251, 0.2)',
+    '--btn-border-active': '#2f6bfb', // teatimes 메인 블루 컬러와 유사한 색상
+    '--chat-overlay':      'rgba(255,255,255,0.95)',
   };
 
   // ─────────────────────────────────────────────────────
