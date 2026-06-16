@@ -18,7 +18,7 @@ import {
   Eye,
 } from "lucide-react";
 
-/* ─── 챗봇 로직 (AI 챗봇 작업 전까지 유지되는 사전 정의 답변) ────────────────────────────── */
+/* ─── 챗봇 로직 ────────────────────────────────────────────────────────── */
 const DEFAULT_BOT_RESPONSES = {
   default: "안녕하세요! 커피챗 AI 도우미입니다. 무엇을 도와드릴까요?",
   "결제": "결제는 신용카드, 카카오페이, 네이버페이를 지원합니다. 환불 정책은 마이페이지의 이용 약관을 참고해 주세요.",
@@ -39,20 +39,18 @@ function now() {
   return new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════════════
     MAIN PAGE COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
 export default function SupportPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("faq");
 
-  /* ── FAQ: DB에서 로드 (정상 작동) ─────────────────────────────────────── */
   const [faqs, setFaqs]               = useState([]);
   const [faqCategories, setFaqCategories] = useState(["전체"]);
   const [faqLoading, setFaqLoading]   = useState(true);
   const [faqError, setFaqError]       = useState(null);
 
-  /* ── 백엔드에 없는 데이터들은 고정 기본값(Mock)으로 설정하여 404 방지 ── */
   const [inquiryCategories] = useState(["서비스 이용", "결제/환불", "계정/인증", "기타"]);
   const [csInfo] = useState({
     operatingHours: "평일 10:00 ~ 18:00 (주말/공휴일 제외)",
@@ -63,29 +61,27 @@ export default function SupportPage() {
   const [botResponses] = useState(DEFAULT_BOT_RESPONSES);
   const [quickReplies] = useState(DEFAULT_QUICK_REPLIES);
 
-useEffect(() => {
-    // 💡 프론트엔드(localhost)를 거치지 않고, 백엔드 실서버로 다이렉트 호출합니다.
+  useEffect(() => {
     const SERVER_URL = "http://48.211.169.52:8000";
 
-    /* 1. FAQ 카테고리 로드 */
     fetch(`${SERVER_URL}/api/support/faqs/categories`)
-      .then((r) => { 
-        if (!r.ok) throw new Error(); 
-        return r.json(); 
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
       })
       .then((data) => {
-        setFaqCategories(["전체", ...data]);
+        // 백엔드가 이미 "전체"를 포함해서 주는 경우 중복 방지
+        const cats = Array.isArray(data) ? data : [];
+        setFaqCategories(cats.includes("전체") ? cats : ["전체", ...cats]);
       })
-      .catch((err) => {
-        console.error("카테고리 에러:", err);
+      .catch(() => {
         setFaqError("카테고리를 불러오지 못했습니다.");
       });
 
-    /* 2. FAQ 목록 로드 */
     fetch(`${SERVER_URL}/api/support/faqs`)
-      .then((r) => { 
-        if (!r.ok) throw new Error(); 
-        return r.json(); 
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
       })
       .then((data) => {
         setFaqs(data.map((f) => ({
@@ -96,8 +92,7 @@ useEffect(() => {
         })));
         setFaqLoading(false);
       })
-      .catch((err) => {
-        console.error("FAQ 목록 에러:", err);
+      .catch(() => {
         setFaqError("FAQ를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setFaqLoading(false);
       });
@@ -204,7 +199,7 @@ useEffect(() => {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════════════
     FAQ PANEL
 ══════════════════════════════════════════════════════════════════════════ */
 function FaqPanel({ categories, faqs, loading, error }) {
@@ -256,7 +251,6 @@ function FaqPanel({ categories, faqs, loading, error }) {
         })}
       </div>
 
-      {/* 로딩 */}
       {loading && (
         <div className="flex flex-col items-center py-16 gap-3">
           <div
@@ -267,7 +261,6 @@ function FaqPanel({ categories, faqs, loading, error }) {
         </div>
       )}
 
-      {/* 에러 */}
       {!loading && error && (
         <div
           className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
@@ -277,7 +270,6 @@ function FaqPanel({ categories, faqs, loading, error }) {
         </div>
       )}
 
-      {/* Accordion */}
       {!loading && !error && (
         <div className="flex flex-col gap-2">
           {filtered.map((faq) => {
@@ -338,44 +330,74 @@ function FaqPanel({ categories, faqs, loading, error }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════════════
     1:1 INQUIRY PANEL
 ══════════════════════════════════════════════════════════════════════════ */
 function InquiryPanel({ categories, info }) {
-  const [category, setCategory]     = useState("");
-  const [title, setTitle]           = useState("");
-  const [body, setBody]             = useState("");
-  const [email, setEmail]           = useState("");
-  const [submitted, setSubmitted]   = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [category, setCategory]       = useState("");
+  const [title, setTitle]             = useState("");
+  const [body, setBody]               = useState("");
+  const [email, setEmail]             = useState("");
+  const [submitted, setSubmitted]     = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
   const [submitError, setSubmitError] = useState("");
 
   const canSubmit = category && title.trim() && body.trim() && email.trim();
 
+  // ✅ FastAPI 422 에러 파싱: detail이 배열일 수도 있음
+  function parseErrorDetail(err) {
+    if (!err) return "서버 오류가 발생했습니다.";
+    if (Array.isArray(err.detail)) {
+      return err.detail.map((d) => d.msg || JSON.stringify(d)).join(", ");
+    }
+    if (typeof err.detail === "string") return err.detail;
+    if (typeof err.message === "string") return err.message;
+    return "서버 오류가 발생했습니다.";
+  }
+
+  // ✅ 이메일 형식 검사 (백엔드 EmailStr과 동일 기준: xxx@xxx.xxx)
+  function isValidEmail(val) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+  }
+
   async function handleSubmit() {
     if (!canSubmit || submitting) return;
+
+    if (!isValidEmail(email)) {
+      setSubmitError("올바른 이메일 형식을 입력해주세요. (예: example@email.com)");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError("");
+
+    const BACKEND_URL = "http://48.211.169.52:8000";
+
     try {
-      // 💡 문의 접수 API 엔드포인트도 Swagger 명세와 매칭되는 /api/support/inquiries 로 수정
-      const res = await fetch("/api/support/inquiries", {
+      const res = await fetch(`${BACKEND_URL}/api/support/inquiries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          category,
-          title,
-          body,
-          email,
-          user_id: null, 
+          category: category,
+          title: title,
+          body: body,       // ✅ 백엔드 InquiryCreate 스키마 필드명과 일치
+          email: email,
+          user_id: null,
         }),
       });
+
       if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.detail ?? "서버 오류가 발생했습니다.");
+        // ✅ JSON 파싱 실패해도 에러 문자열로 처리
+        const errJson = await res.json().catch(() => null);
+        const msg = parseErrorDetail(errJson);
+        throw new Error(msg);
       }
+
       setSubmitted(true);
+      alert("🚀 문의가 성공적으로 접수되었습니다!");
     } catch (e) {
-      setSubmitError(e.message || "문의 접수 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      // ✅ e.message는 항상 문자열 → [object Object] 버그 해결
+      setSubmitError(e.message || "문의 접수 중 오류가 발생했습니다.");
     } finally {
       setSubmitting(false);
     }
@@ -442,12 +464,13 @@ function InquiryPanel({ categories, info }) {
           파일 첨부 (선택, 최대 10MB)
         </button>
 
+        {/* ✅ submitError는 항상 문자열 → 안전하게 렌더링 */}
         {submitError && (
           <div
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs"
             style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }}
           >
-            ⚠ {submitError}
+            ⚠ {String(submitError)}
           </div>
         )}
 
@@ -515,7 +538,7 @@ function InquiryPanel({ categories, info }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════════════
     CHATBOT PANEL
 ══════════════════════════════════════════════════════════════════════════ */
 function ChatbotPanel({ responses, quickReplies }) {
@@ -549,7 +572,6 @@ function ChatbotPanel({ responses, quickReplies }) {
       className="flex flex-col rounded-3xl overflow-hidden"
       style={{ height: 560, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
     >
-      {/* Header */}
       <div
         className="flex items-center gap-3 px-6 py-4 flex-shrink-0"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}
@@ -569,7 +591,6 @@ function ChatbotPanel({ responses, quickReplies }) {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4" style={{ scrollbarWidth: "none" }}>
         {messages.map((msg) => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -629,7 +650,6 @@ function ChatbotPanel({ responses, quickReplies }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick replies */}
       <div
         className="flex gap-2 px-6 py-3 overflow-x-auto flex-shrink-0"
         style={{ borderTop: "1px solid rgba(255,255,255,0.05)", scrollbarWidth: "none" }}
@@ -646,7 +666,6 @@ function ChatbotPanel({ responses, quickReplies }) {
         ))}
       </div>
 
-      {/* Input */}
       <div
         className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
@@ -676,7 +695,7 @@ function ChatbotPanel({ responses, quickReplies }) {
   );
 }
 
-/* ─── Shared helpers ────────────────────────────────────────────────────── */
+/* ─── Shared helpers ──────────────────────────────────────────────────── */
 function Label({ children }) {
   return (
     <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.35)" }}>

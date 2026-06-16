@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'; // 💡 useEffect 추가
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -6,41 +6,33 @@ export default function InquiryPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // 💡 문의 폼 상태 관리
   const [formData, setFormData] = useState({
     category: '일반 문의',
     title: '',
-    email: '', // 로그인한 유저의 이메일이 자동으로 채워집니다.
-    content: '',
+    email: '',
+    body: '',   // ✅ 백엔드 InquiryCreate 스키마 필드명: "body" (기존 "content" → 수정)
   });
 
-  // 💡 문의 카테고리 구성
   const categories = ['일반 문의', '호스트 지원 문의', '결제/환불', '시스템 오류 제보', '기타'];
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-  // 💡 [추가] 로그인 체크 및 유저 이메일 자동 완성
   useEffect(() => {
     const token = localStorage.getItem('token');
     const rawUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
     const cleanUserId = rawUserId ? parseInt(rawUserId.toString().replace(/[^0-9]/g, ''), 10) : null;
 
-    // 1. 비로그인 유저 차단
     if (!token) {
       alert('1:1 문의는 로그인 후 이용 가능합니다. 로그인 페이지로 이동합니다.');
       navigate('/login', { replace: true });
       return;
     }
 
-    // 2. 로그인 유저라면 API를 통해 이메일을 가져와서 기본값으로 세팅 (UX 향상)
     if (cleanUserId) {
       axios.get(`${BACKEND_URL}/api/user/${cleanUserId}`)
         .then(res => {
           if (res.data && res.data.email) {
-            setFormData(prev => ({
-              ...prev,
-              email: res.data.email
-            }));
+            setFormData(prev => ({ ...prev, email: res.data.email }));
           }
         })
         .catch(error => {
@@ -49,37 +41,54 @@ export default function InquiryPage() {
     }
   }, [navigate, BACKEND_URL]);
 
-  // 인풋 변경 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 폼 제출 핸들러
+  // ✅ FastAPI 422 에러 파싱 헬퍼: detail이 배열일 수도 있음
+  function parseAxiosError(error) {
+    const data = error?.response?.data;
+    if (!data) return '문의 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    if (Array.isArray(data.detail)) {
+      return data.detail.map((d) => d.msg || JSON.stringify(d)).join(', ');
+    }
+    if (typeof data.detail === 'string') return data.detail;
+    if (typeof data === 'string') return data;
+    return '문의 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // 간단한 유효성 검사
-    if (!formData.title.trim() || !formData.content.trim() || !formData.email.trim()) {
+
+    // ✅ body 필드로 유효성 검사 (기존 content → body)
+    if (!formData.title.trim() || !formData.body.trim() || !formData.email.trim()) {
       alert('모든 필수 항목을 입력해주세요.');
       return;
     }
 
     setLoading(true);
     try {
-      // 💡 백엔드 API 호출
-      const response = await axios.post(`${BACKEND_URL}/api/inquiries`, formData);
-      
+      // ✅ 백엔드로 전송할 payload: content 대신 body 사용
+      const payload = {
+        category: formData.category,
+        title: formData.title,
+        body: formData.body,      // ✅ 백엔드 필드명 "body"
+        email: formData.email,
+        user_id: null,
+      };
+
+      const response = await axios.post(`${BACKEND_URL}/api/support/inquiries`, payload);
+
       if (response.status === 200 || response.status === 201) {
         alert('🚀 문의가 성공적으로 접수되었습니다. 빠른 시일 내에 답변드리겠습니다!');
-        navigate('/'); // 제출 후 메인으로 이동
+        navigate('/');
       }
     } catch (error) {
       console.error('❌ 1:1 문의 제출 실패:', error);
-      alert('문의 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      // ✅ [object Object] 버그 수정: 에러 메시지를 문자열로 파싱
+      const msg = parseAxiosError(error);
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -88,7 +97,7 @@ export default function InquiryPage() {
   return (
     <div className="w-full bg-[#f8f9fa] min-h-screen py-16 px-6">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-solid border-gray-100 p-8 md:p-10">
-        
+
         {/* 헤더 영역 */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-[#1a2332] mb-3 m-0">1:1 문의하기</h2>
@@ -99,10 +108,12 @@ export default function InquiryPage() {
 
         {/* 문의 폼 */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          
+
           {/* 1. 문의 유형 */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">문의 유형 <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              문의 유형 <span className="text-red-500">*</span>
+            </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {categories.map((cat) => (
                 <button
@@ -155,15 +166,15 @@ export default function InquiryPage() {
             />
           </div>
 
-          {/* 4. 문의 내용 */}
+          {/* 4. 문의 내용 ✅ name="body" (기존 name="content" → 수정) */}
           <div>
-            <label htmlFor="content" className="block text-sm font-bold text-gray-700 mb-2">
+            <label htmlFor="body" className="block text-sm font-bold text-gray-700 mb-2">
               문의 내용 <span className="text-red-500">*</span>
             </label>
             <textarea
-              id="content"
-              name="content"
-              value={formData.content}
+              id="body"
+              name="body"
+              value={formData.body}
               onChange={handleChange}
               rows="6"
               placeholder="문의하실 내용을 구체적으로 적어주시면 더 정확한 답변이 가능합니다. (최대 1000자)"
