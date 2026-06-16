@@ -137,7 +137,7 @@ useEffect(() => {
                   }
                   onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'; }}
                   alt={mentorData.name}
-                  className="w-16 h-16 rounded-full object-cover mb-3 ring-4 ring-slate-100 group-hover:ring-blue-100 transition duration-300 bg-gray-100"
+                  className="w-60 h-60 rounded-2xl object-cover mx-auto mb-4 ring-4 ring-slate-100 shadow-sm transition duration-300 bg-gray-100"
                 />
               </div>
 

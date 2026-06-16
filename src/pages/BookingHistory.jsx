@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Calendar, Clock, CheckCircle, XCircle, MessageSquare, ChevronRight,
-  ChevronDown, ArrowLeft, Download, Filter, Search, TrendingUp, CreditCard, Coffee
+  ChevronDown, ArrowLeft, Download, Filter, Search, TrendingUp, CreditCard, Coffee,
+  AlertCircle // 💡 누락되었던 아이콘 추가
 } from 'lucide-react';
 
 /* ─── 상태별 메타데이터 ─── */
@@ -91,6 +92,18 @@ export default function BookingHistory() {
     }
   };
 
+  // 💡 내가 신청한 예약 취소 핸들러 (멘티용)
+  const handleCancelRequest = async (bookingId) => {
+    if (!window.confirm('정말 이 커피챗 신청을 취소하시겠습니까?')) return;
+    try {
+      await axios.post(`${BACKEND_URL}/api/booking/reject/${bookingId}`);
+      alert('커피챗 신청이 취소되었습니다.');
+      setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, status: 'REJECTED' } : b));
+    } catch {
+      alert('취소 처리에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  };
+
   // 💡 데이터 필터링 및 검색
   const processedBookings = Array.isArray(bookings) ? bookings.filter((b) => {
     // 탭 조건: 받은 요청 탭에서는 PAID 이상만 노출 (옵션)
@@ -121,13 +134,13 @@ export default function BookingHistory() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-700 font-sans">
       
-      
-
       <div className="flex-1 px-6 md:px-7 py-2 max-w-5xl mx-auto w-full">
         
         {/* ── 타이틀 & 탭 ── */}
         <div className="mb-8">
-          <div className="flex items-ceter gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Coffee className="w-5 h-5 text-blue-600" />
+            <span className="text-xs font-bold tracking-widest text-blue-600 uppercase">Booking History</span>
           </div>
           <h1 className="text-3xl font-extrabold text-gray-900 mb-2">예약 내역</h1>
           <p className="text-sm text-gray-500">지금까지 진행된 모든 커피챗 요청과 예약 상태를 확인하세요.</p>
@@ -298,8 +311,10 @@ export default function BookingHistory() {
                           )}
                         </div>
 
-                        {/* 액션 버튼 (신청 받은 경우 수락/거절) */}
+                        {/* 액션 버튼 영역 */}
                         <div className="flex flex-col justify-end gap-3">
+                          
+                          {/* 💡 1. 멘토: 신청 받은 경우 수락/거절 */}
                           {activeTab === 'received' && b.status === 'PAID' && (
                             <div className="flex items-center gap-2 w-full mt-4">
                               <button
@@ -317,8 +332,21 @@ export default function BookingHistory() {
                             </div>
                           )}
 
+                          {/* 💡 2. 멘티: 내가 신청한 경우 예약 취소 */}
+                          {activeTab === 'requested' && (b.status === 'PAID' || b.status === 'CONFIRMED') && (
+                            <div className="flex items-center gap-2 w-full mt-4">
+                              <button
+                                onClick={() => handleCancelRequest(b.booking_id)}
+                                className="w-full py-2.5 rounded-xl text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <XCircle className="w-4 h-4" /> 신청 취소하기
+                              </button>
+                            </div>
+                          )}
+
+                          {/* 확정 안내 메시지 */}
                           {activeTab === 'requested' && b.status === 'CONFIRMED' && (
-                            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 mt-1">
                               <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
                               <div>
                                 <p className="text-sm font-bold text-emerald-800">예약이 확정되었습니다!</p>
@@ -327,6 +355,7 @@ export default function BookingHistory() {
                             </div>
                           )}
 
+                          {/* 취소/거절 안내 메시지 */}
                           {isCancelled && (
                             <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 rounded-xl border border-red-100 text-red-600">
                               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
