@@ -20,7 +20,7 @@ function getCleanUserId() {
   return finalUserId ? parseInt(String(finalUserId).replace(/[^0-9]/g, ''), 10) : null;
 }
 
-export default function TeaTimeList() {
+export default function CoffeeChats() {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [roleFilter, setRoleFilter] = useState('sent'); 
   const navigate = useNavigate();
@@ -145,7 +145,7 @@ export default function TeaTimeList() {
             <div className="flex items-center gap-2">
               {chat.tab_status === 'ongoing' && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/tea-time/${chatId}`); }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/coffee-chat/${chatId}`); }}
                   className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
                 >
                   <Coffee className="w-3.5 h-3.5" /> 참여하기
@@ -153,19 +153,19 @@ export default function TeaTimeList() {
               )}
               {chat.tab_status === 'upcoming' && (
                 <button 
-                  onClick={() => navigate(`/tea-time-detail/${chatId}`)}
+                  onClick={() => navigate(`/coffee-chat-detail/${chatId}`)}
                   className="text-xs font-bold px-4 py-2 rounded-xl transition-colors bg-blue-50 text-blue-600 hover:bg-blue-100"
                 >
                   상세보기
                 </button>
               )}
               {chat.tab_status === 'completed' && hasReview && (
-                <button onClick={() => navigate(`/tea-time-report/${chatId}`)} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                <button onClick={() => navigate(`/coffee-chat-report/${chatId}`)} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
                   <CheckCircle className="w-3.5 h-3.5" /> 리포트
                 </button>
               )}
               {chat.tab_status === 'completed' && !hasReview && (
-                <button onClick={() => navigate(`/tea-time-review/${chatId}`)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
+                <button onClick={() => navigate(`/coffee-chat-review/${chatId}`)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
                   <Star className="w-3.5 h-3.5" /> 리뷰 쓰기
                 </button>
               )}

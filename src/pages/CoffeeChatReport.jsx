@@ -245,7 +245,7 @@ export default function CoffeeChatReport() {
         {/* --- 하단 네비게이션 (프린트 영역 밖) --- */}
         <div className="mt-12 flex justify-center">
           <button
-            onClick={() => navigate('/tea-times')}
+            onClick={() => navigate('/coffee-chats')}
             className="w-full mt-6 py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-3"
           >
             <Check className="w-5 h-5" />

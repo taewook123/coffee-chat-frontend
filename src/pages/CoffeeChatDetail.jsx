@@ -20,7 +20,7 @@ function TeacupIcon({ className }) {
   );
 }
 
-export default function TeaTimeDetail() {
+export default function CoffeeChatDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   
@@ -62,7 +62,7 @@ export default function TeaTimeDetail() {
     } catch (err) {
       console.error('세션 시작 실패:', err);
     }
-    navigate(`/tea-time/${id}`);
+    navigate(`/coffee-chat/${id}`);
   };
 
   const handleCancel = async () => {
@@ -70,7 +70,7 @@ export default function TeaTimeDetail() {
     try {
       await axios.post(`${BACKEND_URL}/api/booking/reject/${id || booking?.booking_id}`);
       alert("티타임 예약이 성공적으로 취소되었습니다.");
-      navigate("/tea-times");
+      navigate("/coffee-chats");
     } catch (error) {
       console.error("예약 취소 실패:", error);
       alert("예약 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
@@ -116,7 +116,7 @@ export default function TeaTimeDetail() {
       {/* ── Top bar ── */}
       <header className="flex items-center justify-between px-6 md:px-10 py-5 bg-white border-b border-gray-200 shadow-sm shrink-0">
         <button
-          onClick={() => navigate('/tea-times')}
+          onClick={() => navigate('/coffee-chats')}
           className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-900 transition"
         >
           <ArrowLeft className="w-4 h-4" /> 목록으로
