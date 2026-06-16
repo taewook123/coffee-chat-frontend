@@ -4,36 +4,32 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 // 공통 레이아웃 컴포넌트
 import Header from './components/Header';
 import Footer from './components/Footer';
-import MainContent from './components/MainContent';
 
 // 인증 및 계정 관련 페이지
 import Login from './Login';
-import SignUpPage from './pages/SignUpPages';
-import ProfileSetup from './pages/ProfileSetup';
 import ProfileEdit from './pages/ProfileEdit';
-import ProfileImageUpload from './components/ProfileImageUpload';
-import KakaoCallback from './components/KakaoCallback';
-
 // 호스트(멘토) 및 예약 관련 페이지
 import Mentors from './pages/Mentors';
 import MentorApply from './pages/MentorApply';
-import MentorRegistration from './pages/MentorRegistration';
 import MentorDashboard from './pages/MentorDashboard';
 import BookingFlow from './pages/BookingFlow';
-import BookingHistory from './pages/BookingHistory';
 
 // 커피챗 대화방 및 리뷰/신고 관련 페이지
 import CoffeeChats from './pages/CoffeeChats';
 import CoffeeChatDetail from './pages/CoffeeChatDetail';
 import CoffeeChatRoom from './pages/CoffeeChatRoom';
 import CoffeeChatReview from './pages/CoffeeChatReview';
-
+import SignUpPage from './pages/SignUpPages';
+import ProfileSetup from './pages/ProfileSetup';
+import KakaoCallback from './components/KakaoCallback';
+import MentorRegistration from './pages/MentorRegistration';
+import MainContent from './components/MainContent';
+import BookingHistory from './pages/BookingHistory';
+import ProfileImageUpload from './components/ProfileImageUpload';
 
 
 import { Coffee } from 'lucide-react';
 import CoffeeChatReport from './pages/CoffeeChatReport';
-
-// 공지사항 및 고객센터 페이지
 import Announcements from './pages/Announcements';
 import AnnouncementWrite from './pages/AnnouncementWrite';
 import AnnouncementDetail from './pages/AnnouncementDetail'; // 👈 상세 페이지
@@ -144,7 +140,6 @@ const App = () => {
         <Route path="/announcement/edit/:id" element={<AnnouncementEdit />} />
         
         {/* 🔥 3. Announcements.jsx의 navigate('/announcement/write') 경로와 일치하도록 단수형(announcement)으로 수정 */}
-        <Route path="/announcement/write" element={<WriteAnnouncement />} />
         
         <Route path="/customer-center" element={<CustomerCenter />} />
       </Routes>

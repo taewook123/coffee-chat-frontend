@@ -1,41 +1,79 @@
-/* CoffeeChat.css */
+
+/* 2. 전역 변수 설정 */
 :root {
-  --deep-navy: #1A2A40;
-  --primary-blue: #3B82F6;
-  --bg-sand: #F3E9DC;
-  --text-white: #FFFFFF;
-  --text-gray: #6B7280;
+  --teatimes-blue: #1A73E8; 
+  --bg-white: #FFFFFF;
+  --bg-light-blue-tint: #F0F7FF;
+
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  
+  --accent: var(--teatimes-blue);
+  --primary: var(--teatimes-blue); 
+  --accent-bg: rgba(26, 115, 232, 0.1);
+  --accent-border: rgba(26, 115, 232, 0.5);
+  
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  /* 💡 3. 핵심! 기본 폰트를 머니그라피로 덮어씌웁니다 */
+  /* 제목(h1, h2)은 픽셀 폰트로, 일반 글씨는 라운드 폰트로 설정 */
+  --heading: 'Moneygraphy-Pixel', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'Moneygraphy-Rounded', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
 }
 
-/* Navbar */
+/* --- 디자인 제안 1 (브랜드 코어 블루) 구현 --- */
+
+/* 1. 네비게이션 바 (흰색 배경) */
 .navbar {
-  background-color: var(--deep-navy);
-  padding: 1rem 5%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--text-white);
+  padding: 1rem 5%;
+  background-color: var(--bg-white); /* 딥 네이비 대신 흰색 */
+  color: var(--text-h);
+  border-bottom: 1px solid var(--border);
+  position: sticky; /* sticky 위치 유지 */
+  top: 0;
+  z-index: 50;
 }
 
-.logo {
-  font-size: 1.5rem;
-  font-weight: bold;
+.logo-img {
+  height: 2.5rem; /* 로고 크기 조정 */
 }
 
 .nav-links {
   list-style: none;
   display: flex;
   gap: 2rem;
+  margin: 0;
+  padding: 0;
+  font-size: 0.95rem; /* 기존 텍스트 크기 유지 */
+  font-weight: 500;
 }
 
-.nav-links li {
-  cursor: pointer;
-  font-size: 0.95rem;
+.nav-links li a {
+  text-decoration: none;
+  color: var(--text-h);
   opacity: 0.8;
+  transition: opacity 0.2s, color 0.2s;
 }
 
-.nav-links li:hover {
+.nav-links li a:hover,
+.nav-links li.active a { /* 현재 활성화된 메뉴 스타일 */
   opacity: 1;
+  color: var(--teatimes-blue);
+  font-weight: 700;
 }
 
 .auth-buttons {
@@ -43,55 +81,65 @@
   gap: 10px;
 }
 
-.btn-register {
-  background: transparent;
-  border: 1px solid white;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-}
-
 .btn-login {
-  background: var(--primary-blue);
+  background: var(--teatimes-blue); /* 기존 레드/블루에서 로고 블루로 변경 */
   border: none;
-  color: white;
+  color: var(--text-h); /* 인디고 텍스트 유지 */
   padding: 8px 16px;
   border-radius: 20px;
   cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: bold;
 }
 
-/* Hero Section */
+/* 2. 히어로 섹션 (연한 블루 틴트 배경) */
 .hero-section {
-  background-color: var(--bg-sand);
-  padding: 4rem 5%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom-left-radius: 40px;
-  border-bottom-right-radius: 40px;
+  padding: 6rem 5%;
+  background-color: var(--bg-light-blue-tint); /* 모래색 대신 연한 블루 틴트 */
+}
+
+.hero-content {
+  flex: 1;
+  max-width: 500px;
 }
 
 .hero-content h1 {
-  font-size: 2.5rem;
-  color: #1f2937;
-  line-height: 1.3;
+  font-size: 3rem;
+  margin-top: 0;
 }
 
-.hero-content p {
-  color: #4b5563;
-  margin-bottom: 2rem;
+/* "커피 한 잔의 대화"에 적용할 새로운 클래스 */
+.blue-text {
+  color: var(--teatimes-blue);
+  font-weight: 700;
 }
 
-/* Search Bar */
+.hero-image-container {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hero-image-container img {
+  max-width: 100%;
+  border-radius: 40px;
+  box-shadow: var(--shadow);
+}
+
+/* 3. 검색 바 (로고 블루 버튼) */
+/* 이 부분은 SearchBar.jsx에서 사용할 클래스입니다. */
 .search-bar {
   display: flex;
-  background: white;
+  background: var(--bg-white);
   padding: 8px;
   border-radius: 30px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
   width: 100%;
   max-width: 500px;
+  margin-top: 3rem;
 }
 
 .search-bar input {
@@ -100,13 +148,38 @@
   padding: 10px 20px;
   outline: none;
   border-radius: 30px;
+  font-size: 1rem;
 }
 
 .search-icon-btn {
-  background-color: var(--primary-blue);
+  background-color: var(--teatimes-blue); /* 검색 버튼도 로고 블루 */
   border: none;
-  color: white;
+  color: var(--text-h); /* 인디고 텍스트 유지 */
   padding: 10px 15px;
   border-radius: 50%;
   cursor: pointer;
+  font-weight: bold;
+}
+
+/* 4. (추가) 이용 방법 섹션 아이콘 컬러 */
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* .counter 클래스를 활용하되, 원형으로 만듦 */
+.step-number {
+  background-color: var(--teatimes-blue); /* 로고 블루 배경 */
+  color: var(--text-h); /* 인디고 텍스트 유지 */
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-weight: bold;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
 }
