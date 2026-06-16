@@ -32,6 +32,7 @@ const MentorRegistration = () => {
   const [introduction, setIntroduction] = useState('');
   const quillRef = useRef(null);
 
+  // 💡 수정된 ReactQuill 에디터 이미지 핸들러 (Azure Blob 업로드 방식)
   const imageHandler = () => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
@@ -40,14 +41,34 @@ const MentorRegistration = () => {
 
     input.onchange = async () => {
       const file = input.files[0];
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const range = quillRef.current.getEditor().getSelection();
+      if (!file) return;
+
+      // 1. 파일을 FormData에 담기
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+
+      try {
+        // 2. 백엔드의 에디터 전용 업로드 API로 전송 (앞서 만든 API 재사용)
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+        const response = await axios.post(`${BACKEND_URL}/api/upload/editor-image`, uploadData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        // 3. 백엔드에서 받아온 Azure URL
+        const imageUrl = response.data.url;
+
+        // 4. 에디터 커서 위치에 이미지 URL 삽입
         const quill = quillRef.current.getEditor();
-        quill.insertEmbed(range.index, 'image', reader.result); 
+        const range = quill.getSelection(true);
+        quill.insertEmbed(range.index, 'image', imageUrl);
         quill.setSelection(range.index + 1);
-      };
+
+      } catch (error) {
+        console.error("에디터 이미지 업로드 실패:", error);
+        alert("이미지 업로드에 실패했습니다. 파일 용량이나 네트워크 상태를 확인해주세요.");
+      }
     };
   };
 
