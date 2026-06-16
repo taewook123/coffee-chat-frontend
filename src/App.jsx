@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // 공통 레이아웃 컴포넌트
 import Header from './components/Header';
 import Footer from './components/Footer';
+import ChatBot from './components/ChatBot';
 
 // 인증 및 계정 관련 페이지
 import Login from './Login';
@@ -42,6 +43,13 @@ import AdminSupport from './pages/AdminSupport';
 // 글로벌 스타일
 import './App.css';
 import './styles/index.css';
+
+function ChatBotWrapper() {
+  const location = useLocation();
+  const isCoffeeChatRoom = location.pathname.startsWith('/coffee-chat/');
+  if (isCoffeeChatRoom) return null;
+  return <ChatBot />;
+}
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -144,6 +152,7 @@ const App = () => {
         <Route path="/customer-center" element={<CustomerCenter />} />
       </Routes>
       
+      <ChatBotWrapper />
       <Footer />
     </Router>
   );
