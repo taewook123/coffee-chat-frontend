@@ -5,6 +5,8 @@ import "quill/dist/quill.snow.css";
 import { Upload, Briefcase, MessageSquare, Sparkles, X, Plus, GraduationCap, FileText } from 'lucide-react';
 import ProfileImageUpload from './ProfileImageUpload';
 import TagInput from './TagInput'; // 일반 프로필과 동일한 태그 UI 사용
+
+
 export default function MentorProfileForm({
   formData,
   setFormData,
@@ -18,7 +20,6 @@ export default function MentorProfileForm({
   handleExperienceChange,
   addExperienceField,
   removeExperienceField,
-    
 }) {
 
   const categories = [
@@ -36,7 +37,7 @@ export default function MentorProfileForm({
   ];
   const statuses = ['현직자', '이직자', '프리랜서', '대학생', '취준생'];
 
-// 💡 ReactQuill 에디터 설정 (Azure URL 업로드 방식으로 변경)
+  // 💡 ReactQuill 에디터 설정
   const quillRef = useRef(null);
   
   const imageHandler = () => {
@@ -93,7 +94,7 @@ export default function MentorProfileForm({
 
   const formats = ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'align', 'image', 'link'];
 
-  // 💡 드래그 앤 드롭 설정 (기능 유지)
+  // 💡 드래그 앤 드롭 설정
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -130,7 +131,7 @@ export default function MentorProfileForm({
       {/* 🟢 오른쪽 입력란 (일반 프로필 UI 박스 디자인 + 멘토 기능 탑재) */}
       <div className="md:col-span-2 space-y-6">
         
-        {/* 1. 호스트 활동 정보 (일반 프로필에 없는 직무 정보만) */}
+        {/* 1. 호스트 활동 정보 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
           <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0">호스트 활동 정보</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -157,7 +158,7 @@ export default function MentorProfileForm({
           </div>
         </div>
 
-        {/* 2. 성장 스토리 (ReactQuill 에디터 이식) */}
+        {/* 2. 성장 스토리 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
           <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" /> 성장 스토리 (자기소개)
@@ -194,39 +195,64 @@ export default function MentorProfileForm({
             <TagInput 
               label={<>게스트가 선택할 수 있는 대화 키워드를 입력해 주세요. <span className="text-gray-400 font-normal text-xs">(입력 후 Enter)</span></>}
               placeholder="예: 이력서 첨삭, 모의면접, 이직 고민"
-              tags={formData.hashtags}              // ← mentor_keywords → hashtags
-              onAdd={(val) => handleAddArrayItem('hashtags', val)}      // ← 필드명 변경
-              onRemove={(idx) => handleRemoveArrayItem('hashtags', idx)} // ← 필드명 변경
+              tags={formData.hashtags}
+              onAdd={(val) => handleAddArrayItem('hashtags', val)}
+              onRemove={(idx) => handleRemoveArrayItem('hashtags', idx)}
             />
           </div>
 
+          {/* 💡 이 부분의 인덱스 매핑이 수정되었습니다 */}
           <div className="pt-4">
             <label className="block text-xs font-bold text-gray-600 mb-2">이런 경험들을 공유해 드릴 수 있어요 <span className="text-gray-400 font-normal text-xs">(경험 상세 설명)</span></label>
             <div className="space-y-3">
-              {Array.isArray(formData.mentor_experiences) && formData.mentor_experiences.map((exp) => (
-                <div key={exp.id} className="flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-gray-100 relative">
-                  <textarea
-                    rows="2"
-                    value={exp.text}
-                    onChange={(e) => handleExperienceChange(exp.id, e.target.value)}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg outline-none focus:border-purple-500 transition text-sm bg-white resize-none"
-                    placeholder="초당 1,000만 개가 넘는 요청을 감당하기 위해 바닥부터 만든..."
-                  />
-                  {formData.mentor_experiences.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeExperienceField(exp.id)}
-                      className="p-3 bg-white text-red-500 border border-gray-200 rounded-lg hover:bg-red-50 transition cursor-pointer flex-shrink-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+              {Array.isArray(formData.mentor_experiences) && formData.mentor_experiences.map((exp, index) => {
+                const textValue = typeof exp === 'object' && exp !== null ? (exp.text || '') : exp;
+                const expId = typeof exp === 'object' && exp !== null && exp.id ? exp.id : index;
+
+                return (
+                  <div key={`exp-${expId}-${index}`} className="flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-gray-100 relative">
+                    <textarea
+                      rows="2"
+                      value={textValue}
+                      // 💡 [핵심 해결] 부모 함수 무시하고 여기서 직접 formData를 변경합니다!
+                      onChange={(e) => {
+                        const newExp = [...formData.mentor_experiences];
+                        if (typeof newExp[index] === 'object' && newExp[index] !== null) {
+                          newExp[index] = { ...newExp[index], text: e.target.value };
+                        } else {
+                          newExp[index] = e.target.value;
+                        }
+                        setFormData({ ...formData, mentor_experiences: newExp });
+                      }} 
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg outline-none focus:border-purple-500 transition text-sm bg-white resize-none"
+                      placeholder="초당 1,000만 개가 넘는 요청을 감당하기 위해 바닥부터 만든..."
+                    />
+                    {formData.mentor_experiences.length > 1 && (
+                      <button
+                        type="button"
+                        // 💡 [핵심 해결] 삭제도 여기서 직접 해당 인덱스를 잘라내고 바로 저장합니다!
+                        onClick={() => {
+                          const newExp = [...formData.mentor_experiences];
+                          newExp.splice(index, 1);
+                          setFormData({ ...formData, mentor_experiences: newExp });
+                        }} 
+                        className="p-3 bg-white text-red-500 border border-gray-200 rounded-lg hover:bg-red-50 transition cursor-pointer flex-shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <button
               type="button"
-              onClick={addExperienceField}
+              // 💡 [핵심 해결] 추가할 때도 빈 문자열을 직접 배열 끝에 밀어 넣습니다!
+              onClick={() => {
+                const newExp = [...(formData.mentor_experiences || [])];
+                newExp.push("");
+                setFormData({ ...formData, mentor_experiences: newExp });
+              }}
               className="mt-3 flex items-center justify-center gap-1.5 w-full py-3 bg-white hover:bg-slate-50 border border-dashed border-purple-300 text-purple-600 rounded-xl text-xs font-bold transition cursor-pointer"
             >
               <Plus className="w-4 h-4" /> + 경험 추가하기
@@ -234,7 +260,7 @@ export default function MentorProfileForm({
           </div>
         </div>
 
-        {/* 4. 링크 및 파일 첨부 (드래그 앤 드롭 이식) */}
+        {/* 4. 링크 및 파일 첨부 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
           <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-purple-600" /> 링크 및 파일 첨부
@@ -273,51 +299,51 @@ export default function MentorProfileForm({
 
             {/* 업로드된 파일 표시 */}
             {mentorResumeFile ? (
-  // 새로 선택한 파일
-  <div className="mt-4 flex items-center justify-between p-4 bg-purple-50 border border-purple-100 rounded-xl shadow-sm">
-    <div className="flex items-center gap-3 overflow-hidden">
-      <FileText className="flex-shrink-0 h-5 w-5 text-purple-600" />
-      <div className="overflow-hidden">
-        <p className="text-xs text-purple-400 font-medium mb-0.5">새로 선택한 파일</p>
-        <p className="text-sm font-semibold text-purple-900 truncate">{mentorResumeFile.name}</p>
-      </div>
-    </div>
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        setMentorResumeFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }}
-      className="flex-shrink-0 ml-4 p-1.5 text-purple-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-colors focus:outline-none"
-    >
-      <X className="w-4 h-4" />
-    </button>
-  </div>
-) : formData.portfolio_file_path ? (
-  // DB에 저장된 기존 파일
-  <div className="mt-4 flex items-center justify-between p-4 bg-slate-50 border border-gray-200 rounded-xl shadow-sm">
-    <div className="flex items-center gap-3 overflow-hidden">
-      <FileText className="flex-shrink-0 h-5 w-5 text-gray-400" />
-      <div className="overflow-hidden">
-        <p className="text-xs text-gray-400 font-medium mb-0.5">저장된 파일</p>
-        <p className="text-sm font-semibold text-gray-700 truncate">
-          {formData.portfolio_file_path.split('/').pop()}
-        </p>
-      </div>
-    </div>
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        setFormData({ ...formData, portfolio_file_path: '' });
-      }}
-      className="flex-shrink-0 ml-4 p-1.5 text-gray-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-colors focus:outline-none"
-    >
-      <X className="w-4 h-4" />
-    </button>
-  </div>
-) : null}
+              // 새로 선택한 파일
+              <div className="mt-4 flex items-center justify-between p-4 bg-purple-50 border border-purple-100 rounded-xl shadow-sm">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <FileText className="flex-shrink-0 h-5 w-5 text-purple-600" />
+                  <div className="overflow-hidden">
+                    <p className="text-xs text-purple-400 font-medium mb-0.5">새로 선택한 파일</p>
+                    <p className="text-sm font-semibold text-purple-900 truncate">{mentorResumeFile.name}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMentorResumeFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="flex-shrink-0 ml-4 p-1.5 text-purple-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-colors focus:outline-none"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : formData.portfolio_file_path ? (
+              // DB에 저장된 기존 파일
+              <div className="mt-4 flex items-center justify-between p-4 bg-slate-50 border border-gray-200 rounded-xl shadow-sm">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <FileText className="flex-shrink-0 h-5 w-5 text-gray-400" />
+                  <div className="overflow-hidden">
+                    <p className="text-xs text-gray-400 font-medium mb-0.5">저장된 파일</p>
+                    <p className="text-sm font-semibold text-gray-700 truncate">
+                      {formData.portfolio_file_path.split('/').pop()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFormData({ ...formData, portfolio_file_path: '' });
+                  }}
+                  className="flex-shrink-0 ml-4 p-1.5 text-gray-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-colors focus:outline-none"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : null}
           </div>
 
         </div>

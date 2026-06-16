@@ -342,7 +342,15 @@ const MentorRegistration = () => {
           if (!rawStr) return [];
           try {
             const parsed = JSON.parse(rawStr);
-            return Array.isArray(parsed) ? parsed : String(rawStr).split(',').filter(Boolean);
+            const arr = Array.isArray(parsed) ? parsed : String(rawStr).split(',').filter(Boolean);
+            
+            // 💡 [핵심] 0,1,2 로 쪼개진 이상한 객체가 오면 'text'만 쏙 뽑아내서 순수 글자로 바꿉니다.
+            return arr.map(item => {
+              if (typeof item === 'object' && item !== null) {
+                return item.text || item.title || item.value || '';
+              }
+              return item;
+            });
           } catch (e) {
             return String(rawStr).split(',').filter(Boolean);
           }

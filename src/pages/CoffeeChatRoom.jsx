@@ -11,11 +11,8 @@ import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 const WS_URL = BACKEND_URL.replace(/^http/, 'ws');
 
-// ── 추천 질문 생성 간격 (45초)
 const RECOMMEND_INTERVAL_MS = 45000;
-
-// ── 버퍼 최소 길이 — 이보다 짧으면 LLM 호출 안 함
-const MIN_BUFFER_LENGTH = 20;
+const MIN_BUFFER_LENGTH = 0;
 
 function ControlBtn({ active, onClick, icon, danger = false, label }) {
   return (
@@ -46,37 +43,28 @@ export default function CoffeeChatRoom() {
   const [theme, setTheme] = useState('dark');
   const [showChat, setShowChat] = useState(false);
   const [isSTTExpanded, setIsSTTExpanded] = useState(false);
+  const [isQuestionsExpanded, setIsQuestionsExpanded] = useState(true);
+  const [isAIExpanded, setIsAIExpanded] = useState(true);
+  const [isLLMExpanded, setIsLLMExpanded] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
 
-  // 채팅 WebSocket
   const chatWsRef = useRef(null);
   const llmWsRef  = useRef(null);
   const [chatInput, setChatInput]     = useState('');
   const [chatMessages, setChatMessages] = useState([{ sender: 'system', text: '채팅방이 개설되었습니다.' }]);
 
-  // LLM 어시스턴트 State
   const [llmInput, setLlmInput]         = useState('');
   const [llmMessages, setLlmMessages]   = useState([{ sender: 'ai', text: '무엇이든 물어보세요! 대화를 기반으로 조언해 드릴게요.' }]);
   const [llmStreaming, setLlmStreaming]  = useState(false);
   const [llmBuffer, setLlmBuffer]       = useState('');
 
-  // ── AI 추천 질문 State ──────────────────────────────
   const [recommendedQuestions, setRecommendedQuestions] = useState([
     '대화가 시작되면 AI가 맥락에 맞는 추천 질문을 생성합니다.',
   ]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-                  // 새로고침 버튼 클릭 시
-const fetchRecommendedQuestion = async () => {
-  const res = await axios.post(`${BACKEND_URL}/api/chat/recommend-question`, {
-    booking_id: Number(chatId),
-    stt_text: sttText  // 현재 STT 텍스트
-  });
-  setRecommendedQuestions(res.data.questions);
-};
-  // STT final 텍스트 누적 버퍼
+
   const sttBufferRef       = useRef('');
   const lastFinalCountRef  = useRef(0);
-  // 다음 갱신까지 남은 시간
   const [nextRefreshIn, setNextRefreshIn] = useState(RECOMMEND_INTERVAL_MS / 1000);
 
   const [booking, setBooking]   = useState(null);
@@ -89,7 +77,6 @@ const fetchRecommendedQuestion = async () => {
   const chatScrollRef = useRef(null);
   const llmScrollRef  = useRef(null);
 
-  // ── 초기 데이터 로딩 ──────────────────────────────────
   useEffect(() => {
     const id = localStorage.getItem('userId');
     const userName = localStorage.getItem('userName') || '나';
@@ -106,13 +93,11 @@ const fetchRecommendedQuestion = async () => {
       .catch(err => console.error('[세션 정보 로드 실패]', err));
   }, [chatId]);
 
-  // ── 타이머 ────────────────────────────────────────────
   useEffect(() => {
     const timer = setInterval(() => setDuration(p => p + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // ── 자동 스크롤 ───────────────────────────────────────
   useEffect(() => {
     if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [chatMessages]);
@@ -120,7 +105,6 @@ const fetchRecommendedQuestion = async () => {
     if (llmScrollRef.current) llmScrollRef.current.scrollTop = llmScrollRef.current.scrollHeight;
   }, [llmMessages, llmBuffer]);
 
-  // ── 채팅 WebSocket ────────────────────────────────────
   useEffect(() => {
     if (!userId || !chatId) return;
 
@@ -131,7 +115,6 @@ const fetchRecommendedQuestion = async () => {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('[Chat WS 수신]', data);
         if (Number(data.sender_id) === Number(userId)) return;
         setChatMessages(prev => [...prev, {
           sender: 'other',
@@ -148,7 +131,6 @@ const fetchRecommendedQuestion = async () => {
     return () => ws.close();
   }, [userId, chatId]);
 
-  // ── LLM WebSocket ─────────────────────────────────────
   useEffect(() => {
     if (!userId || !chatId) return;
 
@@ -156,12 +138,9 @@ const fetchRecommendedQuestion = async () => {
     llmWsRef.current = ws;
 
     ws.onopen = () => console.log('[LLM WS] 연결 성공');
-
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-
-        // 일반 LLM 응답
         if (data.type === 'chunk') {
           setLlmStreaming(true);
           setLlmBuffer(prev => prev + data.text);
@@ -173,8 +152,6 @@ const fetchRecommendedQuestion = async () => {
           setLlmStreaming(false);
           setLlmMessages(prev => [...prev, { sender: 'ai', text: `❌ 오류: ${data.text}` }]);
           setLlmBuffer('');
-
-        // 추천 질문 응답
         } else if (data.type === 'recommended_questions') {
           setIsGeneratingQuestions(false);
           if (Array.isArray(data.questions) && data.questions.length > 0) {
@@ -185,14 +162,12 @@ const fetchRecommendedQuestion = async () => {
         console.warn('[LLM WS] 데이터 파싱 실패:', e);
       }
     };
-
     ws.onclose = () => console.log('[LLM WS] 연결 종료');
     ws.onerror = (e) => console.error('[LLM WS] 에러 발생:', e);
 
     return () => ws.close();
   }, [userId, chatId]);
 
-  // ── WebRTC 훅 ─────────────────────────────────────────
   const {
     localVideoRef,
     remoteVideoRef,
@@ -205,11 +180,9 @@ const fetchRecommendedQuestion = async () => {
     questions: booking?.questions,
   });
 
-  // ── STT final 로그 → 버퍼 누적 ──────────────────────
   useEffect(() => {
     const finals = sttLogs.filter(l => l.type === 'final');
     if (finals.length <= lastFinalCountRef.current) return;
-
     const newFinals = finals.slice(lastFinalCountRef.current);
     newFinals.forEach(log => {
       const line = `${log.speaker}: ${log.text}`;
@@ -218,7 +191,6 @@ const fetchRecommendedQuestion = async () => {
     lastFinalCountRef.current = finals.length;
   }, [sttLogs]);
 
-  // ── 추천 질문 자동 갱신 타이머 ──────────────────────
   useEffect(() => {
     if (!userId || !chatId) return;
 
@@ -231,19 +203,10 @@ const fetchRecommendedQuestion = async () => {
 
     const interval = setInterval(() => {
       const buffer = sttBufferRef.current.trim();
+      if (buffer.length < MIN_BUFFER_LENGTH) return;
+      if (llmWsRef.current?.readyState !== WebSocket.OPEN) return;
 
-      if (buffer.length < MIN_BUFFER_LENGTH) {
-        console.log('[추천질문] 버퍼가 짧아 스킵:', buffer.length, '자');
-        return;
-      }
-      if (llmWsRef.current?.readyState !== WebSocket.OPEN) {
-        console.warn('[추천질문] LLM WS가 닫혀있어 스킵');
-        return;
-      }
-
-      console.log('[추천질문] 요청 전송, 버퍼:', buffer.length, '자');
       setIsGeneratingQuestions(true);
-
       llmWsRef.current.send(JSON.stringify({
         type: 'recommend_questions',
         conversation: buffer,
@@ -251,7 +214,6 @@ const fetchRecommendedQuestion = async () => {
         mentee_profile: booking?.user_profile  || booking?.userProfile  || '',
         preset_questions: booking?.questions || '',
       }));
-
       sttBufferRef.current = '';
     }, RECOMMEND_INTERVAL_MS);
 
@@ -261,7 +223,6 @@ const fetchRecommendedQuestion = async () => {
     };
   }, [userId, chatId, booking]);
 
-  // ── 수동 갱신 버튼 ───────────────────────────────────
   const handleManualRefresh = useCallback(() => {
     const buffer = sttBufferRef.current.trim();
     if (!buffer || buffer.length < MIN_BUFFER_LENGTH) return;
@@ -269,7 +230,6 @@ const fetchRecommendedQuestion = async () => {
 
     setIsGeneratingQuestions(true);
     setNextRefreshIn(RECOMMEND_INTERVAL_MS / 1000);
-
     llmWsRef.current.send(JSON.stringify({
       type: 'recommend_questions',
       conversation: buffer,
@@ -277,11 +237,9 @@ const fetchRecommendedQuestion = async () => {
       mentee_profile: booking?.user_profile  || booking?.userProfile  || '',
       preset_questions: booking?.questions || '',
     }));
-
     sttBufferRef.current = '';
   }, [booking]);
 
-  // ── 역할 판별 ─────────────────────────────────────────
   const isMentor = booking && userId
     ? Number(userId) === Number(booking.mentor_user_id)
     : false;
@@ -292,15 +250,12 @@ const fetchRecommendedQuestion = async () => {
     ? (booking?.user_name   || booking?.userName   || '멘티')
     : (booking?.mentor_name || booking?.mentorName || '멘토');
 
-  // ── LLM 어시스턴트 전송 ───────────────────────────────
   const handleLlmSubmit = (e) => {
     e.preventDefault();
     if (!llmInput.trim() || llmStreaming) return;
-
     const text = llmInput.trim();
     setLlmMessages(prev => [...prev, { sender: 'me', text }]);
     setLlmInput('');
-
     if (llmWsRef.current?.readyState === WebSocket.OPEN) {
       setLlmStreaming(true);
       setLlmBuffer('');
@@ -314,7 +269,6 @@ const fetchRecommendedQuestion = async () => {
     }
   };
 
-  // ── 미디어 제어 ───────────────────────────────────────
   const handleToggleMute = useCallback(() => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
@@ -332,7 +286,6 @@ const fetchRecommendedQuestion = async () => {
   const handleRemoteVideoPlay    = useCallback(() => setIsRemoteConnected(true), []);
   const handleRemoteVideoEmptied = useCallback(() => setIsRemoteConnected(false), []);
 
-  // ── 통화 종료 ─────────────────────────────────────────
   const handleEndCall = async () => {
     await hangUp();
     chatWsRef.current?.close();
@@ -343,15 +296,12 @@ const fetchRecommendedQuestion = async () => {
     navigate(`/coffee-chat-review/${chatId}`);
   };
 
-  // ── 채팅 전송 ─────────────────────────────────────────
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-
     const text = chatInput.trim();
     setChatMessages(prev => [...prev, { sender: 'me', text }]);
     setChatInput('');
-
     if (chatWsRef.current?.readyState === WebSocket.OPEN) {
       chatWsRef.current.send(JSON.stringify({
         sender_id:   userId,
@@ -361,7 +311,6 @@ const fetchRecommendedQuestion = async () => {
     }
   };
 
-  // ── helpers ───────────────────────────────────────────
   const formatDuration = (s) => {
     const m = Math.floor(s / 60);
     return `${m.toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -374,7 +323,6 @@ const fetchRecommendedQuestion = async () => {
         .map((q, i) => ({ text: q.replace(/^[-•]\s*/, '').trim(), tag: `질문 ${i + 1}` }))
     : [{ text: '작성된 질문이 없어요', tag: '질문' }];
 
-  // ── 테마 변수 ─────────────────────────────────────────
   const themeStyles = theme === 'dark' ? {
     '--bg-gradient':       'linear-gradient(135deg, #0d1520 0%, #111d2e 50%, #0a1628 100%)',
     '--panel-bg':          'rgba(255,255,255,0.03)',
@@ -399,7 +347,6 @@ const fetchRecommendedQuestion = async () => {
     '--chat-overlay':      'rgba(241,245,249,0.97)',
   };
 
-  // ─────────────────────────────────────────────────────
   return (
     <div
       className="h-screen flex flex-col overflow-hidden transition-colors duration-300"
@@ -421,7 +368,6 @@ const fetchRecommendedQuestion = async () => {
           </span>
         </div>
         <div className="flex items-center gap-4">
-          {/* 💡 수정된 부분: 불필요하게 중복된 button 태그 제거 */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-full hover:bg-black/10 transition-colors"
@@ -429,14 +375,11 @@ const fetchRecommendedQuestion = async () => {
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          
           {booking && (
             <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
               {isMentor ? `${opponentName}님과의 코칭 세션` : `${opponentName}님과의 세션`}
             </span>
           )}
-          
-          {/* 💡 수정된 부분: 불필요하게 중복된 div 태그 제거 */}
           <div
             className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm"
             style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
@@ -462,9 +405,7 @@ const fetchRecommendedQuestion = async () => {
                 className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg"
                 style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}
               >
-                <video
-                  ref={localVideoRef}
-                  autoPlay playsInline muted
+                <video ref={localVideoRef} autoPlay playsInline muted
                   className="absolute inset-0 w-full h-full object-cover"
                   style={{ display: isVideoOff ? 'none' : 'block' }}
                 />
@@ -474,7 +415,6 @@ const fetchRecommendedQuestion = async () => {
                       {getInitials(myName)}
                     </div>
                     <div className="text-center">
-                      {/* 💡 수정된 부분: 중복된 p 태그 제거 */}
                       <p className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{myName}</p>
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium mt-1 inline-block ${isMentor ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-500'}`}>
                         {myRole}
@@ -483,10 +423,7 @@ const fetchRecommendedQuestion = async () => {
                   </div>
                 )}
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md z-10">
-                  {isMuted
-                    ? <MicOff className="w-3 h-3 text-red-400" />
-                    : <Mic className="w-3 h-3 text-white/70" />
-                  }
+                  {isMuted ? <MicOff className="w-3 h-3 text-red-400" /> : <Mic className="w-3 h-3 text-white/70" />}
                   <span className="text-xs text-white/70">
                     {isMuted ? '음소거' : `${myName} (${isMentor ? '멘토' : '멘티'})`}
                   </span>
@@ -498,9 +435,7 @@ const fetchRecommendedQuestion = async () => {
                 className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg"
                 style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}
               >
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay playsInline
+                <video ref={remoteVideoRef} autoPlay playsInline
                   onPlay={handleRemoteVideoPlay}
                   onEmptied={handleRemoteVideoEmptied}
                   className="absolute inset-0 w-full h-full object-cover"
@@ -579,40 +514,59 @@ const fetchRecommendedQuestion = async () => {
           {/* ── 우측 패널 ── */}
           <div className="w-80 flex-shrink-0 min-h-0 flex flex-col gap-3 relative">
 
-            {/* 확정 질문 */}
+            {/* ── 확정 질문 ── */}
             <div
-              className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md"
-              style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
+              className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md overflow-hidden transition-all duration-300"
+              style={{
+              background: 'var(--panel-bg)',
+              border: '1px solid var(--panel-border)',
+              maxHeight: isQuestionsExpanded ? '500px' : '52px',  // ← 높이로 접기
+              }}
             >
-              <h3 className="flex-shrink-0 font-semibold text-sm mb-3" style={{ color: 'var(--text-main)' }}>내 확정 질문</h3>
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
-                {questions.map((q, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setActiveQuestion(i)}
-                    className={`p-3 rounded-xl cursor-pointer text-sm transition-colors flex-shrink-0 ${activeQuestion === i ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-black/5 border border-transparent'}`}
-                    style={{ color: 'var(--text-main)' }}
-                  >
-                    <span className="text-xs text-blue-500 block mb-1 font-semibold">{q.tag}</span>
-                    {q.text}
-                  </div>
-                ))}
+              <div
+                className="flex-shrink-0 flex items-center justify-between mb-3 cursor-pointer"
+                onClick={() => setIsQuestionsExpanded(!isQuestionsExpanded)}
+              >
+                <h3 className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>내 확정 질문</h3>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {isQuestionsExpanded ? '접기 ▲' : '펼치기 ▼'}
+                </span>
               </div>
+              {isQuestionsExpanded && (
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
+                  {questions.map((q, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setActiveQuestion(i)}
+                      className={`p-3 rounded-xl cursor-pointer text-sm transition-colors flex-shrink-0 ${activeQuestion === i ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-black/5 border border-transparent'}`}
+                      style={{ color: 'var(--text-main)' }}
+                    >
+                      <span className="text-xs text-blue-500 block mb-1 font-semibold">{q.tag}</span>
+                      {q.text}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── AI 추천 질문 ── */}
             <div
-              className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md"
-              style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
-            >
-              {/* 헤더 */}
-              <div className="flex-shrink-0 flex items-center justify-between mb-3">
+            className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md overflow-hidden transition-all duration-300"
+              style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--panel-border)',
+                maxHeight: isAIExpanded ? '500px' : '52px',  // ← 높이로 접기
+                    }}
+                >
+              <div
+                className="flex-shrink-0 flex items-center justify-between mb-3 cursor-pointer"
+                onClick={() => setIsAIExpanded(!isAIExpanded)}
+              >
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />
                   <h3 className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>AI 추천 질문</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* 다음 갱신 카운트다운 */}
                   {!isGeneratingQuestions && sttBufferRef.current.length >= MIN_BUFFER_LENGTH && (
                     <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {nextRefreshIn}s
@@ -623,9 +577,8 @@ const fetchRecommendedQuestion = async () => {
                       <Sparkles className="w-3 h-3" /> 생성 중...
                     </span>
                   ) : (
-                    /* 수동 갱신 버튼 */
                     <button
-                      onClick={handleManualRefresh}
+                      onClick={(e) => { e.stopPropagation(); handleManualRefresh(); }}
                       disabled={sttBufferRef.current.length < MIN_BUFFER_LENGTH}
                       className="p-1 rounded-lg transition-colors hover:bg-amber-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
                       title="지금 바로 추천 질문 갱신"
@@ -633,89 +586,107 @@ const fetchRecommendedQuestion = async () => {
                       <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
                     </button>
                   )}
-                </div>
-              </div>
-
-              {/* 질문 목록 */}
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
-                {recommendedQuestions.map((q, i) => (
-                  <div
-                    key={i}
-                    className="p-3 rounded-xl text-sm flex items-start gap-2 hover:bg-amber-500/5 transition-colors cursor-pointer flex-shrink-0 border border-transparent hover:border-amber-500/20"
-                    style={{
-                      background: 'rgba(0,0,0,0.04)',
-                      color: 'var(--text-main)',
-                    }}
-                  >
-                    <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                    <span>{q}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* 버퍼 진행 바 */}
-              <div className="flex-shrink-0 mt-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>대화 수집 중</span>
-                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                    {Math.min(100, Math.round((nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100 * -1 + 100))}%
+                  <span className="text-xs text-amber-400">
+                    {isAIExpanded ? '접기 ▲' : '펼치기 ▼'}
                   </span>
                 </div>
-                <div className="w-full h-1 rounded-full bg-black/10 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-1000"
-                    style={{
-                      width: `${Math.min(100, Math.round((1 - nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100))}%`,
-                    }}
-                  />
-                </div>
               </div>
+
+              {isAIExpanded && (
+                <>
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
+                    {recommendedQuestions.map((q, i) => (
+                      <div
+                        key={i}
+                        className="p-3 rounded-xl text-sm flex items-start gap-2 hover:bg-amber-500/5 transition-colors cursor-pointer flex-shrink-0 border border-transparent hover:border-amber-500/20"
+                        style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--text-main)' }}
+                      >
+                        <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                        <span>{q}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex-shrink-0 mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>대화 수집 중</span>
+                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        {Math.min(100, Math.round((nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100 * -1 + 100))}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1 rounded-full bg-black/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-1000"
+                        style={{ width: `${Math.min(100, Math.round((1 - nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* LLM 어시스턴트 */}
-            <div className="flex-[1.4] min-h-0 flex flex-col rounded-2xl p-4 shadow-md border border-blue-500/30 bg-blue-500/5">
-              <div className="flex-shrink-0 flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-blue-500" />
-                <h3 className="font-semibold text-sm text-blue-500">LLM 어시스턴트</h3>
-                {llmStreaming && (
-                  <span className="text-xs text-blue-400 animate-pulse ml-auto">답변 생성 중...</span>
-                )}
+            {/* ── LLM 어시스턴트 ── */}
+            <div
+            className="flex-1 min-h-0 flex flex-col rounded-2xl p-4 shadow-md overflow-hidden transition-all duration-300"
+            style={{
+              background: 'var(--panel-bg)',
+               border: '1px solid var(--panel-border)',
+               maxHeight: isLLMExpanded ? '500px' : '52px',  // ← 높이로 접기
+              }}
+              >
+              <div
+                className="flex-shrink-0 flex items-center justify-between mb-3 cursor-pointer"
+                onClick={() => setIsLLMExpanded(!isLLMExpanded)}
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-500" />
+                  <h3 className="font-semibold text-sm text-blue-500">LLM 어시스턴트</h3>
+                  {llmStreaming && (
+                    <span className="text-xs text-blue-400 animate-pulse ml-2">답변 생성 중...</span>
+                  )}
+                </div>
+                <span className="text-xs text-blue-400">
+                  {isLLMExpanded ? '접기 ▲' : '펼치기 ▼'}
+                </span>
               </div>
-              <div ref={llmScrollRef} className="flex-1 min-h-0 overflow-y-auto pr-1 mb-2 flex flex-col gap-2 custom-scrollbar">
-                {llmMessages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={`p-2.5 rounded-xl text-xs max-w-[85%] flex-shrink-0 ${m.sender === 'me' ? 'bg-blue-500 text-white self-end rounded-tr-sm' : 'bg-black/10 self-start rounded-tl-sm'}`}
-                    style={m.sender !== 'me' ? { color: 'var(--text-main)' } : {}}
-                  >
-                    {m.text}
+              {isLLMExpanded && (
+                <>
+                  <div ref={llmScrollRef} className="flex-1 min-h-0 overflow-y-auto pr-1 mb-2 flex flex-col gap-2 custom-scrollbar">
+                    {llmMessages.map((m, i) => (
+                      <div
+                        key={i}
+                        className={`p-2.5 rounded-xl text-xs max-w-[85%] flex-shrink-0 ${m.sender === 'me' ? 'bg-blue-500 text-white self-end rounded-tr-sm' : 'bg-black/10 self-start rounded-tl-sm'}`}
+                        style={m.sender !== 'me' ? { color: 'var(--text-main)' } : {}}
+                      >
+                        {m.text}
+                      </div>
+                    ))}
+                    {llmStreaming && llmBuffer && (
+                      <div className="p-2.5 rounded-xl text-xs max-w-[85%] bg-black/10 self-start rounded-tl-sm opacity-70 flex-shrink-0" style={{ color: 'var(--text-main)' }}>
+                        {llmBuffer}
+                        <span className="inline-block w-1 h-3 bg-blue-400 ml-1 animate-pulse" />
+                      </div>
+                    )}
                   </div>
-                ))}
-                {llmStreaming && llmBuffer && (
-                  <div className="p-2.5 rounded-xl text-xs max-w-[85%] bg-black/10 self-start rounded-tl-sm opacity-70 flex-shrink-0" style={{ color: 'var(--text-main)' }}>
-                    {llmBuffer}
-                    <span className="inline-block w-1 h-3 bg-blue-400 ml-1 animate-pulse" />
-                  </div>
-                )}
-              </div>
-              <form onSubmit={handleLlmSubmit} className="flex-shrink-0 flex items-center gap-2 relative">
-                <input
-                  type="text"
-                  value={llmInput}
-                  onChange={(e) => setLlmInput(e.target.value)}
-                  placeholder={llmStreaming ? 'AI가 답변을 작성 중입니다...' : 'AI에게 질문하기...'}
-                  disabled={llmStreaming}
-                  className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                  style={{ color: 'var(--text-main)' }}
-                />
-                <button
-                  type="submit"
-                  disabled={llmStreaming || !llmInput.trim()}
-                  className="absolute right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:bg-gray-500 transition-colors"
-                >
-                  <Send className="w-3 h-3" />
-                </button>
-              </form>
+                  <form onSubmit={handleLlmSubmit} className="flex-shrink-0 flex items-center gap-2 relative">
+                    <input
+                      type="text"
+                      value={llmInput}
+                      onChange={(e) => setLlmInput(e.target.value)}
+                      placeholder={llmStreaming ? 'AI가 답변을 작성 중입니다...' : 'AI에게 질문하기...'}
+                      disabled={llmStreaming}
+                      className="w-full bg-black/10 rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                      style={{ color: 'var(--text-main)' }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={llmStreaming || !llmInput.trim()}
+                      className="absolute right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:bg-gray-500 transition-colors"
+                    >
+                      <Send className="w-3 h-3" />
+                    </button>
+                  </form>
+                </>
+              )}
             </div>
 
             {/* 채팅 오버레이 */}
@@ -738,7 +709,6 @@ const fetchRecommendedQuestion = async () => {
                 <h3 className="font-semibold text-sm text-indigo-400 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" /> 채팅방
                 </h3>
-                {/* 💡 수정된 부분: 중복된 X 닫기 버튼 제거 */}
                 <button onClick={() => setShowChat(false)}>
                   <X className="w-4 h-4 text-gray-400 hover:text-gray-200 transition-colors" />
                 </button>
@@ -790,20 +760,12 @@ const fetchRecommendedQuestion = async () => {
             className="flex items-center gap-3 px-6 py-3 rounded-2xl shadow-lg backdrop-blur-xl"
             style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}
           >
-            <ControlBtn
-              active={!isMuted}
-              onClick={handleToggleMute}
+            <ControlBtn active={!isMuted} onClick={handleToggleMute}
               icon={isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-              danger={isMuted}
-              label={isMuted ? '음소거' : '마이크'}
-            />
-            <ControlBtn
-              active={!isVideoOff}
-              onClick={handleToggleVideo}
+              danger={isMuted} label={isMuted ? '음소거' : '마이크'} />
+            <ControlBtn active={!isVideoOff} onClick={handleToggleVideo}
               icon={isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-              danger={isVideoOff}
-              label={isVideoOff ? '비디오 꺼짐' : '비디오'}
-            />
+              danger={isVideoOff} label={isVideoOff ? '비디오 꺼짐' : '비디오'} />
             <div className="w-px h-8 mx-1" style={{ background: 'var(--panel-border)' }} />
             <button onClick={handleEndCall} className="flex flex-col items-center gap-1 group">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 shadow-xl bg-gradient-to-br from-red-500 to-red-700">
@@ -816,8 +778,7 @@ const fetchRecommendedQuestion = async () => {
             <ControlBtn active={showSettings} onClick={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />} label="설정" />
           </div>
         </div>
-
-      </div>{/* 바디 끝 */}
+      </div>
 
       {/* ── 설정 모달 ── */}
       {showSettings && (
