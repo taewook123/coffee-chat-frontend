@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Calendar, Clock, CheckCircle, XCircle, MessageSquare, ChevronRight,
-  ChevronDown, ArrowLeft, Download, Filter, Search, TrendingUp, CreditCard, Coffee,
-  AlertCircle // 💡 누락되었던 아이콘 추가
+  ChevronDown, ArrowLeft, Download, Filter, Search, TrendingUp, CreditCard,
+  AlertCircle
 } from 'lucide-react';
 
 /* ─── 상태별 메타데이터 ─── */
@@ -22,9 +22,22 @@ const FILTER_LABEL = {
   REJECTED: "취소/거절",
 };
 
+/* ─── 티타임 아이콘 (lucide에 없어서 SVG로 대체) ─── */
+function TeacupIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 8h1a4 4 0 0 1 0 8h-1" />
+      <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+      <line x1="6" y1="2" x2="6" y2="4" />
+      <line x1="10" y1="2" x2="10" y2="4" />
+      <line x1="14" y1="2" x2="14" y2="4" />
+    </svg>
+  );
+}
+
 export default function BookingHistory() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('requested'); // 'requested' | 'received'
+  const [activeTab, setActiveTab] = useState('requested');
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(null);
@@ -34,7 +47,6 @@ export default function BookingHistory() {
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-  // 💡 내 유저 ID 가져오기
   let currentUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
   if (!currentUserId) {
     const token = localStorage.getItem('token');
@@ -47,7 +59,6 @@ export default function BookingHistory() {
     }
   }
 
-  // 💡 API 데이터 로드
   useEffect(() => {
     if (!currentUserId) { setIsLoading(false); return; }
 
@@ -67,14 +78,13 @@ export default function BookingHistory() {
       }
     };
     fetchBookings();
-    setExpanded(null); // 탭 변경 시 확장된 카드 초기화
+    setExpanded(null);
   }, [currentUserId, activeTab, BACKEND_URL]);
 
-  // 💡 예약 수락 / 거절 핸들러 (멘토용)
   const handleConfirm = async (bookingId) => {
     try {
       await axios.post(`${BACKEND_URL}/api/booking/confirm/${bookingId}`);
-      alert('🎉 커피챗 예약이 최종 확정되었습니다!');
+      alert('🎉 티타임 예약이 최종 확정되었습니다!');
       setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, status: 'CONFIRMED' } : b));
     } catch {
       alert('확정 처리에 실패했습니다. 다시 시도해주세요.');
@@ -82,46 +92,37 @@ export default function BookingHistory() {
   };
 
   const handleReject = async (bookingId) => {
-    if (!window.confirm('정말 이 커피챗 신청을 거절하시겠습니까?')) return;
+    if (!window.confirm('정말 이 티타임 신청을 거절하시겠습니까?')) return;
     try {
       await axios.post(`${BACKEND_URL}/api/booking/reject/${bookingId}`);
-      alert('커피챗 예약이 거절되었습니다.');
+      alert('티타임 예약이 거절되었습니다.');
       setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, status: 'REJECTED' } : b));
     } catch {
       alert('거절 처리에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
-  // 💡 내가 신청한 예약 취소 핸들러 (멘티용)
   const handleCancelRequest = async (bookingId) => {
-    if (!window.confirm('정말 이 커피챗 신청을 취소하시겠습니까?')) return;
+    if (!window.confirm('정말 이 티타임 신청을 취소하시겠습니까?')) return;
     try {
       await axios.post(`${BACKEND_URL}/api/booking/reject/${bookingId}`);
-      alert('커피챗 신청이 취소되었습니다.');
+      alert('티타임 신청이 취소되었습니다.');
       setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, status: 'REJECTED' } : b));
     } catch {
       alert('취소 처리에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
-  // 💡 데이터 필터링 및 검색
   const processedBookings = Array.isArray(bookings) ? bookings.filter((b) => {
-    // 탭 조건: 받은 요청 탭에서는 PAID 이상만 노출 (옵션)
     if (activeTab === 'received' && b.status === 'PENDING') return false;
-    
-    // 필터 조건
     const matchF = filter === "전체" || b.status === filter;
-    
-    // 검색 조건
     const targetName = b.partner_name || b.mentee_name || "";
     const matchQ = query.trim() === "" || 
                    targetName.toLowerCase().includes(query.toLowerCase()) || 
                    (b.questions || "").toLowerCase().includes(query.toLowerCase());
-    
     return matchF && matchQ;
   }) : [];
 
-  // 날짜 포맷팅 함수
   const formatDate = (date, time) => {
     if (!date) return '시간 미정';
     const d = new Date(`${date}T${time || '00:00'}`);
@@ -136,14 +137,14 @@ export default function BookingHistory() {
       
       <div className="flex-1 px-6 md:px-7 py-2 max-w-5xl mx-auto w-full">
         
-        {/* ── 타이틀 & 탭 ── */}
+        {/* ── 타이틀 ── */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
-            <Coffee className="w-5 h-5 text-blue-600" />
+            <TeacupIcon className="w-5 h-5 text-blue-600" />
             <span className="text-xs font-bold tracking-widest text-blue-600 uppercase">Booking History</span>
           </div>
           <h1 className="text-3xl font-extrabold text-gray-900 mb-2">예약 내역</h1>
-          <p className="text-sm text-gray-500">지금까지 진행된 모든 커피챗 요청과 예약 상태를 확인하세요.</p>
+          <p className="text-sm text-gray-500">지금까지 진행된 모든 티타임 요청과 예약 상태를 확인하세요.</p>
         </div>
 
         {/* ── 탭 메뉴 ── */}
@@ -154,7 +155,7 @@ export default function BookingHistory() {
               activeTab === 'requested' ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-700 shadow-none'
             }`}
           >
-            내가 신청한 커피챗
+            내가 신청한 티타임
           </button>
           <button
             onClick={() => { setActiveTab('received'); setFilter('전체'); }}
@@ -162,14 +163,12 @@ export default function BookingHistory() {
               activeTab === 'received' ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-700 shadow-none'
             }`}
           >
-            신청받은 커피챗
+            신청받은 티타임
           </button>
         </div>
 
         {/* ── 검색 및 필터 ── */}
         <div className="flex flex-col md:flex-row items-center gap-3 mb-6 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          
-          {/* 검색창 */}
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl flex-1 bg-gray-50 border border-gray-200 w-full">
             <Search className="w-4 h-4 text-gray-400" />
             <input
@@ -180,7 +179,6 @@ export default function BookingHistory() {
             />
           </div>
 
-          {/* 상태 필터 */}
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
             <Filter className="w-4 h-4 text-gray-400 shrink-0 ml-2" />
             <div className="flex gap-1.5">
@@ -205,7 +203,7 @@ export default function BookingHistory() {
           </div>
         </div>
 
-        {/* ── 리스트 영역 ── */}
+        {/* ── 리스트 ── */}
         <div className="space-y-4">
           {isLoading ? (
             <div className="flex justify-center py-20">
@@ -218,7 +216,7 @@ export default function BookingHistory() {
               </div>
               <p className="text-base font-bold text-gray-500">예약 내역이 없습니다.</p>
               <p className="text-sm text-gray-400 mt-1">
-                {activeTab === 'received' ? '아직 도착한 신청이 없습니다.' : '새로운 멘토에게 커피챗을 신청해보세요!'}
+                {activeTab === 'received' ? '아직 도착한 신청이 없습니다.' : '새로운 멘토에게 티타임을 신청해보세요!'}
               </p>
             </div>
           ) : (
@@ -235,15 +233,12 @@ export default function BookingHistory() {
                     isExpanded ? 'border-blue-300 shadow-md ring-2 ring-blue-50' : 'border-gray-200 hover:border-gray-300 shadow-sm'
                   }`}
                 >
-                  {/* 상단 메인 클릭 영역 */}
                   <button
                     onClick={() => setExpanded(isExpanded ? null : b.booking_id)}
                     className="w-full flex flex-col md:flex-row md:items-center gap-4 px-6 py-5 text-left relative"
                   >
-                    {/* 상태 컬러 포인트 바 */}
                     <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: meta.color }} />
 
-                    {/* 아바타 & 이름 */}
                     <div className="flex items-center gap-4 w-full md:w-1/3">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-200 flex items-center justify-center text-blue-700 font-extrabold text-lg shrink-0">
                         {name.slice(0, 1)}
@@ -252,22 +247,20 @@ export default function BookingHistory() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-extrabold text-gray-900 text-lg truncate">{name}</span>
                           <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
-                            {activeTab === 'requested' ? '멘토' : '멘티'}
+                            {activeTab === 'requested' ? '호스트' : '게스트'}
                           </span>
                         </div>
                         <p className="text-xs font-medium text-gray-500 truncate">
-                          {b.topic || "자유 주제 커피챗"}
+                          {b.topic || "자유 주제 티타임"}
                         </p>
                       </div>
                     </div>
 
-                    {/* 일정 정보 */}
                     <div className="flex items-center gap-2 text-gray-600 md:w-1/3">
                       <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
                       <span className="text-sm font-bold">{formatDate(b.booking_date, b.booking_time)}</span>
                     </div>
 
-                    {/* 상태 뱃지 & 아이콘 */}
                     <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-1/3 mt-2 md:mt-0">
                       <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${meta.bg} ${meta.text} ${meta.border}`}>
                         {meta.icon}
@@ -279,12 +272,10 @@ export default function BookingHistory() {
                     </div>
                   </button>
 
-                  {/* 확장 상세 영역 */}
                   {isExpanded && (
                     <div className="px-6 pb-6 pt-2 bg-gray-50/50 border-t border-gray-100">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                         
-                        {/* 상세 정보 */}
                         <div className="space-y-4">
                           <p className="text-xs font-extrabold text-gray-400 tracking-wider">세부 정보</p>
                           
@@ -302,7 +293,6 @@ export default function BookingHistory() {
                             </span>
                           </div>
 
-                          {/* 사전 질문 내용 */}
                           {b.questions && (
                             <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                               <p className="text-xs font-extrabold text-blue-600 mb-2">사전 질문 및 요청사항</p>
@@ -311,10 +301,8 @@ export default function BookingHistory() {
                           )}
                         </div>
 
-                        {/* 액션 버튼 영역 */}
                         <div className="flex flex-col justify-end gap-3">
                           
-                          {/* 💡 1. 멘토: 신청 받은 경우 수락/거절 */}
                           {activeTab === 'received' && b.status === 'PAID' && (
                             <div className="flex items-center gap-2 w-full mt-4">
                               <button
@@ -327,12 +315,11 @@ export default function BookingHistory() {
                                 onClick={() => handleConfirm(b.booking_id)}
                                 className="flex-[2] flex justify-center items-center gap-1 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-colors"
                               >
-                                예약 수락하기 <ChevronRight className="w-4 h-4" />
+                                티타임 수락하기 <ChevronRight className="w-4 h-4" />
                               </button>
                             </div>
                           )}
 
-                          {/* 💡 2. 멘티: 내가 신청한 경우 예약 취소 */}
                           {activeTab === 'requested' && (b.status === 'PAID' || b.status === 'CONFIRMED') && (
                             <div className="flex items-center gap-2 w-full mt-4">
                               <button
@@ -344,18 +331,16 @@ export default function BookingHistory() {
                             </div>
                           )}
 
-                          {/* 확정 안내 메시지 */}
                           {activeTab === 'requested' && b.status === 'CONFIRMED' && (
                             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 mt-1">
                               <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
                               <div>
-                                <p className="text-sm font-bold text-emerald-800">예약이 확정되었습니다!</p>
+                                <p className="text-sm font-bold text-emerald-800">티타임이 확정되었습니다!</p>
                                 <p className="text-xs text-emerald-600 mt-1">예정된 시간에 맞춰 화상 채팅방 링크가 활성화됩니다.</p>
                               </div>
                             </div>
                           )}
 
-                          {/* 취소/거절 안내 메시지 */}
                           {isCancelled && (
                             <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 rounded-xl border border-red-100 text-red-600">
                               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />

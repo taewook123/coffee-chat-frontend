@@ -9,7 +9,7 @@ const Footer = () => {
           <p>현직자와의 가벼운 대화로 시작하는 커리어의 시작</p>
         </div>
         <div style={styles.links}>
-          <p>© 2026 TeeTimes. All rights reserved.</p>
+          <p>© 2026 TeaTimes. All rights reserved.</p>
           <p></p>
         </div>
       </div>

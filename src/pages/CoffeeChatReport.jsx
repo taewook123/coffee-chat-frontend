@@ -52,7 +52,9 @@ export default function CoffeeChatReport() {
     setIsSummaryLoading(true);
     try {
       const res = await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
-      if (res.data.ai_summary) setSummary(res.data.ai_summary);
+      if (res.data.ai_summary) {
+        setSummary(res.data.ai_summary);
+      }
     } catch (err) {
       alert(`요약 생성 실패: ${err.response?.data?.detail || err.message}`);
     } finally {
@@ -70,7 +72,7 @@ export default function CoffeeChatReport() {
         if (response.data.summary) setSummary(response.data.summary);
       }
     } catch (error) {
-      alert("AI 어드바이스를 불러오는데 실패했습니다.");
+      alert("AI 어드바이스를 불러오는 데 실패했습니다.");
     } finally {
       setIsAiLoading(false);
     }
@@ -95,7 +97,7 @@ export default function CoffeeChatReport() {
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalImgHeight);
         heightLeft -= pdfPageHeight;
       }
-      pdf.save(`커피챗_AI리포트_${booking?.mentor_name || '멘토'}.pdf`);
+      pdf.save(`티타임_AI리포트_${booking?.mentor_name || '멘토'}.pdf`);
     } catch (error) {
       alert("PDF 저장 중 문제가 발생했습니다.");
     }
@@ -119,7 +121,7 @@ export default function CoffeeChatReport() {
             {booking?.mentor_name?.slice(0, 1) || '멘'}
           </div>
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-3">
-            커피챗 AI 분석 리포트
+            티타임 AI 분석 리포트
           </h1>
           <p className="text-lg text-slate-500 font-medium">
             {booking?.mentor_name || '멘토'} 님과의 대화가 성공적으로 분석되었습니다
@@ -243,8 +245,8 @@ export default function CoffeeChatReport() {
         {/* --- 하단 네비게이션 (프린트 영역 밖) --- */}
         <div className="mt-12 flex justify-center">
           <button
-            onClick={() => navigate('/coffee-chats')}
-            className="px-8 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-3"
+            onClick={() => navigate('/tea-times')}
+            className="w-full mt-6 py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-3"
           >
             <Check className="w-5 h-5" />
             목록으로 돌아가기
