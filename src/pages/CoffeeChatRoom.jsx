@@ -286,11 +286,11 @@ const fetchRecommendedQuestion = async () => {
     ? Number(userId) === Number(booking.mentor_user_id)
     : false;
 
-  const myRole    = isMentor ? '멘토 (나)' : '멘티 (나)';
-  const theirRole = isMentor ? '멘티' : '멘토';
+  const myRole    = isMentor ? '호스트 (나)' : '게스트 (나)';
+  const theirRole = isMentor ? '게스트' : '호스트';
   const opponentName = isMentor
-    ? (booking?.user_name   || booking?.userName   || '멘티')
-    : (booking?.mentor_name || booking?.mentorName || '멘토');
+    ? (booking?.user_name   || booking?.userName   || '게스트')
+    : (booking?.mentor_name || booking?.mentorName || '호스트');
 
   // ── LLM 어시스턴트 전송 ───────────────────────────────
   const handleLlmSubmit = (e) => {
@@ -490,7 +490,7 @@ const fetchRecommendedQuestion = async () => {
                     : <Mic className="w-3 h-3 text-white/70" />
                   }
                   <span className="text-xs text-white/70">
-                    {isMuted ? '음소거' : `${myName} (${isMentor ? '멘토' : '멘티'})`}
+                    {isMuted ? '음소거' : `${myName} (${isMentor ? '호스트' : '게스트'})`}
                   </span>
                 </div>
               </div>

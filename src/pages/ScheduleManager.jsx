@@ -58,7 +58,7 @@ export default function ScheduleManager() {
         const myMentorData = mentorsRes.data.find(m => parseInt(m.user_id, 10) === currentUserId);
 
         if (!myMentorData) {
-          alert("멘토로 등록된 정보가 없습니다.");
+          alert("호스트로 등록된 정보가 없습니다.");
           navigate('/');
           return;
         }
@@ -160,7 +160,7 @@ export default function ScheduleManager() {
  
   const handleSaveAll = async () => {
     if (!realMentorId) {
-        alert("멘토 정보를 확인할 수 없습니다.");
+        alert("호스트 정보를 확인할 수 없습니다.");
         return;
     }
 

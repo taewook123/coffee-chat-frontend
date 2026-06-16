@@ -190,7 +190,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
               onClick={() => navigate('/coffee-chats')} 
               className={`hover:text-[#1A73E8] transition cursor-pointer ${location.pathname === '/coffee-chats' ? 'text-[#1A73E8] font-bold' : 'text-gray-600'}`}
             >
-              커피챗
+              티타임
             </li>
             <li 
               onClick={() => navigate('/announcements')} 

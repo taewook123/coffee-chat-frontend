@@ -9,12 +9,10 @@ import {
 } from 'lucide-react';
 import ScheduleManager from './ScheduleManager';
 import BookingHistory from './BookingHistory';
-// 💡 [수정] ProfileSetup 컴포넌트를 불러옵니다. (경로가 다르다면 알맞게 수정해주세요!)
 import ProfileSetup from './ProfileSetup'; 
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
-// ── 공통 헬퍼 ──────────────────────────────────────────────────────
 function getCleanUserId() {
   let finalUserId = localStorage.getItem('userId') || localStorage.getItem('id') || localStorage.getItem('user_id');
   
@@ -33,7 +31,6 @@ function getCleanUserId() {
   return finalUserId ? parseInt(String(finalUserId).replace(/[^0-9]/g, ''), 10) : null;
 }
 
-// ── 서브 컴포넌트 ────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, accent, sub }) {
   return (
     <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
@@ -88,7 +85,6 @@ function StarRating({ rating }) {
   );
 }
 
-// ── 메인 ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,7 +92,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '회원');
-
   const [isMentor, setIsMentor] = useState(false);
   const [mentorStats, setMentorStats] = useState({});
   const [upcomingChats, setUpcomingChats] = useState([]);
@@ -161,7 +156,7 @@ export default function Dashboard() {
           setUpcomingBookings(data.upcoming_bookings || []);
           setMentorHistory(data.mentor_history || data.recent_mentors || []);
         } catch (err) {
-          console.error("멘티 대시보드 데이터 로드 실패", err);
+          console.error("게스트 대시보드 데이터 로드 실패", err);
         }
       } finally {
         setLoading(false);
@@ -171,7 +166,6 @@ export default function Dashboard() {
     load();
   }, [navigate]);
 
-  // ── 멘토 섹션 ──────────────────────────────────────────────────────
   const renderMentorSection = () => {
     if (!isMentor) {
       return (
@@ -179,13 +173,13 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-4 h-4 text-blue-500" />
-              <span className="text-xs font-semibold text-blue-500 uppercase tracking-wide">멘토 활동</span>
+              <span className="text-xs font-semibold text-blue-500 uppercase tracking-wide">호스트 활동</span>
             </div>
-            <h3 className="text-lg font-bold text-[#1a2332] mb-1">멘토로 활동해보세요</h3>
+            <h3 className="text-lg font-bold text-[#1a2332] mb-1">호스트로 등록해보세요</h3>
             <p className="text-sm text-gray-500">경험을 나누고 수익을 얻을 수 있어요. 지금 바로 시작해보세요.</p>
           </div>
           <button
-            onClick={() => setActiveTab('profile')} // 💡 탭 전환으로 변경
+            onClick={() => setActiveTab('profile')}
             className="flex-shrink-0 ml-6 bg-blue-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-600 transition-colors flex items-center gap-2"
           >
             시작하기 <ArrowUpRight className="w-4 h-4" />
@@ -198,7 +192,7 @@ export default function Dashboard() {
       <div>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-1.5 h-5 bg-amber-400 rounded-full" />
-          <h2 className="text-base font-bold text-[#1a2332]">멘토 활동</h2>
+          <h2 className="text-base font-bold text-[#1a2332]">호스트 활동</h2>
           <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-medium">활성</span>
         </div>
 
@@ -206,19 +200,19 @@ export default function Dashboard() {
           <StatCard icon={DollarSign} label="이번 달 수익" value={`₩${Number(mentorStats?.monthly_earnings || mentorStats?.revenue || 0).toLocaleString()}`} accent="bg-emerald-500" sub="↑ 꾸준히 상승중" />
           <StatCard icon={Star}       label="평균 평점"    value={`${mentorStats?.average_rating || '0.0'}`}                             accent="bg-amber-400" />
           <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours || mentorStats?.total_hours || 0}시간`} accent="bg-orange-400" />
-          <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate || 0}%`}                                accent="bg-violet-500" />
+          <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate || 0}%`}                               accent="bg-violet-500" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <SectionHeader title="예정된 멘토링" action="일정 관리" onAction={() => setActiveTab('schedule')} />
+            <SectionHeader title="예정된 티타임" action="일정 관리" onAction={() => setActiveTab('schedule')} />
             {upcomingChats.length === 0
-              ? <EmptyState icon={Calendar} message="예정된 멘토링이 없습니다." />
+              ? <EmptyState icon={Calendar} message="예정된 티타임이 없습니다." />
               : <ul className="space-y-2">
                   {upcomingChats.slice(0,4).map((c, i) => (
                     <li key={c.id||i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                       <div>
-                        <p className="text-sm font-semibold text-[#1a2332]">{c.mentee_name || c.partner_name || '멘티'}</p>
+                        <p className="text-sm font-semibold text-[#1a2332]">{c.mentee_name || c.partner_name || '티타임 참여자'}</p>
                         <p className="text-xs text-gray-400">{c.scheduled_time || c.booking_date || '일정 미정'}</p>
                       </div>
                       <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-medium">{c.status === 'CONFIRMED' ? '확정됨' : '예정'}</span>
@@ -252,18 +246,17 @@ export default function Dashboard() {
     );
   };
 
-  // ── 멘티 섹션 ──────────────────────────────────────────────────────
   const renderMenteeSection = () => (
     <div>
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
-        <h2 className="text-base font-bold text-[#1a2332]">멘티 활동</h2>
+        <h2 className="text-base font-bold text-[#1a2332]">게스트 활동</h2>
       </div>
 
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <StatCard icon={Coffee}        label="참여한 커피챗"    value={`${menteeStats?.total_chats || menteeStats?.completed_sessions || 0}회`} accent="bg-blue-500" />
-        <StatCard icon={Clock}         label="총 학습 시간"     value={`${menteeStats?.learning_hours || 0}시간`}    accent="bg-cyan-500" />
-        <StatCard icon={Hourglass}     label="수락 대기"        value={`${menteeStats?.pending_requests || menteeStats?.pending_bookings || 0}건`} accent="bg-orange-400" />
+        <StatCard icon={Coffee}       label="참여한 티타임"    value={`${menteeStats?.total_chats || menteeStats?.completed_sessions || 0}회`} accent="bg-blue-500" />
+        <StatCard icon={Clock}        label="총 학습 시간"    value={`${menteeStats?.learning_hours || 0}시간`}    accent="bg-cyan-500" />
+        <StatCard icon={Hourglass}    label="수락 대기"        value={`${menteeStats?.pending_requests || menteeStats?.pending_bookings || 0}건`} accent="bg-orange-400" />
         <StatCard icon={MessageSquare} label="작성한 후기"      value={`${menteeStats?.written_reviews || menteeStats?.my_reviews || 0}개`}  accent="bg-emerald-500" />
       </div>
 
@@ -271,12 +264,12 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <SectionHeader title="다가오는 예약" action="예약 내역" onAction={() => setActiveTab('history')} />
           {upcomingBookings.length === 0
-            ? <EmptyState icon={Calendar} message="예정된 커피챗이 없어요." cta="멘토 찾기" onCta={() => navigate('/mentors')} />
+            ? <EmptyState icon={Calendar} message="예정된 티타임이 없어요." cta="호스트 찾기" onCta={() => navigate('/mentors')} />
             : <ul className="space-y-2">
                 {upcomingBookings.slice(0,4).map((b, i) => (
                   <li key={b.id||i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <div>
-                      <p className="text-sm font-semibold text-[#1a2332]">{b.mentor_name || b.partner_name || '멘토'}</p>
+                      <p className="text-sm font-semibold text-[#1a2332]">{b.mentor_name || b.partner_name || '호스트'}</p>
                       <p className="text-xs text-gray-400">{b.scheduled_time || b.booking_date || '일정 미정'}</p>
                     </div>
                     <span className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-medium">{b.status === 'CONFIRMED' ? '확정됨' : '예정'}</span>
@@ -287,9 +280,9 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <SectionHeader title="최근 만난 멘토" />
+          <SectionHeader title="최근 만난 호스트" />
           {(!Array.isArray(mentorHistory) || mentorHistory.length === 0)
-            ? <EmptyState icon={BookOpen} message="아직 커피챗 기록이 없어요." cta="첫 커피챗 예약하기" onCta={() => navigate('/host-list')} />
+            ? <EmptyState icon={BookOpen} message="아직 티타임 기록이 없어요." cta="첫 티타임 예약하기" onCta={() => navigate('/host-list')} />
             : <ul className="space-y-3">
                 {mentorHistory.slice(0,4).map((m, i) => (
                   <li key={i} className="flex items-center gap-3 pb-3 border-b border-gray-50 last:border-0 last:pb-0">
@@ -297,7 +290,7 @@ export default function Dashboard() {
                       {(m.name || m.mentor_name || 'M').slice(0,1)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#1a2332] truncate">{m.name || m.mentor_name || '멘토'}</p>
+                      <p className="text-sm font-semibold text-[#1a2332] truncate">{m.name || m.mentor_name || '호스트'}</p>
                       <p className="text-xs text-gray-400 truncate">{m.topic || m.company || '—'}</p>
                     </div>
                     {m.my_rating && <StarRating rating={m.my_rating} />}
@@ -310,7 +303,6 @@ export default function Dashboard() {
     </div>
   );
 
-  // ── 대시보드 전체 ──────────────────────────────────────────────────
   const renderDashboard = () => (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
@@ -323,8 +315,8 @@ export default function Dashboard() {
           </h1>
           <p className="text-gray-500 mt-1 text-sm">
             {isMentor
-              ? '멘토와 멘티 양쪽 활동을 한눈에 확인하세요.'
-              : '오늘도 좋은 커피챗이 기다리고 있어요.'}
+              ? '호스트와 게스트 양쪽 활동을 한눈에 확인하세요.'
+              : '오늘도 좋은 티타임이 기다리고 있어요.'}
           </p>
         </div>
         <button className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm">
@@ -352,14 +344,13 @@ export default function Dashboard() {
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-400">대시보드 정보를 불러오는 중...</p>
+        <p className="text-sm text-gray-400">티타임즈 대시보드를 불러오는 중...</p>
       </div>
     );
   }
 
   return (
     <div className="w-full flex min-h-screen bg-gray-50 text-gray-900">
-      {/* ── 사이드바 ── */}
       <aside className="w-64 bg-[#1a2332] text-white flex-shrink-0">
         <div className="p-6 sticky top-0">
           <div className="flex items-center gap-3 mb-8 p-3 bg-white/5 rounded-xl border border-white/10">
@@ -368,7 +359,7 @@ export default function Dashboard() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white truncate">{userName}</p>
-              <p className="text-xs text-gray-400">{isMentor ? '멘토 · 멘티' : '멘티'}</p>
+              <p className="text-xs text-gray-400">{isMentor ? '호스트 · 게스트' : '게스트'}</p>
             </div>
           </div>
 
@@ -398,7 +389,6 @@ export default function Dashboard() {
 
             <div className="my-2 border-t border-white/10" />
 
-            {/* 💡 [수정] 탭 전환 방식으로 변경 */}
             <button
               type="button"
               onClick={() => setActiveTab('profile')}
@@ -412,7 +402,6 @@ export default function Dashboard() {
               프로필 설정
             </button>
 
-            {/* 💡 [수정] 탭 전환 방식으로 변경 */}
             {!isMentor && (
               <button
                 type="button"
@@ -420,20 +409,19 @@ export default function Dashboard() {
                 className="mt-2 w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
               >
                 <Award className="w-4 h-4" />
-                멘토 등록하기
+                호스트 등록하기
               </button>
             )}
           </nav>
         </div>
       </aside>
 
-      {/* ── 메인 ── */}
       <main className="flex-1 min-w-0 p-8 overflow-x-hidden overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'schedule'  && <ScheduleManager />}
           {activeTab === 'history'   && <BookingHistory />}
-          {activeTab === 'profile'   && <ProfileSetup />} {/* 💡 [수정] 탭 전환 시 프로필 컴포넌트 렌더링 */}
+          {activeTab === 'profile'   && <ProfileSetup />}
         </div>
       </main>
     </div>

@@ -68,7 +68,7 @@ export default function GeneralProfileForm({
               required
             />
             <p className="mt-1 text-xs text-gray-400">
-              커피챗 예약 확정/신청 시 알림 문자를 받기 위해 필요합니다.
+              티타임 예약 확정/신청 시 알림 문자를 받기 위해 필요합니다.
             </p>
           </div>
           <div>
@@ -150,7 +150,7 @@ export default function GeneralProfileForm({
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
               rows={3}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:border-blue-500 transition text-sm resize-none bg-white"
-              placeholder="커피챗을 통해 함께 나누고 싶은 고민이나 목표를 적어주세요."
+              placeholder="티타임을 통해 함께 나누고 싶은 고민이나 목표를 적어주세요."
               required
             />
           </div>

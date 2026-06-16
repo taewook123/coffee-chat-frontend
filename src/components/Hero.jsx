@@ -41,7 +41,7 @@ const Hero = () => {
           <div className="space-y-5">
             <h1 className="text-[2.5rem] lg:text-[3.25rem] text-[#1a2332] leading-[1.3] m-0 break-keep tracking-tight">
               꿈꾸던 기업의 현직자와<br />
-              <span className="text-[#1A73E8]">커피 한 잔의 대화</span>를 나누세요
+              <span className="text-[#1A73E8]">티 한 잔의 대화</span>를 나누세요
             </h1>
             
             <p className="text-base lg:text-lg text-gray-500 leading-[1.7] m-0 break-keep">

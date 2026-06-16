@@ -7,7 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
-export default function CoffeeChatReport() {
+export default function TeaTimeReport() {
   const { chatId } = useParams();
   const navigate = useNavigate();
   
@@ -23,12 +23,10 @@ export default function CoffeeChatReport() {
   useEffect(() => {
     if (!chatId) return;
 
-    // 1. 예약 상세 데이터 로드
     axios.get(`${BACKEND_URL}/api/booking/detail/${chatId}`)
       .then(res => setBooking(res.data))
       .catch(err => console.error("예약 상세 로드 실패:", err));
 
-    // 2. 커피챗 세션 메타데이터 로드
     axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`)
       .then(res => {
         setSession(res.data);
@@ -38,8 +36,7 @@ export default function CoffeeChatReport() {
       })
       .catch(err => console.error("세션 데이터 로드 실패:", err));
 
-    // ✨ [수정 완료 1] 페이지 진입 시 DB에 이미 저장된 리포트(요약 & 어드바이스)를 불러옵니다.
-    axios.get(`${BACKEND_URL}/api/coffee-chat-report/${chatId}`)
+    axios.get(`${BACKEND_URL}/api/tea-time-report/${chatId}`)
       .then(res => {
         if (res.data) {
           if (res.data.summary) setSummary(res.data.summary);
@@ -49,15 +46,11 @@ export default function CoffeeChatReport() {
       .catch(err => console.error("리포트 데이터 로드 실패:", err));
   }, [chatId]);
 
-  // 요약 생성 API 호출
   const generateSummary = async () => {
     if (!chatId) return;
     setIsSummaryLoading(true);
     try {
-      console.log("요약 생성 요청 시작...");
       const res = await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
-      
-      console.log("요약 결과:", res.data.ai_summary);
       if (res.data.ai_summary) {
         setSummary(res.data.ai_summary);
       }
@@ -69,25 +62,18 @@ export default function CoffeeChatReport() {
     }
   };
 
-  // AI 어드바이스 생성 API 호출
   const generateAiAdvice = async () => {
     if (!chatId) return;
     setIsAiLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`);
-      
-      // ✨ [수정 완료 2] 백엔드 규격(ai_advice)에 맞춰 받아오도록 수정했습니다.
       if (response.data) {
-        if (response.data.ai_advice) {
-          setAiAdvice(response.data.ai_advice);
-        }
-        if (response.data.summary) {
-          setSummary(response.data.summary);
-        }
+        if (response.data.ai_advice) setAiAdvice(response.data.ai_advice);
+        if (response.data.summary) setSummary(response.data.summary);
       }
     } catch (error) {
       console.error("AI 어드바이스 생성 실패:", error);
-      alert("AI 어드바이스를 불러오는데 실패했습니다.");
+      alert("AI 어드바이스를 불러오는 데 실패했습니다.");
     } finally {
       setIsAiLoading(false);
     }
@@ -112,7 +98,7 @@ export default function CoffeeChatReport() {
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalImgHeight);
         heightLeft -= pdfPageHeight;
       }
-      pdf.save(`커피챗_AI리포트_${booking?.mentor_name || '멘토'}.pdf`);
+      pdf.save(`티타임_AI리포트_${booking?.mentor_name || '멘토'}.pdf`);
     } catch (error) {
       console.error("PDF 다운로드 실패:", error);
       alert("PDF 저장 중 문제가 발생했습니다.");
@@ -129,7 +115,7 @@ export default function CoffeeChatReport() {
             <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-6">
               {booking?.mentor_name?.slice(0, 1) || '멘'}
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">커피챗 AI 분석 리포트</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">티타임 AI 분석 리포트</h1>
             <p className="text-gray-600">
               {booking?.mentor_name || '멘토'} 님과의 대화가 성공적으로 분석되었습니다
             </p>
@@ -140,14 +126,12 @@ export default function CoffeeChatReport() {
             )}
           </div>
 
-          {/* ✅ printRef 시작: 요약본과 어드바이스를 모두 감쌉니다 */}
           <div ref={printRef} className="bg-white">
 
             {/* 대화내용 요약본 */}
             <div className="mb-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="font-bold text-gray-900">대화내용 요약본</p>
-                {/* ✅ PDF 다운로드 버튼: summary 있으면 항상 표시 */}
                 {summary && (
                   <button
                     onClick={handleDownloadPdf}
@@ -159,7 +143,6 @@ export default function CoffeeChatReport() {
                 )}
               </div>
 
-              {/* ✅ 요약 생성 버튼 또는 요약 내용 */}
               {isSummaryLoading ? (
                 <div className="w-full min-h-[8rem] px-5 py-4 bg-blue-50 border border-blue-200 rounded-xl animate-pulse flex items-center justify-center text-blue-400">
                   요약 생성 중...
@@ -180,7 +163,7 @@ export default function CoffeeChatReport() {
               )}
             </div>
 
-            {/* --- 2. AI 어드바이스 영역 --- */}
+            {/* AI 어드바이스 */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <p className="font-bold text-gray-900">AI 페이스메이커 어드바이스</p>
@@ -229,11 +212,10 @@ export default function CoffeeChatReport() {
             </div>
 
           </div>
-          {/* printRef 끝 */}
 
-          {/* --- 3. 하단 목록 버튼 --- */}
+          {/* 하단 목록 버튼 */}
           <button
-            onClick={() => navigate('/coffee-chats')}
+            onClick={() => navigate('/tea-times')}
             className="w-full mt-6 py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-lg transition shadow-lg flex items-center justify-center gap-3"
           >
             <Check className="w-5 h-5" />

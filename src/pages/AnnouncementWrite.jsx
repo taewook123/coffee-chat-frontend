@@ -177,7 +177,7 @@ export default function AnnouncementWrite() {
             }}
           >
             <Send className="w-4 h-4" />
-            {isSubmitting ? '게시 중...' : '게시하기'}
+            {isSubmitting ? '등록 중...' : '공지 등록'}
           </button>
         </div>
       </header>

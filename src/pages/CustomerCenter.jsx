@@ -20,10 +20,10 @@ import {
 
 /* ─── 챗봇 로직 (AI 챗봇 작업 전까지 유지되는 사전 정의 답변) ────────────────────────────── */
 const DEFAULT_BOT_RESPONSES = {
-  default: "안녕하세요! 커피챗 AI 도우미입니다. 무엇을 도와드릴까요?",
+  default: "안녕하세요! 티타임즈 AI 도우미입니다. 무엇을 도와드릴까요?",
   "결제": "결제는 신용카드, 카카오페이, 네이버페이를 지원합니다. 환불 정책은 마이페이지의 이용 약관을 참고해 주세요.",
   "멘토": "멘토 신청은 상단 메뉴의 '멘토 지원하기'를 통해 상시 접수받고 있습니다.",
-  "시간": "커피챗 세션 시간 변경은 매칭 완료 후 영업일 기준 최소 24시간 전까지 가능합니다."
+  "시간": "티타임 세션 시간 변경은 매칭 완료 후 영업일 기준 최소 24시간 전까지 가능합니다."
 };
 
 const DEFAULT_QUICK_REPLIES = ["결제 방법은 어떻게 되나요?", "멘토 지원 조건이 궁금해요", "시간 변경하고 싶어요"];
@@ -46,19 +46,17 @@ export default function SupportPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("faq");
 
-  /* ── FAQ: DB에서 로드 (정상 작동) ─────────────────────────────────────── */
   const [faqs, setFaqs]               = useState([]);
   const [faqCategories, setFaqCategories] = useState(["전체"]);
   const [faqLoading, setFaqLoading]   = useState(true);
   const [faqError, setFaqError]       = useState(null);
 
-  /* ── 백엔드에 없는 데이터들은 고정 기본값(Mock)으로 설정하여 404 방지 ── */
   const [inquiryCategories] = useState(["서비스 이용", "결제/환불", "계정/인증", "기타"]);
   const [csInfo] = useState({
     operatingHours: "평일 10:00 ~ 18:00 (주말/공휴일 제외)",
     responseTimeHint: "15분 이내",
     responseTimeDetail: "영업일 기준 평균 1~2시간 이내 답변",
-    email: "support@coffeechat.com"
+    email: "support@teatimes.com"
   });
   const [botResponses] = useState(DEFAULT_BOT_RESPONSES);
   const [quickReplies] = useState(DEFAULT_QUICK_REPLIES);
@@ -66,7 +64,6 @@ export default function SupportPage() {
   useEffect(() => {
     const SERVER_URL = "http://48.211.169.52:8000";
 
-    /* 1. FAQ 카테고리 로드 */
     fetch(`${SERVER_URL}/api/support/faqs/categories`)
       .then((r) => { 
         if (!r.ok) throw new Error(); 
@@ -80,7 +77,6 @@ export default function SupportPage() {
         setFaqError("카테고리를 불러오지 못했습니다.");
       });
 
-    /* 2. FAQ 목록 로드 */
     fetch(`${SERVER_URL}/api/support/faqs`)
       .then((r) => { 
         if (!r.ok) throw new Error(); 
@@ -103,8 +99,9 @@ export default function SupportPage() {
   }, []);
 
   const TABS = [
-    { key: "faq",     label: "자주 묻는 질문", icon: <HelpCircle    className="w-5 h-5" /> },
+    { key: "faq",     label: "자주 묻는 질문", icon: <HelpCircle     className="w-5 h-5" /> },
     { key: "inquiry", label: "1:1 문의",       icon: <MessageCircle className="w-5 h-5" /> },
+    { key: "chatbot", label: "AI 챗봇",        icon: <Bot className="w-5 h-5" /> },
   ];
 
   return (
@@ -112,7 +109,6 @@ export default function SupportPage() {
       className="min-h-screen flex flex-col transition-colors duration-300"
       style={{ background: "linear-gradient(135deg, #f4f8ff 0%, #e6f0fa 100%)", color: "#1a1f27" }}
     >
-      {/* ── Top bar ── */}
       <header
         className="flex items-center justify-between px-10 py-5 flex-shrink-0"
         style={{ borderBottom: "1px solid rgba(47, 107, 251, 0.1)" }}
@@ -133,7 +129,6 @@ export default function SupportPage() {
         </div>
       </header>
 
-      {/* ── Hero ── */}
       <div className="px-10 pt-10 pb-8 max-w-5xl mx-auto w-full">
         <p className="text-xs font-bold tracking-[0.15em] uppercase mb-3 text-blue-600">
           Customer Support
@@ -145,11 +140,10 @@ export default function SupportPage() {
           고객센터
         </h1>
         <p className="text-sm font-medium" style={{ color: "#718096" }}>
-          궁금한 점이 있으신가요? 빠르게 도와드릴게요.
+          궁금한 점이 있으신가요? 티타임즈가 빠르게 도와드릴게요.
         </p>
       </div>
 
-      {/* ── Tab selector ── */}
       <div className="px-10 pb-8 max-w-5xl mx-auto w-full">
         <div
           className="inline-flex gap-2 p-1.5 rounded-2xl bg-white shadow-sm"
@@ -176,7 +170,6 @@ export default function SupportPage() {
         </div>
       </div>
 
-      {/* ── Content ── */}
       <div className="flex-1 px-10 pb-12 max-w-5xl mx-auto w-full">
         {tab === "faq" && (
           <FaqPanel categories={faqCategories} faqs={faqs} loading={faqLoading} error={faqError} />
@@ -208,7 +201,6 @@ function FaqPanel({ categories, faqs, loading, error }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Search */}
       <div
         className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-white shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all"
         style={{ border: "1px solid rgba(47, 107, 251, 0.15)" }}
@@ -223,7 +215,6 @@ function FaqPanel({ categories, faqs, loading, error }) {
         />
       </div>
 
-      {/* Category pills */}
       <div className="flex gap-2 flex-wrap">
         {categories.map((cat) => {
           const active = activeCat === cat;
@@ -244,25 +235,22 @@ function FaqPanel({ categories, faqs, loading, error }) {
         })}
       </div>
 
-      {/* 로딩 */}
       {loading && (
         <div className="flex flex-col items-center py-16 gap-3">
           <div
             className="w-8 h-8 rounded-full border-2 animate-spin"
             style={{ borderColor: "rgba(47, 107, 251, 0.2)", borderTopColor: "#2f6bfb" }}
           />
-          <p className="text-sm font-medium" style={{ color: "#718096" }}>FAQ를 불러오는 중…</p>
+          <p className="text-sm font-medium" style={{ color: "#718096" }}>질문을 불러오는 중…</p>
         </div>
       )}
 
-      {/* 에러 */}
       {!loading && error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-red-50 border border-red-200 text-red-500">
           ⚠ {error}
         </div>
       )}
 
-      {/* Accordion */}
       {!loading && !error && (
         <div className="flex flex-col gap-3">
           {filtered.map((faq) => {
@@ -361,9 +349,7 @@ function InquiryPanel({ categories, info }) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-      {/* Form */}
       <div className="flex flex-col gap-6 bg-white p-8 rounded-3xl shadow-sm border border-blue-500/10">
-        {/* Category */}
         <div>
           <Label>문의 유형</Label>
           <div className="flex gap-2 flex-wrap mt-3">
@@ -396,7 +382,7 @@ function InquiryPanel({ categories, info }) {
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="문의 내용을 자세히 작성해주세요. 주문번호, 세션 날짜 등 관련 정보를 함께 적어주시면 더 빠른 답변이 가능합니다."
+            placeholder="문의 내용을 자세히 작성해주세요. 티타임 날짜 등 관련 정보를 함께 적어주시면 더 빠른 답변이 가능합니다."
             className="w-full bg-white outline-none resize-none text-sm leading-relaxed placeholder-gray-400 font-medium transition-all focus:ring-2 focus:ring-blue-500/20"
             style={{
               color: "#1a1f27",
@@ -453,12 +439,11 @@ function InquiryPanel({ categories, info }) {
         </button>
       </div>
 
-      {/* Side info */}
       <div className="flex flex-col gap-4">
         {[
           { icon: <Clock className="w-5 h-5" />, title: "평균 응답 시간", desc: info.responseTimeDetail, color: "#2f6bfb" },
-          { icon: <Mail  className="w-5 h-5" />, title: "이메일 지원",   desc: info.email,              color: "#8b5cf6" },
-          { icon: <Phone className="w-5 h-5" />, title: "전화 상담",     desc: info.operatingHours,     color: "#10b981" },
+          { icon: <Mail  className="w-5 h-5" />, title: "이메일 지원",   desc: info.email,               color: "#8b5cf6" },
+          { icon: <Phone className="w-5 h-5" />, title: "전화 상담",    desc: info.operatingHours,    color: "#10b981" },
         ].map((item) => (
           <div
             key={item.title}
@@ -523,7 +508,6 @@ function ChatbotPanel({ responses, quickReplies }) {
       className="flex flex-col rounded-3xl overflow-hidden bg-white shadow-lg mx-auto max-w-3xl"
       style={{ height: 600, border: "1px solid rgba(47, 107, 251, 0.15)" }}
     >
-      {/* Header */}
       <div
         className="flex items-center gap-3 px-6 py-4 flex-shrink-0"
         style={{ borderBottom: "1px solid rgba(47, 107, 251, 0.1)", background: "#f8faff" }}
@@ -535,7 +519,7 @@ function ChatbotPanel({ responses, quickReplies }) {
           <Sparkles className="w-5 h-5 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold" style={{ color: "#1a1f27" }}>커피챗 AI 도우미</p>
+          <p className="text-sm font-bold" style={{ color: "#1a1f27" }}>티타임즈 AI 도우미</p>
           <p className="text-xs font-semibold flex items-center gap-1.5 mt-0.5" style={{ color: "#10b981" }}>
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             온라인
@@ -543,7 +527,6 @@ function ChatbotPanel({ responses, quickReplies }) {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-5" style={{ scrollbarWidth: "none", background: "#ffffff" }}>
         {messages.map((msg) => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -602,7 +585,6 @@ function ChatbotPanel({ responses, quickReplies }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick replies */}
       <div
         className="flex gap-2 px-6 py-4 overflow-x-auto flex-shrink-0"
         style={{ borderTop: "1px solid rgba(47, 107, 251, 0.05)", background: "#ffffff", scrollbarWidth: "none" }}
@@ -619,7 +601,6 @@ function ChatbotPanel({ responses, quickReplies }) {
         ))}
       </div>
 
-      {/* Input */}
       <div
         className="flex items-center gap-3 px-5 py-4 flex-shrink-0 bg-white"
         style={{ borderTop: "1px solid rgba(47, 107, 251, 0.1)" }}
@@ -649,7 +630,6 @@ function ChatbotPanel({ responses, quickReplies }) {
   );
 }
 
-/* ─── Shared helpers ────────────────────────────────────────────────────── */
 function Label({ children }) {
   return (
     <p className="text-xs font-bold uppercase tracking-[0.05em] mb-1" style={{ color: "#718096" }}>
