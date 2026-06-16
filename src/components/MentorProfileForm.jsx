@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import ReactQuill from 'react-quill-new';
+import axios from 'axios'; // 🌟 이거 한 줄 꼭 추가해주세요!
 import "quill/dist/quill.snow.css";
 import { Upload, Briefcase, MessageSquare, Sparkles, X, Plus, GraduationCap, FileText } from 'lucide-react';
 import ProfileImageUpload from './ProfileImageUpload';
@@ -36,23 +37,43 @@ export default function MentorProfileForm({
   ];
   const statuses = ['현직자', '이직자', '프리랜서', '대학생', '취준생'];
 
-  // 💡 ReactQuill 에디터 설정 (기능 유지)
+// 💡 ReactQuill 에디터 설정 (Azure URL 업로드 방식으로 변경)
   const quillRef = useRef(null);
+  
   const imageHandler = () => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
     input.setAttribute('accept', 'image/*');
     input.click();
+
     input.onchange = async () => {
       const file = input.files[0];
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
+      if (!file) return;
+
+      // 🌟 1. 이미지를 통째로 담을 FormData 생성
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+        
+        // 🌟 2. 백엔드의 이미지 업로드 API로 전송!
+        const response = await axios.post(`${BACKEND_URL}/api/upload/image`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        // 🌟 3. 백엔드가 돌려준 깔끔한 Azure URL 추출
+        const imageUrl = response.data.url;
+
+        // 🌟 4. 에디터에 Base64 대신 URL 삽입
         const quill = quillRef.current.getEditor();
         const range = quill.getSelection(true);
-        quill.insertEmbed(range.index, 'image', reader.result); 
+        quill.insertEmbed(range.index, 'image', imageUrl);
         quill.setSelection(range.index + 1);
-      };
+      } catch (error) {
+        console.error("이미지 업로드 실패:", error);
+        alert("이미지 업로드에 실패했습니다.");
+      }
     };
   };
 
