@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 
 // 공통 레이아웃 컴포넌트
 import Header from './components/Header';
@@ -39,6 +40,8 @@ import WriteAnnouncement from "./pages/AnnouncementWrite";
 import CustomerCenter from './pages/CustomerCenter'; 
 // 🔥 1. 관리자용 고객센터 관리 컴포넌트 임포트 추가 (실제 파일 경로에 맞게 확인하세요)
 import AdminSupport from './pages/AdminSupport'; 
+
+import ChatEndPage from './pages/ChatEndPage';
 
 // 글로벌 스타일
 import './App.css';
@@ -99,6 +102,7 @@ const App = () => {
 
   return (
     <Router>
+      <ScrollToTop />
       <Header 
         isLoggedIn={isLoggedIn} 
         setIsLoggedIn={setIsLoggedIn} 
@@ -138,7 +142,7 @@ const App = () => {
         <Route path="/coffee-chats" element={<CoffeeChats />} />
         <Route path="/coffee-chat-detail/:id" element={<CoffeeChatDetail />} />
         <Route path="/coffee-chat/:chatId" element={<CoffeeChatRoom />} />
-        <Route path="/coffee-chat-review/:chatId" element={<CoffeeChatReview />} />
+        <Route path="/coffee-chat-review/:chatId" element={<ChatEndPage />} />
         <Route path="/coffee-chat-report/:chatId" element={<CoffeeChatReport />} />
         
         {/* 게시판 및 고객 소통 단지 */}

@@ -17,7 +17,11 @@ const KakaoCallback = () => {
             // 1. 서비스 전용 인증 토큰을 브라우저에 안전하게 저장
             localStorage.setItem('token', token);
             if (name) localStorage.setItem('userName', decodeURIComponent(name));
-
+            
+            if (id) {
+                localStorage.setItem('userId', id);
+            }
+            
             // 2. 주소창 뒤에 id가 붙어있다는 것은 '신규 가입자'라는 뜻입니다!
             if (id) {
                 alert(`${decodeURIComponent(name)}님, 환영합니다! 프로필 설정 페이지로 이동합니다.`);
