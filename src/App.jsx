@@ -76,13 +76,8 @@ const App = () => {
       setIsLoggedIn(true);
       setUserName(decodedName);
 
-      if (idParam) {
-        const emailParam = params.get('email');
-        setProfileQueryParams(`?token=${token}&name=${nameParam}&email=${emailParam}&id=${idParam}`);
-        setRedirectToProfile(true);
-      } else {
-        setRedirectToHome(true);
-      }
+      // 💡 여기서 강제로 프로필로 보내는 로직을 제거하고 무조건 Home으로 보냅니다!
+      setRedirectToHome(true);
       
       window.history.replaceState({}, document.title, window.location.pathname);
     }

@@ -210,7 +210,11 @@ export default function Dashboard() {
               ? <EmptyState icon={Calendar} message="예정된 티타임이 없습니다." />
               : <ul className="space-y-2">
                   {upcomingChats.slice(0,4).map((c, i) => (
-                    <li key={c.id||i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                    <li 
+                      key={c.id||i} 
+                      onClick={() => c.id && navigate(`/coffee-chat-detail/${c.id}`)} // 💡 클릭 시 상세 페이지로 이동
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors" // 💡 마우스 효과 추가
+                    >
                       <div>
                         <p className="text-sm font-semibold text-[#1a2332]">{c.mentee_name || c.partner_name || '티타임 참여자'}</p>
                         <p className="text-xs text-gray-400">{c.scheduled_time || c.booking_date || '일정 미정'}</p>
@@ -267,7 +271,11 @@ export default function Dashboard() {
             ? <EmptyState icon={Calendar} message="예정된 티타임이 없어요." cta="호스트 찾기" onCta={() => navigate('/mentors')} />
             : <ul className="space-y-2">
                 {upcomingBookings.slice(0,4).map((b, i) => (
-                  <li key={b.id||i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <li 
+                    key={b.id||i} 
+                    onClick={() => b.id && navigate(`/coffee-chat-detail/${b.id}`)} // 💡 클릭 시 상세 페이지로 이동
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors" // 💡 마우스 효과 추가
+                  >
                     <div>
                       <p className="text-sm font-semibold text-[#1a2332]">{b.mentor_name || b.partner_name || '호스트'}</p>
                       <p className="text-xs text-gray-400">{b.scheduled_time || b.booking_date || '일정 미정'}</p>

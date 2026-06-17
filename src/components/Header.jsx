@@ -162,9 +162,18 @@ const Header = ({ isLoggedIn, setIsLoggedIn, userName }) => {
   };
 
   const handleLogout = () => { 
-    localStorage.clear(); setIsLoggedIn(false); setIsMentor(false);
-    setNotifications([]); setHasUnread(false); setIsOpen(false);
-    alert("로그아웃 되었습니다."); navigate('/');
+    // 1. 스토리지 비우기
+    localStorage.clear(); 
+    
+    // 2. 존재하는 State들만 초기화 (setHasUnread는 삭제!)
+    setIsLoggedIn(false); 
+    setIsMentor(false);
+    setNotifications([]); 
+    setIsOpen(false);
+    
+    // 3. 알림 띄우고 강제 새로고침하며 메인으로 이동
+    alert("로그아웃 되었습니다."); 
+    window.location.href = '/'; 
   };
 
   return (
