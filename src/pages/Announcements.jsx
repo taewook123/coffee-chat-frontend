@@ -128,35 +128,7 @@ export default function Announcements() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* ── Top bar ── */}
-      <header
-        className="flex items-center justify-between px-10 py-5 flex-shrink-0 bg-white"
-        style={{ borderBottom: "1px solid #e5e7eb" }} // 💡 밝은 테두리
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#4a90e2,#6c63ff)" }}
-          >
-            <Bell className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-semibold tracking-tight text-gray-900">공지사항</span>
-        </div>
 
-        {isAdmin && (
-          <button
-            onClick={() => navigate("/announcement/write")}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95"
-            style={{
-              background: "linear-gradient(135deg,#4a90e2,#6c63ff)",
-              boxShadow: "0 4px 16px rgba(74,144,226,0.3)",
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            공지 작성
-          </button>
-        )}
-      </header>
 
       <div className="flex-1 px-10 py-8 max-w-5xl w-full mx-auto">
         {/* ── Hero ── */}
@@ -182,7 +154,19 @@ export default function Announcements() {
             플랫폼 업데이트, 이벤트, 점검 일정을 확인하세요.
           </p>
         </div>
-
+            {isAdmin && (
+          <button
+            onClick={() => navigate("/announcement/write")}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95"
+            style={{
+              background: "linear-gradient(135deg,#4a90e2,#6c63ff)",
+              boxShadow: "0 4px 16px rgba(74,144,226,0.3)",
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            공지 작성
+          </button>
+        )}
         {/* ── Search + Filter row ── */}
         <div className="flex items-center gap-3 mb-8 flex-wrap">
           {/* Search */}

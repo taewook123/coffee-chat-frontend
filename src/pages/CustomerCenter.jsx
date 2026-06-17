@@ -87,32 +87,14 @@ export default function SupportPage() {
       className="min-h-screen flex flex-col transition-colors duration-300"
       style={{ background: "linear-gradient(135deg, #f4f8ff 0%, #e6f0fa 100%)", color: "#1a1f27" }}
     >
-      <header
-        className="flex items-center justify-between px-10 py-5 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(47, 107, 251, 0.1)" }}
-      >
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-sm font-medium transition hover:text-blue-600"
-          style={{ color: "#718096" }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          돌아가기
-        </button>
-        <div className="flex items-center gap-2">
-          <Phone className="w-4 h-4 text-blue-500" />
-          <span className="text-xs font-medium" style={{ color: "#718096" }}>
-            {csInfo?.operatingHours ?? "로딩 중…"}
-          </span>
-        </div>
-      </header>
+      
 
       <div className="px-10 pt-10 pb-8 max-w-5xl mx-auto w-full">
         <p className="text-xs font-bold tracking-[0.15em] uppercase mb-3 text-blue-600">
           Customer Support
         </p>
         <h1
-          className="leading-none tracking-tight mb-3"
+          className="leading-none tracking-tight mb-2"
           style={{ fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 800, color: "#1a1f27", letterSpacing: "-0.03em" }}
         >
           고객센터
