@@ -27,60 +27,60 @@ export default function Announcements() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  const limit = 15;
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://48.211.169.52:8000";
+  const limit = 10;
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem('userId');
     if (userId) {
       axios.get(`${BACKEND_URL}/api/user/${userId}`)
-        .then(res => { if (["ADMIN", "admin"].includes(res.data.role)) setIsAdmin(true); })
-        .catch(() => {});
+        .then(res => {
+          if (res.data.role === 'ADMIN' || res.data.role === 'admin') setIsAdmin(true);
+        }).catch(err => console.error(err));
     }
   }, [BACKEND_URL]);
 
   useEffect(() => {
-    setLoading(true);
-    axios
-      .get(`${BACKEND_URL}/api/announcements?skip=${(page - 1) * limit}&limit=${limit}`)
+    axios.get(`${BACKEND_URL}/api/announcements?skip=${(page - 1) * limit}&limit=${limit}`)
       .then(res => {
         if (res.data.items) {
           setRawNotices(res.data.items);
           setTotalPages(res.data.total_pages || 1);
         } else {
           setRawNotices(res.data);
-          setTotalPages(1);
+          setTotalPages(10);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(err => console.error("공지사항 로드 실패", err));
   }, [page, BACKEND_URL, limit]);
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    if (!window.confirm("정말 이 공지사항을 삭제하시겠습니까?")) return;
     try {
-      const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       await axios.delete(`${BACKEND_URL}/api/announcements/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setRawNotices(prev => prev.filter(n => n.id !== id));
-    } catch {
+      alert("삭제되었습니다.");
+      setRawNotices(rawNotices.filter(notice => notice.id !== id));
+    } catch (error) {
       alert("삭제 중 오류가 발생했습니다.");
     }
   };
 
   const parsedNotices = rawNotices.map((notice) => {
     let category = "공지";
-    let cleanTitle = n.title;
-    const match = n.title.match(/^\[(.*?)\]\s*(.*)$/);
-    if (match && CAT_META[match[1]]) { category = match[1]; cleanTitle = match[2]; }
+    let cleanTitle = notice.title;
+    const match = notice.title.match(/^\[(.*?)\]\s*(.*)$/);
+    if (match && CAT_COLOR[match[1]]) {
+      category = match[1];
+      cleanTitle = match[2];
+    }
     return {
-      id: n.id,
-      no: (page - 1) * limit + idx + 1,  // 게시판 번호
-      category,
+      id: notice.id,
+      category: category,
       title: cleanTitle,
       preview: notice.content,
       date: new Date(notice.created_at).toLocaleDateString(),
@@ -92,18 +92,22 @@ export default function Announcements() {
 
   const filtered = parsedNotices.filter((a) => {
     const matchCat = activeCategory === "전체" || a.category === activeCategory;
-    const matchQ   = !query.trim() || a.title.includes(query) || a.preview.includes(query);
+    const matchQ = query.trim() === "" || a.title.includes(query) || a.preview.includes(query);
     return matchCat && matchQ;
   });
 
-  const pinned = filtered.filter(a => a.isPinned);
-  const normal = filtered.filter(a => !a.isPinned);
+  const pinned = filtered.filter((a) => a.isPinned);
+  const normal = filtered.filter((a) => !a.isPinned);
 
-  const pageNums = (() => {
-    let s = Math.max(1, page - 2), e = Math.min(totalPages, page + 2);
-    if (e - s < 4) { if (s === 1) e = Math.min(totalPages, 5); else s = Math.max(1, totalPages - 4); }
-    return Array.from({ length: e - s + 1 }, (_, i) => s + i);
-  })();
+  const getPageNumbers = () => {
+    let startPage = Math.max(1, page - 2);
+    let endPage = Math.min(totalPages, page + 2);
+    if (endPage - startPage < 4) {
+      if (startPage === 1) endPage = Math.min(totalPages, 5);
+      else if (endPage === totalPages) startPage = Math.max(1, totalPages - 4);
+    }
+    return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+  };
 
   return (
     <div
@@ -114,16 +118,6 @@ export default function Announcements() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* ── Top bar: 로고 영역만 유지 ── */}
-      <header
-        className="flex items-center justify-between px-10 py-5 flex-shrink-0 bg-white"
-        style={{ borderBottom: "1px solid #e5e7eb" }}
-      >
-        <div className="flex items-center gap-3">
-          {/* 로고나 앱 아이콘 영역 */}
-        </div>
-        {/* 사용자 정보나 메뉴 등 필요한 요소 */}
-      </header>
 
       <div className="flex-1 px-10 py-8 max-w-5xl w-full mx-auto">
         {/* ── Hero ── */}
@@ -174,35 +168,30 @@ export default function Announcements() {
           <div className="flex gap-2 flex-wrap">
             {["전체", "공지", "이벤트", "업데이트", "점검"].map((cat) => {
               const active = activeCategory === cat;
-              const m = CAT_META[cat];
+              const meta = cat !== "전체" ? CAT_COLOR[cat] : null;
               return (
                 <button
                   key={cat}
-                  onClick={() => { setActiveCategory(cat); setPage(1); }}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 4,
-                    padding: "6px 13px", borderRadius: 6, fontSize: 12, fontWeight: 700,
-                    border: active ? `1.5px solid ${m?.color ?? "#2563eb"}` : "1.5px solid #e2e8f0",
-                    background: active ? (m?.bg ?? "#eff6ff") : "#fff",
-                    color: active ? (m?.color ?? "#2563eb") : "#64748b",
-                    cursor: "pointer", transition: "all 0.12s",
-                  }}
+                  onClick={() => setActiveCategory(cat)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-150"
+                  style={
+                    active
+                      ? {
+                          background: meta ? meta.bg : "#f3f4f6",
+                          color: meta ? meta.color : "#111827",
+                          border: `1px solid ${meta ? meta.color + "40" : "#d1d5db"}`,
+                        }
+                      : {
+                          background: "#ffffff",
+                          color: "#6b7280",
+                          border: "1px solid #e5e7eb",
+                        }
+                  }
                 >
                   {cat}
                 </button>
               );
             })}
-          </div>
-
-          {/* 검색 */}
-          <div style={{ flex: 1, minWidth: 200, display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 8 }}>
-            <Search style={{ width: 14, height: 14, color: "#94a3b8", flexShrink: 0 }} />
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="제목, 내용 검색"
-              style={{ flex: 1, border: "none", outline: "none", fontSize: 13, color: "#0f172a", background: "transparent" }}
-            />
           </div>
         </div>
         {/* ── 여기서부터 리스트가 렌더링됩니다 ── */}
@@ -225,17 +214,14 @@ export default function Announcements() {
         {/* ── Divider ── */}
         {pinned.length > 0 && normal.length > 0 && <div className="mb-6" style={{ height: 1, background: "#e5e7eb" }} />}
 
-          {/* 일반 목록 */}
-          {!loading && normal.map(item => (
-            <NoticeRow key={item.id} item={item} pinned={false} isAdmin={isAdmin} onDelete={handleDelete} />
-          ))}
-
-          {/* 로딩 */}
-          {loading && (
-            <div style={{ padding: "48px 0", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
-              불러오는 중…
-            </div>
-          )}
+        {/* ── Normal list ── */}
+        {normal.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {normal.map((a) => (
+              <AnnouncementRow key={a.id} item={a} pinned={false} isAdmin={isAdmin} onDelete={handleDelete} />
+            ))}
+          </div>
+        )}
 
         {/* ── Empty ── */}
         {filtered.length === 0 && (
@@ -251,17 +237,18 @@ export default function Announcements() {
   );
 }
 
-/* ─── 게시판 행 ─────────────────────────────────────────────────────────── */
-function NoticeRow({ item, pinned, isAdmin, onDelete }) {
+/* ─── Row ───────────────────────────────────────────────────────────────── */
+function AnnouncementRow({ item, pinned, isAdmin, onDelete }) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
+  const meta = CAT_COLOR[item.category] || CAT_COLOR["공지"];
 
   return (
     <div
-      onClick={() => navigate(`/announcements/${item.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="group"
+      onClick={() => navigate(`/announcements/${item.id}`)}
+      className="relative w-full text-left flex items-center gap-5 px-6 py-5 rounded-2xl transition-all duration-200 cursor-pointer group bg-white shadow-sm"
       style={{
         border: pinned ? "1px solid rgba(234,88,12,0.3)" : hovered ? "1px solid #d1d5db" : "1px solid #e5e7eb",
         transform: hovered ? "translateX(4px)" : "translateX(0)",
@@ -313,17 +300,18 @@ function NoticeRow({ item, pinned, isAdmin, onDelete }) {
         {isAdmin && (
           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              onClick={e => { e.stopPropagation(); navigate(`/announcement/edit/${item.id}`); }}
-              style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid #bfdbfe", background: "#eff6ff", color: "#2563eb", cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
+              onClick={(e) => { e.stopPropagation(); navigate(`/announcement/edit/${item.id}`); }}
+              className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition bg-gray-50 border border-gray-100"
+              title="수정"
             >
-              <Edit style={{ width: 11, height: 11 }} /> 수정
+              <Edit className="w-4 h-4" />
             </button>
             <button
               onClick={(e) => onDelete(e, item.id)}
               className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition bg-gray-100 border border-gray-100"
               title="삭제"
             >
-              <Trash2 style={{ width: 11, height: 11 }} /> 삭제
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -338,14 +326,6 @@ function NoticeRow({ item, pinned, isAdmin, onDelete }) {
           style={{ transform: hovered ? "translateX(4px)" : "translateX(0)" }}
         />
       </div>
-
-      {/* 분류 (모바일 숨김용 영역) */}
-      <span style={{ textAlign: "center", fontSize: 12, color: "#94a3b8" }} />
-
-      {/* 날짜 */}
-      <span style={{ textAlign: "right", fontSize: 12, color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>
-        {item.date}
-      </span>
     </div>
   );
 }

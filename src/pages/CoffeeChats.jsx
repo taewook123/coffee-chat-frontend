@@ -173,20 +173,10 @@ export default function CoffeeChats() {
         </div>
       </div>
     );
-  };
-
+};
   const currentTabChats = activeTab === 'upcoming' ? upcomingChats : activeTab === 'ongoing' ? ongoingChats : completedChats;
-
   return (
     <div className="min-h-screen bg-[#fdfdfd]">
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <Link to="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition no-underline font-medium text-sm">
-            <ChevronLeft className="w-4 h-4" /> 대시보드로 돌아가기
-          </Link>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-6 py-10">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
