@@ -33,11 +33,11 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="bg-[#F0F7FF] py-16 lg:py-24 w-full overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+    <section className="bg-[#F0F7FF] py-8 lg:py-12 w-full overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
         
         {/* 왼쪽: 텍스트 콘텐츠 및 검색바 영역 */}
-        <div className="space-y-10 z-10 relative">
+        <div className="space-y-4 z-10 relative">
           <div className="space-y-5">
             <h1 className="text-[2.5rem] lg:text-[3.25rem] text-[#1a2332] leading-[1.3] m-0 break-keep tracking-tight">
               꿈꾸던 기업의 현직자와<br />
@@ -57,7 +57,7 @@ const Hero = () => {
         </div>
 
         {/* 오른쪽: 이용 방법 다이내믹 슬라이더 영역 */}
-        <div className="flex justify-center mt-4 lg:mt-0 relative h-[380px] sm:h-[460px] w-full max-w-lg mx-auto lg:ml-auto">
+        <div className="flex justify-center mt-4 lg:mt-0 relative h-[380px] sm:h-[400px] w-[500px] max-w-lg mx-auto lg:ml-auto">
           <div className="absolute -inset-4 bg-gradient-to-tr from-blue-100 to-[#1A73E8] rounded-[2.5rem] blur-3xl opacity-20" />
           
           <div className="relative w-full h-full rounded-[2rem] overflow-hidden shadow-2xl bg-[#1a2332]">

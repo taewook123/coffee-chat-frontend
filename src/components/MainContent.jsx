@@ -68,17 +68,44 @@ export default function MainContent() {
 
   return (
     <div className="w-full bg-white">
-      {/* 1. 상단 히어로 배너 영역 (여기에 다 포함됨!) */}
-      <Hero />
+  {/* 1. 상단 히어로 배너 */}
+  <Hero />
+  
+  {/* 2. 인기 호스트 섹션 (여기에 지금 코드를 넣으시면 됩니다) */}
+  <section className="max-w-7xl mx-auto px-6 pt-10 pb-20">
+    <div className="flex flex-col items-center text-center mb-14 space-y-4">
+      {/* 뱃지 */}
+      <span className="inline-block text-[#1A73E8] bg-blue-50 text-xs font-bold tracking-widest uppercase px-3 py-1.5 rounded-full mb-1">
+        POPULAR HOSTS
+      </span>
+
+      {/* 메인 타이틀 */}
+      <h2 
+        className="text-gray-900 m-0" 
+        style={{ 
+          fontSize: '1.6rem', // 1.5rem에서 2.5rem으로 키웠습니다.
+          lineHeight: '1.2', 
+          fontWeight: '900',
+          letterSpacing: '-0.06em'
+        }}
+      >
+        지금 주목받는 <span className="text-[#1A73E8]">인기 호스트</span>
+      </h2>
       
-      {/* 2. 지금 주목받는 인기 호스트 섹션 */}
-      <section className="max-w-7xl mx-auto px-6 pt-16 pb-20">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-gray-900 mb-3 m-0 tracking-tight">
-            지금 주목받는 인기 호스트
-          </h2>
-          <p className="text-gray-500 text-sm m-0 font-medium">목표하는 직무의 호스트를 탭을 통해 빠르게 만나보세요.</p>
-        </div>
+      {/* 서브 설명 */}
+      <p 
+        className="text-gray-400 m-0 max-w-md w-full break-keep"
+        style={{
+          fontSize: '1rem',
+          fontWeight: '400',
+          letterSpacing: '-0.02em',
+          lineHeight: '1.6'
+        }}
+      >
+        목표하는 직무의 호스트를 탭을 통해 <br className="sm:hidden" />
+        빠르고 간편하게 만나보세요.
+      </p>
+    </div>
 
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 border-0 border-b border-solid border-gray-100 max-w-5xl mx-auto mb-12 pb-3">
           {tabs.map((tab) => (
