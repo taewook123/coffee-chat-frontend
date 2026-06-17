@@ -10,7 +10,7 @@ import { useCoffeeChatWebRTC } from "../hooks/useCoffeeChatWebRTC";
 import { useChatTimer } from "../hooks/useChatTimer";
 import ControlBar from "../components/CoffeeChat/ControlBar";
 import SettingsModal from "../components/CoffeeChat/SettingsModal";
-
+import { correctSttText } from '../utils/sttCorrector';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
 const WS_URL = BACKEND_URL.replace(/^http/, 'ws');
 
@@ -472,7 +472,8 @@ export default function CoffeeChatRoom() {
                   <div key={idx} className="flex gap-3 text-sm">
                     <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>{log.speaker}</span>
                     <p style={{ color: log.type === 'interim' ? 'var(--text-muted)' : 'var(--text-main)', fontStyle: log.type === 'interim' ? 'italic' : 'normal' }}>
-                      {log.text} {log.type === 'interim' && <span className="inline-block w-1 h-3 bg-current ml-1 animate-pulse" />}
+                      {/* 💡 바로 여기입니다! STT 텍스트를 출력할 때 교정 함수를 거치도록 수정 */}
+                      {correctSttText(log.text)} {log.type === 'interim' && <span className="inline-block w-1 h-3 bg-current ml-1 animate-pulse" />}
                     </p>
                   </div>
                 ))}

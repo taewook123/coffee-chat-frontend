@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -32,7 +32,7 @@ export default function BookingFlow() {
   const [isLoading, setIsLoading] = useState(false);
   const [recommendedList, setRecommendedList] = useState([]);
   const [paymentOrderId, setPaymentOrderId] = useState('');
-
+  const timeRef = useRef(null);
   const fetchMentorDetail = async (id) => {
     const { data } = await axios.get(`${BACKEND_URL}/api/mentors/${id}`);
     return data;
@@ -265,15 +265,17 @@ export default function BookingFlow() {
   };
 
   const handleNext = () => {
-    if (currentStep === 1 && selectedDate && selectedTime) {
-      setCurrentStep(2);
-      return;
-    }
+  if (currentStep === 1 && selectedDate && selectedTime) {
+    setCurrentStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // ← 추가
+    return;
+  }
 
-    if (currentStep === 2 && questions.trim()) {
-      setCurrentStep(3);
-    }
-  };
+  if (currentStep === 2 && questions.trim()) {
+    setCurrentStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // ← 추가
+  }
+};
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -353,7 +355,11 @@ export default function BookingFlow() {
                       <DayPicker
                         mode="single"
                         selected={selectedDate}
-                        onSelect={setSelectedDate}
+                        onSelect={(date) => {setSelectedDate(date);
+                          setTimeout(() => {
+                            timeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 100);
+                        }}
                         disabled={disabledDays}
                         defaultMonth={new Date()}
                         className="border-0"
@@ -363,7 +369,7 @@ export default function BookingFlow() {
                 </div>
 
                 {selectedDate && (
-                  <div>
+                  <div ref={timeRef}>
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Clock className="w-5 h-5 text-purple-600" />
                       {selectedDate.toLocaleDateString('ko-KR', {
@@ -468,7 +474,7 @@ export default function BookingFlow() {
                   <textarea
                     value={questions}
                     onChange={(e) => setQuestions(e.target.value)}
-                    rows={20}
+                    rows={15}
                     className="w-full p-4 border border-gray-200 rounded-lg outline-none focus:border-blue-500 resize-none"
                     placeholder="여기에 질문을 직접 입력하거나 AI 추천 질문을 추가하세요."
                   />
