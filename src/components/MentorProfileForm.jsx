@@ -133,25 +133,29 @@ export default function MentorProfileForm({
         
         {/* 1. 호스트 활동 정보 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
-          <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0">호스트 활동 정보</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-blue-600" /> 호스트 활동 정보
+          </h3>
+          
+          {/* 💡 grid-cols-3를 지우고 flex-col로 세로 배치, 폭은 절반(max-w-md)으로 제한해 너무 길어지지 않게 비율 조절 */}
+          <div className="flex flex-col gap-5 max-w-md">
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-2">현재 상태</label>
-              <select value={formData.status || '현직자'} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm bg-white">
+              <select value={formData.status || '현직자'} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-colors">
                 {statuses.map(st => <option key={st} value={st}>{st}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-2">주 직무</label>
-              <select value={formData.main_category || ''} onChange={(e) => setFormData({ ...formData, main_category: e.target.value, sub_category: '' })} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm bg-white">
-                <option value="">선택</option>
+              <select value={formData.main_category || ''} onChange={(e) => setFormData({ ...formData, main_category: e.target.value, sub_category: '' })} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-colors">
+                <option value="" disabled>선택해주세요</option>
                 {categories.map(c => <option key={c.main} value={c.main}>{c.main}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-2">세부 직무</label>
-              <select value={formData.sub_category || ''} onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm bg-white">
-                <option value="">선택</option>
+              <select value={formData.sub_category || ''} onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-colors" disabled={!formData.main_category}>
+                <option value="" disabled>주 직무를 먼저 선택해주세요</option>
                 {categories.find(c => c.main === formData.main_category)?.subs.map(sub => <option key={sub} value={sub}>{sub}</option>)}
               </select>
             </div>

@@ -197,7 +197,7 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-4 gap-4 mb-5">
-          <StatCard icon={DollarSign} label="이번 달 수익" value={`₩${Number(mentorStats?.monthly_earnings || mentorStats?.revenue || 0).toLocaleString()}`} accent="bg-emerald-500" sub="↑ 꾸준히 상승중" />
+          <StatCard icon={DollarSign} label="이번 달 수익" value={`₩${Number(mentorStats?.monthly_earnings || mentorStats?.revenue || mentorStats?.total_earnings || 0).toLocaleString()}`} accent="bg-emerald-500" sub="↑ 꾸준히 상승중" />
           <StatCard icon={Star}       label="평균 평점"    value={`${mentorStats?.average_rating || '0.0'}`}                             accent="bg-amber-400" />
           <StatCard icon={Clock}      label="총 멘토링"    value={`${mentorStats?.mentoring_hours || mentorStats?.total_hours || 0}시간`} accent="bg-orange-400" />
           <StatCard icon={Repeat}     label="재예약률"     value={`${mentorStats?.rebooking_rate || 0}%`}                               accent="bg-violet-500" />

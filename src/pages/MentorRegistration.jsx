@@ -3,7 +3,7 @@ import ReactQuill from 'react-quill-new';
 import "quill/dist/quill.snow.css";
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-
+import { User } from 'lucide-react';
 const MentorRegistration = () => {
   const [searchParams] = useSearchParams();
   
@@ -456,50 +456,62 @@ const MentorRegistration = () => {
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           
-          <div className="bg-white rounded-2xl p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
-            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              기본 정보 및 경력
+          <div className="bg-white rounded-2xl p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-50">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4">
+              <User className="w-5 h-5 text-blue-600" /> 기본 정보 및 경력
             </h2>
-            <div className="space-y-5">
+            
+            <div className="space-y-6">
+              
+              {/* 1열: 이름 및 현재 직무 (1:1 비율) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">현재 상태</label>
-                    <select 
-                      name="status" 
-                      value={basicInfo.status} 
-                      onChange={handleBasicChange} 
-                      className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {['현직자', '이직자', '프리랜서', '대학생', '취준생'].map(st => (
-                        <option key={st} value={st}>{st}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">이름 / 닉네임</label>
+                  <input type="text" name="name" value={basicInfo.name} onChange={handleBasicChange} placeholder="예: 사라 (Sarah)" className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-50 focus:bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">주 직무</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">현재 직무 및 연차</label>
+                  <input type="text" name="job" value={basicInfo.job} onChange={handleBasicChange} placeholder="예: 백엔드 개발자 / 12년차" className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-50 focus:bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                </div>
+              </div>
+
+              {/* 2열: 카테고리 및 상태 (1:1:1 비율) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">현재 상태</label>
+                  <select 
+                    name="status" 
+                    value={basicInfo.status || '현직자'} 
+                    onChange={handleBasicChange} 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-50 focus:bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
+                  >
+                    {['현직자', '이직자', '프리랜서', '대학생', '취준생'].map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">주 직무</label>
                   <select 
                     name="main_category" 
                     value={basicInfo.main_category} 
-                    onChange={handleBasicChange} 
-                    className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setBasicInfo(prev => ({ ...prev, main_category: e.target.value, sub_category: '' }))} 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-50 focus:bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
                   >
-                    <option value="">주 직무 선택</option>
+                    <option value="" disabled>주 직무 선택</option>
                     {categories.map(cat => <option key={cat.main} value={cat.main}>{cat.main}</option>)}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">세부 직무</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">세부 직무</label>
                   <select 
                     name="sub_category" 
                     value={basicInfo.sub_category} 
                     onChange={handleBasicChange}
                     disabled={!basicInfo.main_category}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-50 focus:bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    <option value="">세부 직무 선택</option>
+                    <option value="" disabled>세부 직무 선택</option>
                     {categories
                       .find(c => c.main === basicInfo.main_category)?.subs
                       .map(sub => <option key={sub} value={sub}>{sub}</option>)
@@ -507,24 +519,17 @@ const MentorRegistration = () => {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">이름 / 닉네임</label>
-                  <input type="text" name="name" value={basicInfo.name} onChange={handleBasicChange} placeholder="예: 사라 (Sarah)" className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">현재 직무 및 연차</label>
-                  <input type="text" name="job" value={basicInfo.job} onChange={handleBasicChange} placeholder="예: 백엔드 개발자 / 12년차" className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
               
+              <div className="border-t border-gray-100 my-2"></div>
+
+              {/* 3열: 주요 경력 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">주요 경력 (최근 순으로 입력 후 Enter)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">주요 경력 <span className="text-gray-400 font-normal text-xs ml-1">(최근 순으로 입력 후 Enter)</span></label>
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {histories.map((history, index) => (
-                    <span key={index} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-800 border border-gray-300 rounded-lg text-sm font-medium">
+                    <span key={index} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-800 border border-gray-200 rounded-lg text-sm font-medium shadow-sm">
                       {history}
-                      <button type="button" onClick={() => removeHistory(index)} className="flex items-center justify-center w-4 h-4 rounded-full text-gray-400 hover:text-red-500 transition-colors focus:outline-none">
+                      <button type="button" onClick={() => removeHistory(index)} className="flex items-center justify-center w-4 h-4 rounded-full text-gray-400 hover:text-red-500 hover:bg-white transition-colors focus:outline-none">
                         ✕
                       </button>
                     </span>
@@ -536,17 +541,18 @@ const MentorRegistration = () => {
                   onChange={(e) => setHistoryInput(e.target.value)} 
                   onKeyDown={handleHistoryKeyDown} 
                   placeholder="예: Google (2020 - 현재)" 
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-50 focus:bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
                 />
               </div>
 
+              {/* 4열: 해시태그 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">나를 표현하는 해시태그 (입력 후 Enter)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">나를 표현하는 해시태그 <span className="text-gray-400 font-normal text-xs ml-1">(입력 후 Enter)</span></label>
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {hashtags.map((tag, index) => (
-                    <span key={index} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-sm font-medium">
+                    <span key={index} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-sm font-medium shadow-sm">
                       {tag}
-                      <button type="button" onClick={() => removeHashtag(index)} className="flex items-center justify-center w-4 h-4 rounded-full text-blue-300 hover:text-red-500 hover:bg-white transition-colors focus:outline-none">
+                      <button type="button" onClick={() => removeHashtag(index)} className="flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:text-red-500 hover:bg-white transition-colors focus:outline-none">
                         ✕
                       </button>
                     </span>
@@ -558,9 +564,10 @@ const MentorRegistration = () => {
                   onChange={(e) => setHashtagInput(e.target.value)} 
                   onKeyDown={handleHashtagKeyDown} 
                   placeholder="예: 대용량트래픽" 
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-50 focus:bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
                 />
               </div>
+
             </div>
           </div>
 
