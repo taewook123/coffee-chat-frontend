@@ -715,22 +715,6 @@ export default function CoffeeChatRoom() {
                         <p className="text-sm" style={{ color: 'var(--text-main)' }}>{selectedQuestion}</p>
                       </div>
                     )}
-
-                    {/* 진행률 바 */}
-                    <div className="flex-shrink-0 mt-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>대화 수집 중</span>
-                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                          {Math.min(100, Math.round((1 - nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100))}%
-                        </span>
-                      </div>
-                      <div className="w-full h-1 rounded-full bg-black/10 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-1000"
-                          style={{ width: `${Math.min(100, Math.round((1 - nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100))}%` }}
-                        />
-                      </div>
-                    </div>
                   </>
                 )}
 
