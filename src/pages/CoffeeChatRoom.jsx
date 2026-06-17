@@ -340,6 +340,9 @@ const fetchRecommendedQuestion = async () => {
       if (session?.session_id)
         await axios.post(`${BACKEND_URL}/api/chat-session/end/${session.session_id}`);
     } catch (err) {}
+    
+    // 수정: 이 경로로 보내면 App.jsx의 라우터가 ChatEndPage로 연결해주고,
+    // ChatEndPage 내부에서 멘티/호스트를 판별하여 분기합니다.
     navigate(`/coffee-chat-review/${chatId}`);
   };
 
