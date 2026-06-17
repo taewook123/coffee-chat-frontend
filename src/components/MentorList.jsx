@@ -167,7 +167,7 @@ const MentorList = () => {
               </div>
               <h3 className="text-lg font-bold text-slate-800 m-0">세션 예약하기</h3>
               <p className="text-gray-600 text-xs leading-relaxed max-w-xs mx-auto m-0 font-medium">
-                호스트의 오픈된 일정을 직관적으로 조율해 일대일 맞춤형 커피챗 세션을 간편하게 예약할 수 있습니다.
+                호스트의 오픈된 일정을 직관적으로 조율해 일대일 맞춤형 티타임 세션을 간편하게 예약할 수 있습니다.
               </p>
             </div>
 

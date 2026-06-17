@@ -4,7 +4,7 @@ import { CreditCard } from 'lucide-react';
 
 const PaymentSection = ({
   amount = 0,
-  mentorName = '멘토',
+  mentorName = '호스트',
   onPaymentSuccess,
   orderInfo
 }) => {
@@ -42,7 +42,7 @@ if (!storeId || !channelKey) {
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
         channelKey: import.meta.env.VITE_PORTONE_CHANNEL_KEY,
         paymentId: orderId,
-        orderName: `${mentorName} 커피챗 예약`,
+        orderName: `${mentorName} 티타임 예약`,
         totalAmount: safeAmount,
         currency: 'CURRENCY_KRW',
         payMethod: 'CARD',

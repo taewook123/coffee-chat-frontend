@@ -1,10 +1,11 @@
 import React, { useState, useRef, useMemo } from 'react';
 import ReactQuill from 'react-quill-new';
+import axios from 'axios'; // 🌟 이거 한 줄 꼭 추가해주세요!
 import "quill/dist/quill.snow.css";
 import { Upload, Briefcase, MessageSquare, Sparkles, X, Plus, GraduationCap, FileText } from 'lucide-react';
 import ProfileImageUpload from './ProfileImageUpload';
 import TagInput from './TagInput'; // 일반 프로필과 동일한 태그 UI 사용
-import axios from 'axios';
+
 
 export default function MentorProfileForm({
   formData,
@@ -38,6 +39,7 @@ export default function MentorProfileForm({
 
   // 💡 ReactQuill 에디터 설정
   const quillRef = useRef(null);
+  
   const imageHandler = () => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');

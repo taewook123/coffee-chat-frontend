@@ -383,31 +383,51 @@ const MentorRegistration = () => {
   // =========================================================
   // 💡 [데이터 전송] 백엔드 규격에 맞춰 전송
   // =========================================================
+// =========================================================
+  // 💡 [데이터 전송] Azure 업로드 후 백엔드 규격에 맞춰 전송
+  // =========================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const targetUrl = links.length > 0 ? links.join(',') : '';
-    const targetFilePath = attachedFiles.length > 0 ? attachedFiles[0].name : '';
-
-    const submitData = {
-      name: basicInfo.name,
-      status: basicInfo.status,
-      main_category: basicInfo.main_category,
-      sub_category: basicInfo.sub_category,
-      hashtags: hashtags.join(','),
-      
-      portfolio_url: targetUrl,          
-      portfolio_file_path: targetFilePath,  
-
-      job_title: basicInfo.job,                  
-      career_history: JSON.stringify(histories),  
-      mentor_intro: introduction,                 
-      mentoring_topics: JSON.stringify(topics),         
-      detailed_experience: JSON.stringify(experiences)
-    };
+    let finalFileUrl = ''; // 최종적으로 DB에 들어갈 파일 URL
 
     try {
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+
+      // 🌟 1. 이력서/포트폴리오 파일이 첨부되어 있다면, 폼 제출 전에 파일부터 백엔드로 올립니다.
+      if (attachedFiles.length > 0) {
+        const fileFormData = new FormData();
+        fileFormData.append('file', attachedFiles[0]);
+
+        const uploadRes = await axios.post(`${BACKEND_URL}/api/upload/file`, fileFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        
+        // 백엔드가 Azure에 올린 후 반환해준 URL을 변수에 저장합니다.
+        finalFileUrl = uploadRes.data.url; 
+      }
+
+      // 🌟 2. 파일 URL을 포함해서 최종 JSON 데이터를 구성합니다.
+      const targetUrl = links.length > 0 ? links.join(',') : '';
+
+      const submitData = {
+        name: basicInfo.name,
+        status: basicInfo.status,
+        main_category: basicInfo.main_category,
+        sub_category: basicInfo.sub_category,
+        hashtags: hashtags.join(','),
+        
+        portfolio_url: targetUrl,          
+        portfolio_file_path: finalFileUrl, // <== 파일 이름 대신 Azure URL이 들어갑니다!
+
+        job_title: basicInfo.job,                  
+        career_history: JSON.stringify(histories),  
+        mentor_intro: introduction,                 
+        mentoring_topics: JSON.stringify(topics),         
+        detailed_experience: JSON.stringify(experiences)
+      };
+
+      // 🌟 3. 완성된 데이터를 호스트 등록 API로 전송!
       const response = await fetch(`${BACKEND_URL}/api/mentor/register/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

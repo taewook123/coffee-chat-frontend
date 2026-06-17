@@ -85,7 +85,7 @@ export default function CoffeeChatReview() {
               티타임이 종료됐어요!
             </h1>
             <p className="text-gray-500">
-              {booking?.partner_name || '멘토'} 님과의 대화 어떠셨나요?
+              {booking?.partner_name || '호스트'} 님과의 대화 어떠셨나요?
             </p>
             {session?.duration_sec && (
               <p className="text-sm text-gray-400 mt-1">

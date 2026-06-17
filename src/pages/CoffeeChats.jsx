@@ -37,7 +37,6 @@ export default function CoffeeChats() {
       try {
         let myMentorId = null;
         
-        // 1. 내 멘토 ID 확보
         try {
           const mentorRes = await axios.get(`${BACKEND_URL}/api/mentors/list`);
           const myMentor = mentorRes.data.find(m => parseInt(m.user_id, 10) === currentUserId);
@@ -46,7 +45,6 @@ export default function CoffeeChats() {
           console.warn("멘토 정보 로드 패스", err);
         }
 
-        // 2. 예약 데이터 가져오기
         const bookingRes = await axios.get(`${BACKEND_URL}/api/booking/${currentUserId}`);
         
         if (Array.isArray(bookingRes.data)) {
@@ -54,11 +52,10 @@ export default function CoffeeChats() {
             const bUserId = parseInt(booking.user_id, 10);
             const bMentorId = parseInt(booking.mentor_id, 10);
 
-            // 💡 승재 님 말씀대로 내 userid와 mentorid 기준으로 명확하게 분류!
             if (bUserId === currentUserId) {
-              return { ...booking, type: 'sent' }; // 내가 보낸 신청
+              return { ...booking, type: 'sent' }; 
             } else if (myMentorId && bMentorId === myMentorId) {
-              return { ...booking, type: 'received' }; // 내가 받은 신청
+              return { ...booking, type: 'received' }; 
             }
             return { ...booking, type: 'sent' };
           });
@@ -75,15 +72,12 @@ export default function CoffeeChats() {
     fetchBookings();
   }, []);
 
-  // 💡 1차 필터링: 토글 버튼 기준 (보낸 신청 / 받은 신청)
   const filteredByRole = bookings.filter(b => b.type === roleFilter);
 
-  // 💡 2차 필터링: 백엔드에서 넘겨준 b.tab_status 그대로 사용 (시간 계산 버그 완전 차단)
   const upcomingChats  = filteredByRole.filter(b => b.tab_status === 'upcoming');
   const ongoingChats   = filteredByRole.filter(b => b.tab_status === 'ongoing');
   const completedChats = filteredByRole.filter(b => b.tab_status === 'completed');
 
-  // 빨간 뱃지 계산 (종료된 건 제외한 보낸/받은 신청 개수)
   const activeSentCount = bookings.filter(b => b.type === 'sent' && b.tab_status !== 'completed').length;
   const activeReceivedCount = bookings.filter(b => b.type === 'received' && b.tab_status !== 'completed').length;
 
@@ -104,9 +98,7 @@ export default function CoffeeChats() {
 
   const renderChatCard = (chat) => {
     const isSent = chat.type === 'sent';
-    
-    // 💡 백엔드에서 partner_name을 전부 mentor_name 키에 담아주므로 깔끔하게 매핑 완료!
-    const partnerName = chat.mentor_name || (isSent ? '멘토' : '멘티');
+    const partnerName = chat.mentor_name || (isSent ? '파트너' : '상대방');
     const chatId = chat.id;
     const hasReview = chat.has_review;
 
@@ -116,10 +108,10 @@ export default function CoffeeChats() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex flex-col gap-2">
               <span className={`w-fit px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${isSent ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
-                {isSent ? '내가 신청한 커피챗' : '내가 받은 커피챗'}
+                {isSent ? '신청한 티타임' : '받은 티타임'}
               </span>
               <h3 className="font-bold text-lg text-gray-900 m-0">
-                {partnerName} {isSent ? '멘토' : '님'}
+                {partnerName} {isSent ? '님과의 티타임' : '님과의 티타임'}
               </h3>
             </div>
             
@@ -156,12 +148,12 @@ export default function CoffeeChats() {
                   onClick={(e) => { e.stopPropagation(); navigate(`/coffee-chat/${chatId}`); }}
                   className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md"
                 >
-                  <Coffee className="w-3.5 h-3.5" /> 입장하기
+                  <Coffee className="w-3.5 h-3.5" /> 참여하기
                 </button>
               )}
               {chat.tab_status === 'upcoming' && (
                 <button 
-                  onClick={() => navigate(`/coffee-chat-detail/${chatId}`)} // 💡 이 경로로 통일합니다
+                  onClick={() => navigate(`/coffee-chat-detail/${chatId}`)}
                   className="text-xs font-bold px-4 py-2 rounded-xl transition-colors bg-blue-50 text-blue-600 hover:bg-blue-100"
                 >
                   상세보기
@@ -196,8 +188,6 @@ export default function CoffeeChats() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-10">
-        
-
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -206,7 +196,6 @@ export default function CoffeeChats() {
         ) : (
           <>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-gray-200 pb-4">
-              
               <div className="flex flex-wrap gap-2">
                 {['upcoming', 'ongoing', 'completed'].map(tab => (
                    <button

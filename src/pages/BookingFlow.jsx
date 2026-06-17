@@ -114,7 +114,7 @@ export default function BookingFlow() {
       });
 
       // 💡 1. 텍스트를 오해 없도록 명확하게 변경!
-      alert('예약 신청 및 결제가 완료되었습니다! 멘토가 수락하면 최종 확정됩니다.');
+      alert('예약 신청 및 결제가 완료되었습니다! 호스트가 수락하면 최종 확정됩니다.');
       
       // 💡 2. 대시보드가 아닌 '예약 내역' 페이지로 이동하여 [수락 대기중] 상태를 바로 보여줌!
       navigate('/dashboard'); 
@@ -134,7 +134,7 @@ export default function BookingFlow() {
         const data = await fetchMentorDetail(mentorId);
         setMentor(data);
       } catch (err) {
-        console.error('멘토 정보 로드 실패:', err);
+        console.error('호스트 정보 로드 실패:', err);
       } finally {
         setIsLoadingMentor(false);
       }
@@ -284,7 +284,7 @@ export default function BookingFlow() {
   if (isLoadingMentor) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-semibold">
-        멘토 정보를 불러오는 중입니다...
+        호스트 정보를 불러오는 중입니다...
       </div>
     );
   }
@@ -298,7 +298,7 @@ export default function BookingFlow() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
           >
             <ChevronLeft className="w-5 h-5" />
-            멘토 프로필로 돌아가기
+            호스트 프로필로 돌아가기
           </Link>
         </div>
       </div>
@@ -484,7 +484,7 @@ export default function BookingFlow() {
                 <h2 className="text-2xl font-bold mb-6">최종 결제</h2>
                 <PaymentSection
                   amount={getMentorPrice()}
-                  mentorName={mentor?.name || '멘토'}
+                  mentorName={mentor?.name || '호스트'}
                   orderInfo={{ orderId: paymentOrderId || `order_${Date.now()}` }}
                   onPaymentSuccess={handlePaymentFinalize}
                 />
@@ -534,14 +534,14 @@ export default function BookingFlow() {
                       e.target.src =
                         'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png';
                     }}
-                    alt={mentor?.name || '멘토'}
+                    alt={mentor?.name || '호스트'}
                     className="w-full h-full object-cover"
                   />
                 </div>
 
                 <div>
                   <h4 className="font-semibold text-gray-900">
-                    {mentor?.name || '멘토를 선택해주세요'}
+                    {mentor?.name || '호스트를 선택해주세요'}
                   </h4>
                   <p className="text-sm text-gray-600">
                     {mentor?.job_title || '직함 없음'}

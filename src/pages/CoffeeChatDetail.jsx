@@ -1,11 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Calendar, Clock, Coffee, Video,
+  ArrowLeft, Calendar, Clock, Video,
   MessageSquare, CheckCircle, Sparkles, XCircle, MapPin,
   CreditCard, BookOpen, Star
 } from 'lucide-react';
 import axios from 'axios';
+
+/* ─── 티타임 아이콘 ─── */
+function TeacupIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 8h1a4 4 0 0 1 0 8h-1" />
+      <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+      <line x1="6" y1="2" x2="6" y2="4" />
+      <line x1="10" y1="2" x2="10" y2="4" />
+      <line x1="14" y1="2" x2="14" y2="4" />
+    </svg>
+  );
+}
 
 export default function CoffeeChatDetail() {
   const { id } = useParams();
@@ -21,7 +34,6 @@ export default function CoffeeChatDetail() {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
   const currentUserId = localStorage.getItem('userId');
 
-  // 💡 데이터 로드
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -31,7 +43,7 @@ export default function CoffeeChatDetail() {
         setBooking(found);
 
         if (found) {
-          setCanEnter(true); // 테스트용 항상 입장 가능
+          setCanEnter(true);
           
           axios.get(`${BACKEND_URL}/api/chat-session/${found.id || found.booking_id}`)
             .then(sessionRes => setSession(sessionRes.data))
@@ -42,7 +54,6 @@ export default function CoffeeChatDetail() {
       .finally(() => setLoading(false));
   }, [id, currentUserId, BACKEND_URL]);
 
-  // 💡 입장하기
   const handleEnter = async () => {
     try {
       await axios.post(`${BACKEND_URL}/api/chat-session/start`, null, {
@@ -54,13 +65,11 @@ export default function CoffeeChatDetail() {
     navigate(`/coffee-chat/${id}`);
   };
 
-  // 💡 예약 취소 (DB 실제 반영)
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
-      // 백엔드의 거절/취소 API 호출
       await axios.post(`${BACKEND_URL}/api/booking/reject/${id || booking?.booking_id}`);
-      alert("예약이 성공적으로 취소되었습니다.");
+      alert("티타임 예약이 성공적으로 취소되었습니다.");
       navigate("/coffee-chats");
     } catch (error) {
       console.error("예약 취소 실패:", error);
@@ -87,14 +96,12 @@ export default function CoffeeChatDetail() {
     </div>
   );
 
-  // UI 렌더링용 변수들
   const partnerName = booking.partner_name || booking.mentor_name || booking.mentee_name || "크루";
   const isMentor = currentUserId === String(booking.mentor_id);
-  const myRole = isMentor ? "멘토" : "멘티";
-  const partnerRole = isMentor ? "멘티" : "멘토";
+  const myRole = isMentor ? "게스트" : "호스트";
+  const partnerRole = isMentor ? "게스트" : "호스트";
   const isCancelled = booking.status === 'REJECTED' || booking.status === 'DENY';
 
-  // D-day 계산
   const today = new Date();
   today.setHours(0,0,0,0);
   const sessionDate = new Date(booking.booking_date);
@@ -118,11 +125,10 @@ export default function CoffeeChatDetail() {
 
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-10 py-8 flex flex-col gap-6">
 
-        {/* ── Hero (참여자 및 요약) ── */}
+        {/* ── Hero ── */}
         <div className="relative bg-white rounded-3xl p-8 overflow-hidden shadow-sm border border-gray-200">
           <div className="relative flex items-start gap-6 flex-wrap">
             
-            {/* 아바타 */}
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-2xl font-extrabold text-blue-700 flex-shrink-0 bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-200 shadow-sm">
               {partnerName.slice(0, 1)}
             </div>
@@ -135,12 +141,11 @@ export default function CoffeeChatDetail() {
                 </span>
               </div>
               <p className="text-sm mb-3 text-gray-500 font-medium">
-                나({myRole})와의 1:1 커피챗
+                나({myRole})와의 1:1 티타임
               </p>
-              <p className="font-bold text-gray-800 text-lg md:text-xl truncate">{booking.topic || "자유 주제 커피챗"}</p>
+              <p className="font-bold text-gray-800 text-lg md:text-xl truncate">{booking.topic || "자유 주제 티타임"}</p>
             </div>
 
-            {/* D-day 뱃지 */}
             <div className="flex flex-col items-end gap-2 flex-shrink-0 mt-2 md:mt-0">
               <span className={`text-2xl font-black tracking-tight ${dColor}`}>{dLabel}</span>
               {isCancelled ? (
@@ -157,7 +162,6 @@ export default function CoffeeChatDetail() {
 
           <div className="my-6 h-px w-full bg-gray-100" />
 
-          {/* 일정 메타 칩스 */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gray-50 text-gray-700 border border-gray-200">
               <Calendar className="w-4 h-4 text-blue-500" /> {booking.booking_date}
@@ -166,12 +170,12 @@ export default function CoffeeChatDetail() {
               <Clock className="w-4 h-4 text-orange-500" /> {booking.booking_time}
             </div>
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gray-50 text-gray-700 border border-gray-200">
-              <MapPin className="w-4 h-4 text-emerald-500" /> 온라인 화상 커피챗
+              <MapPin className="w-4 h-4 text-emerald-500" /> 온라인 화상 티타임
             </div>
           </div>
         </div>
 
-        {/* 세션 완료 상태 알림 */}
+        {/* 세션 완료 알림 */}
         {session && session.status === 'COMPLETED' && (
           <div className="rounded-2xl p-5 bg-emerald-50 border border-emerald-200 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3">
@@ -184,10 +188,10 @@ export default function CoffeeChatDetail() {
           </div>
         )}
 
-        {/* ── 2단 레이아웃 (질문지 / 버튼 및 사이드바) ── */}
+        {/* ── 2단 레이아웃 ── */}
         <div className="grid gap-6 md:grid-cols-[1fr_300px]">
 
-          {/* 왼쪽: 질문 및 메모 */}
+          {/* 왼쪽: 질문 및 팁 */}
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4 p-6 rounded-2xl bg-white border border-gray-200 shadow-sm">
               <div className="flex items-center gap-2">
@@ -219,14 +223,12 @@ export default function CoffeeChatDetail() {
             </div>
           </div>
 
-          {/* 오른쪽: 정보 박스 및 액션 버튼들 */}
+          {/* 오른쪽: 정보 및 액션 */}
           <div className="flex flex-col gap-4">
             
             {/* 결제 정보 */}
             <div className="rounded-2xl p-5 bg-white border border-gray-200 shadow-sm">
-              <p className="text-xs font-extrabold uppercase tracking-[0.1em] mb-4 text-gray-400">
-                결제 정보
-              </p>
+              <p className="text-xs font-extrabold uppercase tracking-[0.1em] mb-4 text-gray-400">결제 정보</p>
               <div className="flex flex-col gap-3.5">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-medium text-gray-500">세션 시간</span>
@@ -245,9 +247,7 @@ export default function CoffeeChatDetail() {
 
             {/* 진행 방식 */}
             <div className="rounded-2xl p-5 bg-white border border-gray-200 shadow-sm">
-              <p className="text-xs font-extrabold uppercase tracking-[0.1em] mb-4 text-gray-400">
-                진행 방식
-              </p>
+              <p className="text-xs font-extrabold uppercase tracking-[0.1em] mb-4 text-gray-400">진행 방식</p>
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2.5">
                   <Video className="w-4 h-4 text-blue-500" />
@@ -282,13 +282,13 @@ export default function CoffeeChatDetail() {
                   disabled
                   className="w-full flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl text-sm font-bold transition cursor-not-allowed bg-gray-100 text-gray-400 border border-gray-200"
                 >
-                  <Coffee className="w-5 h-5 mb-1 opacity-50" />
+                  <TeacupIcon className="w-5 h-5 mb-1 opacity-50" />
                   {isCancelled ? '취소된 세션입니다' : booking.tab_status === 'completed' ? '종료된 세션입니다' : '시작 5분 전 입장 가능'}
                 </button>
               )}
             </div>
 
-            {/* 취소 버튼 영역 */}
+            {/* 취소 버튼 */}
             {!isCancelled && (
               !cancelConfirm ? (
                 <button
@@ -299,7 +299,7 @@ export default function CoffeeChatDetail() {
                 </button>
               ) : (
                 <div className="rounded-2xl p-5 flex flex-col gap-3 bg-red-50 border border-red-200 shadow-sm">
-                  <p className="text-xs text-center font-bold text-red-600">정말 예약을 취소하시겠습니까?</p>
+                  <p className="text-xs text-center font-bold text-red-600">정말 티타임 예약을 취소하시겠습니까?</p>
                   <div className="flex gap-2 mt-1">
                     <button
                       onClick={() => setCancelConfirm(false)}
