@@ -293,6 +293,12 @@ export default function CoffeeChatRoom() {
       if (session?.session_id)
         await axios.post(`${BACKEND_URL}/api/chat-session/end/${session.session_id}`);
     } catch (err) {}
+
+    // 🌟 [핵심 눈속임 1] 방을 나가는 순간 AI 작업 몰래 시작 (await를 안 써서 유저는 기다리지 않고 바로 넘어감!)
+    axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`).catch(() => {});
+    axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`).catch(() => {});
+
+    // 바로 리뷰창으로 이동
     navigate(`/coffee-chat-review/${chatId}`);
   };
   useEffect(() => {
