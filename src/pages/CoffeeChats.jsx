@@ -52,12 +52,38 @@ export default function CoffeeChats() {
             const bUserId = parseInt(booking.user_id, 10);
             const bMentorId = parseInt(booking.mentor_id, 10);
 
-            if (bUserId === currentUserId) {
-              return { ...booking, type: 'sent' }; 
-            } else if (myMentorId && bMentorId === myMentorId) {
-              return { ...booking, type: 'received' }; 
+            // 1. '보낸 신청' vs '받은 신청' 구분
+            let type = 'sent';
+            if (myMentorId && bMentorId === myMentorId && bUserId !== currentUserId) {
+              type = 'received';
             }
-            return { ...booking, type: 'sent' };
+
+            // ════════════════════════════════════════════════════════════════
+            // 💡 [핵심 추가] 백엔드 상태(status)와 시간을 조합해 탭(tab_status) 지정
+            // ════════════════════════════════════════════════════════════════
+            let tab_status = 'upcoming';
+            const status = booking.status; // 예: PAID, CONFIRMED, CANCELLED, COMPLETED
+
+            // 스케줄러가 노쇼 처리(CANCELLED/COMPLETED)한 예약은 무조건 '종료' 탭으로
+            if (status === 'CANCELLED' || status === 'COMPLETED' || status === 'REJECTED') {
+              tab_status = 'completed';
+            } else {
+              // 예약 대기(CONFIRMED/PAID) 중인 경우, 현재 시간과 비교
+              const chatStart = new Date(`${booking.booking_date}T${booking.booking_time}:00`);
+              const chatEnd = new Date(chatStart.getTime() + 30 * 60000); // 시작시간 + 30분
+              const now = new Date();
+
+              if (now < chatStart) {
+                tab_status = 'upcoming'; // 아직 안 됨 -> '예정'
+              } else if (now >= chatStart && now <= chatEnd) {
+                tab_status = 'ongoing';  // 30분 이내 -> '진행중'
+              } else {
+                tab_status = 'completed'; // 시간 지남 -> '종료'
+              }
+            }
+            // ════════════════════════════════════════════════════════════════
+
+            return { ...booking, type, tab_status };
           });
           
           setBookings(taggedBookings);
