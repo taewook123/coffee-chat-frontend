@@ -62,7 +62,7 @@ export default function CoffeeChatRoom() {
     '대화가 시작되면 AI가 맥락에 맞는 추천 질문을 생성합니다.',
   ]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
   const sttBufferRef       = useRef('');
   const lastFinalCountRef  = useRef(0);
   const [nextRefreshIn, setNextRefreshIn] = useState(RECOMMEND_INTERVAL_MS / 1000);
@@ -618,36 +618,31 @@ export default function CoffeeChatRoom() {
                 </div>
               </div>
 
-              {isAIExpanded && (
-                <>
-                  <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
-                    {recommendedQuestions.map((q, i) => (
-                      <div
-                        key={i}
-                        className="p-3 rounded-xl text-sm flex items-start gap-2 hover:bg-amber-500/5 transition-colors cursor-pointer flex-shrink-0 border border-transparent hover:border-amber-500/20"
-                        style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--text-main)' }}
-                      >
-                        <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                        <span>{q}</span>
+                {isAIExpanded && (
+                  <>
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
+                      {recommendedQuestions.map((q, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setSelectedQuestion(q)}
+                          className={`p-3 rounded-xl text-sm flex items-start gap-2 hover:bg-amber-500/5 transition-colors cursor-pointer flex-shrink-0 border ${
+                            selectedQuestion === q ? 'border-amber-500/50 bg-amber-500/10' : 'border-transparent'
+                          }`}
+                          style={{ background: selectedQuestion === q ? undefined : 'rgba(0,0,0,0.04)', color: 'var(--text-main)' }}
+                        >
+                          <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                          <span>{q}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedQuestion && (
+                      <div className="flex-shrink-0 mt-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30">
+                        <p className="text-[10px] text-amber-500 font-semibold mb-1">선택한 질문</p>
+                        <p className="text-sm" style={{ color: 'var(--text-main)' }}>{selectedQuestion}</p>
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex-shrink-0 mt-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>대화 수집 중</span>
-                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                        {Math.min(100, Math.round((nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100 * -1 + 100))}%
-                      </span>
-                    </div>
-                    <div className="w-full h-1 rounded-full bg-black/10 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-1000"
-                        style={{ width: `${Math.min(100, Math.round((1 - nextRefreshIn / (RECOMMEND_INTERVAL_MS / 1000)) * 100))}%` }}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+                    )}
+                  </>
+                )}
             </div>
 
             {/* ── LLM 어시스턴트 ── */}
