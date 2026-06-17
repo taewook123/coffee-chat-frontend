@@ -4,8 +4,7 @@ import { Sparkles, Check, Download, FileText } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { toPng } from 'html-to-image';
-import jsPDF from 'jspdf';
+import { useReactToPrint } from 'react-to-print';
 
 export default function CoffeeChatReport() {
   const { chatId } = useParams();
@@ -47,35 +46,63 @@ export default function CoffeeChatReport() {
       .catch(err => console.error("리포트 데이터 로드 실패:", err));
   }, [chatId]);
 
+// 🌟 [핵심 눈속임 2] POST 대신 2초마다 이미 돌고 있는 작업이 끝났는지 확인(GET)하는 폴링 함수
   const generateSummary = async () => {
     if (!chatId) return;
     setIsSummaryLoading(true);
-    try {
-      const res = await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
-      if (res.data.ai_summary) {
-        setSummary(res.data.ai_summary);
-      }
-    } catch (err) {
-      alert(`요약 생성 실패: ${err.response?.data?.detail || err.message}`);
-    } finally {
+
+    // 2초마다 백엔드에 요약본이 완성되었는지 확인합니다.
+    const pollTimer = setInterval(async () => {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`);
+        if (res.data && res.data.ai_summary) {
+          setSummary(res.data.ai_summary);
+          setIsSummaryLoading(false);
+          clearInterval(pollTimer); // 완성되면 반복 확인 종료
+        }
+      } catch (err) { }
+    }, 2000);
+
+    // 무한 로딩 방지 (30초 후에도 안 나오면 일단 정지)
+    setTimeout(() => {
+      clearInterval(pollTimer);
       setIsSummaryLoading(false);
-    }
+    }, 30000);
   };
 
+  const handlePrint = useReactToPrint({
+    contentRef: printRef, // 🌟 요렇게 최신 버전 이름으로 싹 바꿔줍니다!
+    documentTitle: `티타임_AI리포트_${booking?.mentor_name || '멘토'}`,
+    pageStyle: `
+      @page { size: A4; margin: 20mm; }
+      @media print {
+        body { -webkit-print-color-adjust: exact; }
+      }
+    `,
+  });
+
+  // 🌟 [핵심 눈속임 3] 어드바이스도 마찬가지로 2초마다 확인해서 낚아챕니다.
   const generateAiAdvice = async () => {
     if (!chatId) return;
     setIsAiLoading(true);
-    try {
-      const response = await axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`);
-      if (response.data) {
-        if (response.data.ai_advice) setAiAdvice(response.data.ai_advice);
-        if (response.data.summary) setSummary(response.data.summary);
-      }
-    } catch (error) {
-      alert("AI 어드바이스를 불러오는 데 실패했습니다.");
-    } finally {
+
+    const pollTimer = setInterval(async () => {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/coffee-chat-report/${chatId}`);
+        if (res.data && res.data.ai_advice) {
+          setAiAdvice(res.data.ai_advice);
+          if (res.data.summary) setSummary(res.data.summary);
+          setIsAiLoading(false);
+          clearInterval(pollTimer); // 완성되면 반복 확인 종료
+        }
+      } catch (err) { }
+    }, 2000);
+
+    // 어드바이스는 조금 더 걸릴 수 있으니 무한 로딩 방지를 45초로 설정
+    setTimeout(() => {
+      clearInterval(pollTimer);
       setIsAiLoading(false);
-    }
+    }, 45000);
   };
 
   const handleDownloadPdf = async () => {
@@ -117,9 +144,18 @@ export default function CoffeeChatReport() {
         
         {/* --- 헤더 (본문 카드와 완벽 분리) --- */}
         <div className="flex flex-col items-center mb-12 text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-slate-800 rounded-2xl shadow-lg flex items-center justify-center text-white font-extrabold text-3xl mb-6">
-            {booking?.mentor_name?.slice(0, 1) || '멘'}
-          </div>
+          {/* 🌟 프로필 이미지가 있으면 <img> 태그로 보여주고, 없으면 기존처럼 글자(이니셜) 출력 */}
+          {booking?.mentor_profile_image ? (
+            <img 
+              src={booking.mentor_profile_image} 
+              alt="멘토 프로필" 
+              className="w-20 h-20 rounded-2xl shadow-lg object-cover mb-6 border border-slate-200"
+            />
+          ) : (
+            <div className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-slate-800 rounded-2xl shadow-lg flex items-center justify-center text-white font-extrabold text-3xl mb-6">
+              {booking?.mentor_name?.slice(0, 1) || '멘'}
+            </div>
+          )}
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-3">
             티타임 AI 분석 리포트
           </h1>
@@ -146,14 +182,14 @@ export default function CoffeeChatReport() {
                   대화 요약
                 </h2>
                 {summary && (
-                  <button
-                    onClick={handleDownloadPdf}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    PDF 저장
-                  </button>
-                )}
+                    <button
+                      onClick={handlePrint}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      깔끔한 PDF 저장
+                    </button>
+                  )}
               </div>
 
               {isSummaryLoading ? (
@@ -227,7 +263,28 @@ export default function CoffeeChatReport() {
                       prose-th:bg-slate-100 prose-th:border prose-th:border-solid prose-th:border-slate-300 prose-th:p-4 prose-th:text-slate-900 prose-th:font-bold
                       prose-td:border prose-td:border-solid prose-td:border-slate-300 prose-td:p-5 break-keep"
                     >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAdvice}</ReactMarkdown>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // 🌟 표(Table) 요소들을 강제로 직접 렌더링해서 Tailwind의 고집을 꺾습니다!
+                          table: ({node, ...props}) => (
+                            <div className="overflow-x-auto my-10 rounded-xl border border-slate-300 shadow-sm">
+                              <table className="w-full border-collapse text-sm" {...props} />
+                            </div>
+                          ),
+                          thead: ({node, ...props}) => (
+                            <thead className="bg-slate-100 border-b border-slate-300" {...props} />
+                          ),
+                          th: ({node, ...props}) => (
+                            <th className="border-r last:border-r-0 border-slate-300 px-5 py-4 text-left font-extrabold text-slate-900 align-middle" {...props} />
+                          ),
+                          td: ({node, ...props}) => (
+                            <td className="border-t border-r last:border-r-0 border-slate-300 px-5 py-4 text-slate-700 align-top leading-[1.8]" {...props} />
+                          )
+                        }}
+                      >
+                        {aiAdvice}
+                      </ReactMarkdown>
                     </div>
                   ) : (
                     <div className="h-full min-h-[20rem] flex flex-col items-center justify-center text-slate-400 gap-4">

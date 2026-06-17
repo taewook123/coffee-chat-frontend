@@ -325,6 +325,45 @@ export default function CoffeeChatRoom() {
   const handleRemoteVideoPlay = useCallback(() => setIsRemoteConnected(true), []);
   const handleRemoteVideoEmptied = useCallback(() => setIsRemoteConnected(false), []);
 
+  const handleEndCall = async () => {
+    await hangUp();
+    chatWsRef.current?.close();
+    try {
+      if (session?.session_id)
+        await axios.post(`${BACKEND_URL}/api/chat-session/end/${session.session_id}`);
+    } catch (err) {}
+
+    // 🌟 [핵심 눈속임 1] 방을 나가는 순간 AI 작업 몰래 시작 (await를 안 써서 유저는 기다리지 않고 바로 넘어감!)
+    axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`).catch(() => {});
+    axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`).catch(() => {});
+
+    // 바로 리뷰창으로 이동
+    navigate(`/coffee-chat-review/${chatId}`);
+  };
+  useEffect(() => {
+    const dateStr = booking?.booking_date || booking?.bookingDate;
+    const timeStr = booking?.booking_time || booking?.bookingTime;
+
+    if (!dateStr || !timeStr) return;
+
+    // 예약된 날짜와 시간을 합쳐서 기준 시간 객체 생성
+    const scheduledTime = new Date(`${dateStr}T${timeStr}:00`).getTime();
+
+    // 강제 종료 시간 계산 (예약 시간 기준 + 딱 30분)
+    const endTime = scheduledTime + (30 * 60 * 1000);
+
+    // 1초마다 현재 시간과 종료 시간을 비교
+    const timer = setInterval(() => {
+      if (Date.now() >= endTime) {
+        clearInterval(timer); // 타이머 멈춤
+        alert("⏰ 예정된 커피챗 시간(30분)이 모두 경과되어 세션이 자동 종료됩니다.");
+        handleEndCall(); // 강제 종료 및 리뷰창 이동
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking]);
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
