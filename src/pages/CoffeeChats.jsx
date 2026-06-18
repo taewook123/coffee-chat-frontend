@@ -199,20 +199,18 @@ export default function CoffeeChats() {
         </div>
       </div>
     );
-  };
-
+};
   const currentTabChats = activeTab === 'upcoming' ? upcomingChats : activeTab === 'ongoing' ? ongoingChats : completedChats;
+
+  const groupedChats = currentTabChats.reduce((acc, chat) => {
+    const date = chat.booking_date || '날짜 미정';
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(chat);
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-[#fdfdfd]">
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <Link to="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition no-underline font-medium text-sm">
-            <ChevronLeft className="w-4 h-4" /> 대시보드로 돌아가기
-          </Link>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-6 py-10">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -275,16 +273,42 @@ export default function CoffeeChats() {
             </div>
 
             {currentTabChats.length === 0 ? (
-               <div className="py-24 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                 <Coffee className="w-10 h-10 text-gray-300 mb-3" />
-                 <p className="text-gray-500 font-medium text-sm">해당하는 티타임 내역이 없습니다.</p>
-               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {currentTabChats.map(renderChatCard)}
-              </div>
-            )}
-          </>
+              
+  <div className="py-24 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+    <Coffee className="w-10 h-10 text-gray-300 mb-3" />
+    <p className="text-gray-500 font-medium text-sm">해당하는 티타임 내역이 없습니다.</p>
+  </div>
+) : (
+  <div className="flex flex-col gap-10">
+    {/* 날짜 키 배열을 정렬하여 순서대로 출력 (upcoming은 오름차순, completed는 내림차순) */}
+    {Object.keys(groupedChats)
+      .sort((a, b) => {
+        return activeTab === 'completed' 
+          ? new Date(b) - new Date(a) 
+          : new Date(a) - new Date(b);
+      })
+      .map((date) => (
+        <div key={date} className="flex flex-col gap-4">
+          {/* 날짜별 타임라인 헤더 */}
+          <div className="flex items-center gap-3">
+            <div className="bg-gray-900 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm">
+              {date}
+            </div>
+            <span className={`text-xs font-black ${activeTab === 'completed' ? 'text-gray-400' : 'text-red-500'}`}>
+              {getDDay(date)}
+            </span>
+            <div className="flex-1 h-[1px] bg-gray-200"></div>
+          </div>
+
+          {/* 해당 날짜에 속한 카드들만 그리드로 배치 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groupedChats[date].map(renderChatCard)}
+          </div>
+        </div>
+      ))}
+  </div>
+)}
+</>
         )}
       </div>
     </div>

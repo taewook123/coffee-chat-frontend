@@ -127,14 +127,14 @@ export default function CoffeeChatReview() {
 
           {/* 리뷰 작성 */}
           <div className="mb-8">
-            <h3 className="font-bold text-gray-900 mb-3">리뷰 작성</h3>
+            <h3 className="font-bold text-gray-900 mb-3">호스트 리뷰 작성</h3>
             <textarea
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
               rows={5}
               maxLength={500}
               disabled={submitted}
-              placeholder="멘토와의 대화는 어떠셨나요? 솔직한 후기를 남겨주세요 😊"
+              placeholder="호스트님과의 대화는 어떠셨나요? 솔직한 후기를 남겨주세요 😊"
               className={`w-full px-4 py-3 border-2 rounded-xl outline-none resize-none text-gray-700 text-sm ${
                 submitted
                   ? 'border-gray-100 bg-gray-50 text-gray-400'
@@ -146,7 +146,6 @@ export default function CoffeeChatReview() {
             </p>
           </div>
 
-          {/* 제출 완료 메시지 */}
           {/* 제출 완료 메시지 */}
           {submitted && (
             <div className="flex items-center justify-center gap-2 mb-6 py-3 bg-green-50 rounded-xl border border-green-100">
