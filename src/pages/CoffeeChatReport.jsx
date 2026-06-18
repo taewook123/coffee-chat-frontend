@@ -1,25 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sparkles, Check, Download, FileText } from 'lucide-react';
+import { Sparkles, Check, Download, FileText, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useReactToPrint } from 'react-to-print';
 
 export default function CoffeeChatReport() {
   const { chatId } = useParams();
   const navigate = useNavigate();
-  
-  const [summary, setSummary] = useState(''); 
+
+  const [summary, setSummary] = useState('');
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
   const [aiAdvice, setAiAdvice] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false); 
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+  const [isPdfReady, setIsPdfReady] = useState(false);
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
+
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
-  
-  // 🌟 PDF로 추출할 영역을 지정하는 Ref
-  const printRef = useRef(null);
 
   useEffect(() => {
     if (!chatId) return;
@@ -39,11 +38,39 @@ export default function CoffeeChatReport() {
       .then(res => {
         if (res.data) {
           if (res.data.summary) setSummary(res.data.summary);
-          if (res.data.ai_advice) setAiAdvice(res.data.ai_advice);
+          if (res.data.ai_advice) {
+            setAiAdvice(res.data.ai_advice);
+            // 이미 pdf_url 있으면 바로 준비 완료 표시
+            if (res.data.pdf_url) setIsPdfReady(true);
+          }
         }
       })
       .catch(err => console.error("리포트 데이터 로드 실패:", err));
   }, [chatId]);
+
+  // aiAdvice 생성되면 PDF 준비 폴링
+  useEffect(() => {
+    if (!aiAdvice || isPdfReady) return;
+
+    const poll = setInterval(async () => {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/report/pdf-url/${chatId}`);
+        
+        // 🌟 수정: 백엔드가 '완료(completed)'라고 응답했을 때만 준비 완료 처리!
+        if (res.data?.status === 'completed' && res.data?.pdf_url) {
+          setIsPdfReady(true);
+          clearInterval(poll);
+        }
+        // status가 'waiting'이나 'processing'일 때는 조용히 다음 폴링을 기다립니다.
+      } catch (e) {
+        console.error("PDF 상태 확인 중 오류:", e);
+      }
+    }, 3000);
+
+    // 2분 후 타임아웃
+    const timeout = setTimeout(() => clearInterval(poll), 120000);
+    return () => { clearInterval(poll); clearTimeout(timeout); };
+  }, [aiAdvice, isPdfReady, chatId]);
 
   const generateSummary = async () => {
     if (!chatId) return;
@@ -58,10 +85,7 @@ export default function CoffeeChatReport() {
         }
       } catch (err) { }
     }, 2000);
-    setTimeout(() => {
-      clearInterval(pollTimer);
-      setIsSummaryLoading(false);
-    }, 30000);
+    setTimeout(() => { clearInterval(pollTimer); setIsSummaryLoading(false); }, 30000);
   };
 
   const generateAiAdvice = async () => {
@@ -69,7 +93,6 @@ export default function CoffeeChatReport() {
     setIsAiLoading(true);
 
     try {
-      // 🚨 [핵심 수정] 백엔드가 실제로 열어둔 주소(/api/wrap-up)로 POST 요청을 보냅니다!
       await axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`);
 
       const pollTimer = setInterval(async () => {
@@ -94,73 +117,48 @@ export default function CoffeeChatReport() {
     } catch (error) {
       console.error("AI 생성 요청 실패:", error);
       setIsAiLoading(false);
-      alert(`AI 생성 요청 실패! 백엔드 에러를 확인해주세요.`);
+      
+      // 🌟 [수정 포인트] 백엔드에서 준 상세 에러 메시지를 꺼내서 보여줍니다.
+      const errorMessage = error.response?.data?.detail || "AI 생성 요청에 실패했습니다. 백엔드 에러를 확인해주세요.";
+      alert(errorMessage);
     }
   };
 
-  // ==========================================
-  // 🌟 [핵심 변경] 브라우저 내장 텍스트 PDF 엔진 사용
-  // ==========================================
-  const handlePrintPdf = useReactToPrint({
-    contentRef: printRef, 
-    content: () => printRef.current, 
-    documentTitle: `티타임_AI리포트_${booking?.mentor_name || '멘토'}`,
-    pageStyle: `
-      @page { 
-        size: A4; 
-        margin: 15mm 15mm; 
+  // 바로 다운로드
+  const handleDownload = async () => {
+    setIsPdfDownloading(true);
+    try {
+      // 백엔드에서 생성된 PDF의 URL을 가져옵니다.
+      const res = await axios.get(`${BACKEND_URL}/api/report/pdf-url/${chatId}`);
+      const url = res.data.pdf_url;
+      
+      // 🌟 [수정] URL을 새 창에서 열면 브라우저가 알아서 PDF 뷰어를 띄우거나 다운로드합니다.
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        alert("PDF가 아직 준비되지 않았습니다.");
       }
-      @media print {
-        body { 
-          -webkit-print-color-adjust: exact; 
-          print-color-adjust: exact;
-        }
-        /* 1. 그리드를 블록으로 풀어서 위아래로 배치 */
-        .grid {
-          display: block !important;
-        }
-        .md\\:col-span-8, .md\\:col-span-4 {
-          width: 100% !important;
-          display: block !important;
-          margin-bottom: 30px !important;
-        }
-        
-        /* 2. 🌟 핵심: 높이 제한을 풀고 다음 페이지로 넘어가게 허용 */
-        .h-full, .min-h-\\[600px\\] {
-          height: auto !important;
-          min-height: auto !important;
-        }
-        .bg-white {
-          display: block !important;
-          height: auto !important;
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-          box-shadow: none !important;
-          border: none !important;
-        }
-
-        /* 3. 문단이나 표가 중간에 반갈죽(잘림) 되는 것 방지 */
-        p, h2, h3, li, tr {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-      }
-    `,
-  });
+    } catch (e) {
+      alert('PDF가 아직 준비 중입니다. 잠시 후 다시 시도해주세요.');
+      console.error(e);
+    } finally {
+      setIsPdfDownloading(false);
+    }
+  };
 
   return (
-    <div 
-      style={{ fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif" }} 
+    <div
+      style={{ fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif" }}
       className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-12 font-sans"
     >
       <div className="max-w-7xl mx-auto w-full">
-        
+
         {/* 헤더 */}
         <div className="flex flex-col items-center mb-12 text-center">
           {booking?.mentor_profile_image ? (
-            <img 
-              src={booking.mentor_profile_image} 
-              alt="멘토 프로필" 
+            <img
+              src={booking.mentor_profile_image}
+              alt="멘토 프로필"
               className="w-20 h-20 rounded-2xl shadow-lg object-cover mb-6 border border-slate-200"
             />
           ) : (
@@ -181,28 +179,36 @@ export default function CoffeeChatReport() {
           )}
         </div>
 
-        {/* ========================================== */}
-        {/* 🌟 printRef가 연결된 실제 PDF 변환 영역 */}
-        {/* ========================================== */}
-        <div ref={printRef} className="grid grid-cols-1 md:grid-cols-12 gap-8 bg-slate-50 items-start">
-          
+        {/* 본문 */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 bg-slate-50 items-start">
+
           {/* 왼쪽: 대화 요약 */}
           <div className="md:col-span-4 flex flex-col gap-6 h-full">
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8 flex flex-col h-full sticky top-6">
-              
+
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-indigo-500" />
                   대화 요약
                 </h2>
-                {summary && (
+
+                {/* PDF 다운로드 버튼 */}
+                {aiAdvice && (
                   <button
-                    // 🌟 버튼 클릭 시 handlePrintPdf 실행!
-                    onClick={handlePrintPdf}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    onClick={handleDownload}
+                    disabled={isPdfDownloading || !isPdfReady}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+                      isPdfReady
+                        ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
                   >
-                    <Download className="w-4 h-4" />
-                    PDF로 저장
+                    {isPdfDownloading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    {isPdfReady ? 'PDF 저장' : 'PDF 준비 중...'}
                   </button>
                 )}
               </div>
@@ -232,7 +238,7 @@ export default function CoffeeChatReport() {
           {/* 오른쪽: AI 어드바이스 */}
           <div className="md:col-span-8 flex flex-col gap-6 h-full">
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8 md:p-10 min-h-[600px] flex flex-col">
-              
+
               <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
                 <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
                   <Sparkles className="w-6 h-6 text-indigo-600" />
@@ -275,7 +281,7 @@ export default function CoffeeChatReport() {
                       prose-th:bg-slate-100 prose-th:border prose-th:border-solid prose-th:border-slate-300 prose-th:p-4 prose-th:text-slate-900 prose-th:font-bold
                       prose-td:border prose-td:border-solid prose-td:border-slate-300 prose-td:p-5 break-keep"
                     >
-                      <ReactMarkdown 
+                      <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
                           table: ({node, ...props}) => (
@@ -307,7 +313,7 @@ export default function CoffeeChatReport() {
               )}
             </div>
           </div>
-          
+
         </div>
 
         {/* 하단 네비게이션 */}

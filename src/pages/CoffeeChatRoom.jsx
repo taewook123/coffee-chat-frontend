@@ -277,9 +277,11 @@ export default function CoffeeChatRoom() {
   const sttBufferRef = useRef('');
   const lastFinalCountRef = useRef(0);
   const fullTranscriptRef = useRef('');
+  
   const [pastTranscript, setPastTranscript] = useState('');
+  const [restoredLogs, setRestoredLogs] = useState([]); // 🌟 과거 대화 복구용 배열
+  
   const [nextRefreshIn, setNextRefreshIn] = useState(RECOMMEND_INTERVAL_MS / 1000);
-
   const [booking, setBooking] = useState(null);
   const [session, setSession] = useState(null);
   const [myName, setMyName] = useState('나');
@@ -313,7 +315,16 @@ export default function CoffeeChatRoom() {
             .then(tRes => {
               if (tRes.data.transcript) {
                 setPastTranscript(tRes.data.transcript);
-                fullTranscriptRef.current = tRes.data.transcript + '\n\n--- [재접속] ---\n\n';
+                fullTranscriptRef.current = tRes.data.transcript + '\n';
+                
+                // 🌟 텍스트를 파싱해서 화면에 그릴 수 있는 배열로 변환
+                const lines = tRes.data.transcript.split('\n');
+                const parsed = lines.map(line => {
+                  const match = line.match(/^(.+?):\s*(.*)$/);
+                  if (match) return { speaker: match[1], text: match[2], type: 'final' };
+                  return null;
+                }).filter(Boolean);
+                setRestoredLogs(parsed);
               }
             })
             .catch(() => console.log("과거 기록 없음"));
@@ -327,33 +338,45 @@ export default function CoffeeChatRoom() {
   });
 
   // ════════════════════════════════════════════════════════
-  // 3. 핵심 기능 (DB 저장 및 종료)
+  // 3. 핵심 기능 (통화 종료 시 로딩 없이 즉시 이동)
   // ════════════════════════════════════════════════════════
-  const saveConversationToDB = async () => {
-    if (!session?.session_id || !fullTranscriptRef.current.trim()) return;
-    try {
-      await axios.post(`${BACKEND_URL}/api/chat-session/${session.session_id}/save-transcript`, {
-        transcript: fullTranscriptRef.current
-      });
-    } catch (err) {
-      console.error("🚨 대화 기록 저장 실패", err);
+  const isMentor = booking && userId ? Number(userId) === Number(booking.mentor_user_id) : false;
+
+  const handleEndCall = useCallback(() => {
+    // 🌟 1. 기다림 없이 누르자마자 즉시 역할에 맞는 페이지로 먼저 번개처럼 이동!
+    if (isMentor) {
+      navigate(`/coffee-chat-report/${chatId}`); 
+    } else {
+      navigate(`/coffee-chat-review/${chatId}`);
     }
-  };
 
-  const handleEndCall = useCallback(async () => {
-    await saveConversationToDB();
-    await hangUp();
-    chatWsRef.current?.close();
-    try {
-      if (session?.session_id) await axios.post(`${BACKEND_URL}/api/chat-session/end/${session.session_id}`);
-    } catch (err) {}
+    // 🌟 2. 무거운 작업(종료, 저장, AI 호출)은 뒤에서 조용히 비동기로 처리 (Fire-and-Forget)
+    (async () => {
+      // 대화 저장
+      if (session?.session_id && fullTranscriptRef.current.trim()) {
+        try {
+          await axios.post(`${BACKEND_URL}/api/chat-session/${session.session_id}/save-transcript`, {
+            transcript: fullTranscriptRef.current
+          });
+        } catch (err) {
+          console.error("🚨 대화 기록 저장 실패", err);
+        }
+      }
 
-    // 종료 시 리포트 생성 백그라운드 호출
-    axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`).catch(() => {});
-    axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`).catch(() => {});
+      // WebRTC 마이크/캠 안전하게 끄기 (에러 나도 무시)
+      try { await hangUp(); } catch (e) { console.warn("오디오 끄기 무시:", e); }
+      chatWsRef.current?.close();
+      
+      // 세션 완전 종료 처리
+      try {
+        if (session?.session_id) await axios.post(`${BACKEND_URL}/api/chat-session/end/${session.session_id}`);
+      } catch (err) {}
 
-    navigate(`/coffee-chat-review/${chatId}`);
-  }, [session, chatId, hangUp, navigate]);
+      // AI 리포트/요약 백그라운드 호출
+      axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`).catch(() => {});
+      axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`).catch(() => {});
+    })();
+  }, [isMentor, navigate, chatId, session, hangUp]);
 
   // 타이머 훅
   const { formattedDuration } = useChatTimer(booking, handleEndCall);
@@ -370,9 +393,15 @@ export default function CoffeeChatRoom() {
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      saveConversationToDB();
+      // 안전하게 백그라운드로 마지막 기록 저장
+      if (session?.session_id && fullTranscriptRef.current.trim()) {
+        axios.post(`${BACKEND_URL}/api/chat-session/${session.session_id}/save-transcript`, {
+          transcript: fullTranscriptRef.current
+        }).catch(()=>{});
+      }
     };
   }, [session]);
 
@@ -425,12 +454,14 @@ export default function CoffeeChatRoom() {
     return () => ws.close();
   }, [userId, chatId]);
 
-  // STT Logs 처리
+  // STT Logs 처리 (안전망 강화: sttLogs가 null이어도 죽지 않게 보호)
   useEffect(() => {
-    const finals = sttLogs.filter(l => l.type === 'final');
+    const safeSttLogs = sttLogs || [];
+    const finals = safeSttLogs.filter(l => l && l.type === 'final');
     if (finals.length <= lastFinalCountRef.current) return;
+    
     finals.slice(lastFinalCountRef.current).forEach(log => {
-      const line = `${log.speaker}: ${log.text}`; // 💡 에러 해결: line 변수 명시
+      const line = `${log.speaker}: ${log.text}`; 
       sttBufferRef.current += (sttBufferRef.current ? '\n' : '') + line;
       fullTranscriptRef.current += (fullTranscriptRef.current ? '\n' : '') + line;
     });
@@ -460,18 +491,6 @@ export default function CoffeeChatRoom() {
       clearInterval(interval);
     };
   }, [userId, chatId, booking]);
-
-  // 예약 종료 타이머
-  useEffect(() => {
-    const dateStr = booking?.booking_date || booking?.bookingDate;
-    const timeStr = booking?.booking_time || booking?.bookingTime;
-    if (!dateStr || !timeStr) return;
-    const endTime = new Date(`${dateStr}T${timeStr}:00`).getTime() + 30 * 60 * 1000;
-    const timer = setInterval(() => {
-      if (Date.now() >= endTime) { clearInterval(timer); alert("⏰ 예정된 커피챗 시간(30분)이 모두 경과되어 세션이 자동 종료됩니다."); handleEndCall(); }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [booking, handleEndCall]);
 
 
   // ════════════════════════════════════════════════════════
@@ -534,9 +553,7 @@ export default function CoffeeChatRoom() {
   const cycleSttMode = () => setSttMode(prev => STT_MODES[(STT_MODES.indexOf(prev) + 1) % STT_MODES.length]);
   const sttModeLabel = { hidden: '대화 내역 숨김', preview: '대화 내역 (최신)', expanded: '대화 내역 (전체)' };
   const sttModeNext  = { hidden: '보기', preview: '전체 보기', expanded: '숨기기' };
-  const sttLogsReversed = [...sttLogs].reverse();
 
-  const isMentor = booking && userId ? Number(userId) === Number(booking.mentor_user_id) : false;
   const myRole = isMentor ? '호스트 (나)' : '게스트 (나)';
   const theirRole = isMentor ? '게스트' : '호스트';
   const opponentName = isMentor
@@ -548,7 +565,6 @@ export default function CoffeeChatRoom() {
     ? booking.questions.split('\n').filter(q => q.trim()).map((q, i) => ({ text: q.replace(/^[-•]\s*/, '').trim(), tag: `질문 ${i + 1}` }))
     : [{ text: '작성된 질문이 없어요', tag: '질문' }];
 
-  // 💡 문법 에러 완벽 해결 (Theme Styles)
   const themeStyles = theme === 'dark' ? {
     '--bg-gradient': 'linear-gradient(135deg, #0d1520 0%, #111d2e 50%, #0a1628 100%)',
     '--panel-bg': 'rgba(255,255,255,0.03)', '--panel-border': 'rgba(255,255,255,0.08)',
@@ -573,6 +589,11 @@ export default function CoffeeChatRoom() {
     { key: 'llm',       label: 'LLM' },
   ];
 
+  // 🌟 (가장 중요) STT 배열들을 합쳐서 에러 없이 화면에 전달할 수 있도록 완벽하게 방어!
+  const safeSttLogs = sttLogs || [];
+  const safeRestoredLogs = restoredLogs || [];
+  const allSttLogs = [...safeRestoredLogs, ...safeSttLogs];
+
   // ════════════════════════════════════════════════════════
   // 6. 렌더링 영역
   // ════════════════════════════════════════════════════════
@@ -596,7 +617,6 @@ export default function CoffeeChatRoom() {
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           
-          {/* 💡 헤더에 튜토리얼 다시 보기 버튼 추가 */}
           <button onClick={() => setShowTutorial(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-full hover:bg-black/10 transition-colors" style={{ color: 'var(--text-muted)' }}>
             <HelpCircle className="w-4 h-4" />
             <span className="text-xs font-medium">가이드</span>
@@ -623,7 +643,7 @@ export default function CoffeeChatRoom() {
 
           {/* 좌측 영역 (비디오 + STT) */}
           <div className="flex-1 min-h-0 flex flex-col gap-3">
-            <div data-tutorial="video-area" className="flex-1 min-h-0 flex gap-4">
+            <div data-tutorial="video-area" className={`flex gap-4 transition-all duration-300 ${sttMode === 'expanded' ? 'flex-1 min-h-0' : 'flex-[3] min-h-0'}`}>
               
               {/* 내 화면 */}
               <div className="flex-1 relative rounded-3xl overflow-hidden flex items-center justify-center shadow-lg" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }}>
@@ -668,10 +688,10 @@ export default function CoffeeChatRoom() {
             </div>
 
             {/* STT 영역 */}
-            <div data-tutorial="stt-area">
+            <div data-tutorial="stt-area" className={`flex flex-col transition-all duration-300 ${sttMode === 'expanded' ? 'flex-[2] min-h-0' : 'flex-shrink-0'}`}>
               {sttMode !== 'hidden' && (
-                <div className={`rounded-2xl p-4 flex flex-col shadow-md transition-all duration-300 overflow-hidden ${sttMode === 'expanded' ? 'flex-1 min-h-0' : ''}`}
-                  style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(12px)', height: sttMode === 'preview' ? '7rem' : undefined }}>
+                <div className="rounded-2xl p-4 flex flex-col shadow-md overflow-hidden flex-1 min-h-0"
+                  style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(12px)', height: sttMode === 'preview' ? '7.5rem' : '100%' }}>
                   <div className="flex items-center justify-between mb-2 flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-blue-500" />
@@ -681,27 +701,31 @@ export default function CoffeeChatRoom() {
                       {sttModeNext[sttMode]} {sttMode === 'expanded' ? '▼' : '▲'}
                     </button>
                   </div>
+
+                  {/* 미리보기 (최신 2줄) */}
                   {sttMode === 'preview' && (
-                    <div className="flex flex-col gap-2 overflow-hidden">
-                      {sttLogs.length === 0 && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>}
-                      {sttLogsReversed.slice(0, 2).map((log, idx) => (
+                    <div className="flex flex-col gap-2 overflow-hidden flex-1 min-h-0">
+                      {allSttLogs.length === 0 && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>}
+                      {allSttLogs.slice(-2).map((log, idx) => (
                         <div key={idx} className="flex gap-3 text-sm">
                           <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>{log.speaker}</span>
                           <p className="truncate" style={{ color: log.type === 'interim' ? 'var(--text-muted)' : 'var(--text-main)', fontStyle: log.type === 'interim' ? 'italic' : 'normal' }}>
-                            {correctSttText(log.text)}{log.type === 'interim' && <span className="inline-block w-1 h-3 bg-current ml-1 animate-pulse" />}
+                            {log.text}{log.type === 'interim' && <span className="inline-block w-1 h-3 bg-current ml-1 animate-pulse" />}
                           </p>
                         </div>
                       ))}
                     </div>
                   )}
+
+                  {/* 🌟 전체보기 (스크롤 버그 및 가림 현상 해결) */}
                   {sttMode === 'expanded' && (
-                    <div className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
-                      {sttLogs.length === 0 && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>}
-                      {sttLogsReversed.map((log, idx) => (
+                    <div ref={sttScrollRef} className="flex flex-col gap-2 overflow-y-auto pr-2 pb-12 custom-scrollbar flex-1 min-h-0">
+                      {allSttLogs.length === 0 && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>대화가 시작되면 여기에 표시됩니다.</p>}
+                      {allSttLogs.map((log, idx) => (
                         <div key={idx} className="flex gap-3 text-sm">
                           <span className={`font-semibold shrink-0 ${log.speaker === myName ? 'text-blue-500' : 'text-amber-500'}`}>{log.speaker}</span>
                           <p style={{ color: log.type === 'interim' ? 'var(--text-muted)' : 'var(--text-main)', fontStyle: log.type === 'interim' ? 'italic' : 'normal' }}>
-                            {correctSttText(log.text)}{log.type === 'interim' && <span className="inline-block w-1 h-3 bg-current ml-1 animate-pulse" />}
+                            {log.text}{log.type === 'interim' && <span className="inline-block w-1 h-3 bg-current ml-1 animate-pulse" />}
                           </p>
                         </div>
                       ))}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   Calendar, Clock, CheckCircle, XCircle, MessageSquare, ChevronRight,
@@ -346,6 +346,8 @@ export default function BookingHistory() {
   const [expanded, setExpanded]   = useState(null);
   const [bookings, setBookings]   = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 🌟 [핵심 1] 삭제했던 튜토리얼 켜기/끄기 상태값 복구!
   const [showTutorial, setShowTutorial] = useState(false);
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
@@ -361,6 +363,15 @@ export default function BookingHistory() {
       } catch (e) {}
     }
   }
+
+  // 🌟 [핵심 2] 처음 접속했을 때 한 번만 튜토리얼 띄우기 복구!
+  useEffect(() => {
+    const isDone = localStorage.getItem(TUTORIAL_KEY);
+    if (!isDone) {
+      const timer = setTimeout(() => setShowTutorial(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     if (!currentUserId) { setIsLoading(false); return; }
@@ -381,13 +392,6 @@ export default function BookingHistory() {
     fetchBookings();
     setExpanded(null);
   }, [currentUserId, activeTab, BACKEND_URL]);
-
-  // 최초 방문 시 튜토리얼 자동 실행
-  useEffect(() => {
-    if (!isLoading && !localStorage.getItem(TUTORIAL_KEY)) {
-      setTimeout(() => setShowTutorial(true), 300);
-    }
-  }, [isLoading]);
 
   const handleConfirm = async (bookingId) => {
     try {
@@ -434,7 +438,6 @@ export default function BookingHistory() {
     return `${d.getMonth() + 1}월 ${d.getDate()}일 ${ampm} ${h12}:${min}`;
   };
 
-  // 첫 번째 카드 요소에 data-tour 심기 위해 인덱스 체크
   let firstCardMarked = false;
 
   return (
@@ -452,7 +455,6 @@ export default function BookingHistory() {
               <h1 className="text-3xl font-extrabold text-gray-900 mb-2">예약 내역</h1>
               <p className="text-sm text-gray-500">지금까지 진행된 모든 티타임 요청과 예약 상태를 확인하세요.</p>
             </div>
-            {/* 가이드 보기 버튼 */}
             <button
               onClick={() => setShowTutorial(true)}
               className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition shadow-sm mt-1"
@@ -530,7 +532,6 @@ export default function BookingHistory() {
                 const name       = b.partner_name || b.mentee_name || '알 수 없음';
                 const isCancelled= b.status === 'REJECTED';
 
-                // 첫 번째 카드에만 data-tour 부여
                 const tourAttr = !firstCardMarked ? { 'data-tour': 'booking-card' } : {};
                 if (!firstCardMarked) firstCardMarked = true;
 
@@ -647,8 +648,10 @@ export default function BookingHistory() {
         </div>
       </div>
 
-      {/* ── 튜토리얼 오버레이 ── */}
-      {showTutorial && <TutorialOverlay onClose={() => setShowTutorial(false)} />}
+      {/* 🌟 [핵심 3] 삭제했던 튜토리얼을 화면 맨 밑에 렌더링하도록 복구! */}
+      {showTutorial && (
+        <TutorialOverlay onClose={() => setShowTutorial(false)} />
+      )}
     </>
   );
 }

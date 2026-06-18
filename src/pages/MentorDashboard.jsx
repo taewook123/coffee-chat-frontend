@@ -4,9 +4,8 @@ import axios from 'axios';
 import {
   LayoutDashboard, Calendar, MessageSquare, User,
   DollarSign, Clock, Repeat, Star,
-  BookOpen, Award, ChevronRight, Coffee, Users,
-  ArrowUpRight, Sparkles, Bell, Hourglass, HelpCircle, X,
-  CheckCircle, AlertCircle, ChevronLeft,
+  BookOpen, Award, ChevronRight, Coffee, Hourglass,
+  ArrowUpRight, Sparkles, HelpCircle, X, ChevronLeft,
 } from 'lucide-react';
 import ScheduleManager from './ScheduleManager';
 import BookingHistory from './BookingHistory';
@@ -21,7 +20,6 @@ const TUTORIAL_KEY_DASHBOARD = 'dashboard_home_tutorial_done';
 const TUTORIAL_KEY_SCHEDULE  = 'dashboard_schedule_tutorial_done';
 const TUTORIAL_KEY_HISTORY   = 'dashboard_history_tutorial_done';
 
-// 대시보드 홈 스텝
 const DASHBOARD_STEPS = [
   {
     id: 'welcome',
@@ -53,7 +51,6 @@ const DASHBOARD_STEPS = [
   },
 ];
 
-// 일정 관리 스텝 (예시 데이터와 함께 각 UI 요소를 spotlight)
 const SCHEDULE_STEPS = [
   {
     id: 'schedule-intro',
@@ -88,8 +85,7 @@ const SCHEDULE_STEPS = [
   {
     id: 'schedule-status',
     title: '🔖 예약 상태 종류',
-    description:
-      '예약 상태는 세 가지예요.\n\n• 🟡 대기 중 — 게스트가 신청, 호스트 수락 전\n• 🟢 확정됨 — 호스트가 수락 완료, 커피챗 예정\n• 🔴 취소됨 — 게스트 또는 호스트가 취소한 예약',
+    description: '예약 상태는 세 가지예요.\n\n• 🟡 대기 중 — 게스트가 신청, 호스트 수락 전\n• 🟢 확정됨 — 호스트가 수락 완료, 커피챗 예정\n• 🔴 취소됨 — 게스트 또는 호스트가 취소한 예약',
     target: '[data-tour="schedule-list"]',
     position: 'left',
     mockData: true,
@@ -104,7 +100,6 @@ const SCHEDULE_STEPS = [
   },
 ];
 
-// 예약 내역 스텝
 const HISTORY_STEPS = [
   {
     id: 'history-intro',
@@ -229,7 +224,6 @@ function StarRating({ rating }) {
   );
 }
 
-// 예시 카드 컴포넌트 (튜토리얼 중 말풍선에 표시)
 function ExampleCard({ card }) {
   if (!card) return null;
   const statusMap = {
@@ -258,13 +252,12 @@ function ExampleCard({ card }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 범용 튜토리얼 오버레이
+// 범용 튜토리얼 오버레이 (버그 픽스 완료)
 // ────────────────────────────────────────────────────────────────────────────
 function TutorialOverlay({ steps, tutorialKey, onClose }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [maskRect, setMaskRect]   = useState({ x: 0, y: 0, width: 0, height: 0, padding: 8 });
   const [tipPos, setTipPos]       = useState({ top: 0, left: 0 });
-  const [neverShow, setNeverShow] = useState(false);
 
   const current  = steps[stepIndex];
   const isFirst  = stepIndex === 0;
@@ -277,48 +270,55 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // spotlight 위치 계산
-  const calcPosition = useCallback(() => {
-    if (!current?.target) {
-      setMaskRect({ x: 0, y: 0, width: 0, height: 0, padding: 0 });
-      setTipPos({ top: window.innerHeight / 2 - 120, left: window.innerWidth / 2 - 160 });
-      return;
-    }
-    const el = document.querySelector(current.target);
-    if (!el) { setTimeout(calcPosition, 80); return; }
-
-    const rect = el.getBoundingClientRect();
-    const pad  = 12;
-    setMaskRect({ x: rect.left, y: rect.top, width: rect.width, height: rect.height, padding: pad });
-
-    const TIP_W = 320, TIP_H = 260, GAP = 18;
-    let top, left;
-    const pos = current.position || 'bottom';
-
-    if (pos === 'bottom') { top = rect.bottom + pad + GAP; left = rect.left + rect.width / 2 - TIP_W / 2; }
-    if (pos === 'top')    { top = rect.top - pad - TIP_H - GAP; left = rect.left + rect.width / 2 - TIP_W / 2; }
-    if (pos === 'right')  { top = rect.top + rect.height / 2 - TIP_H / 2; left = rect.right + pad + GAP; }
-    if (pos === 'left')   { top = rect.top + rect.height / 2 - TIP_H / 2; left = rect.left - TIP_W - pad - GAP; }
-
-    top  = Math.max(12, Math.min(top,  window.innerHeight - TIP_H - 12));
-    left = Math.max(12, Math.min(left, window.innerWidth  - TIP_W - 12));
-    setTipPos({ top, left });
-  }, [current]);
-
+  // 💡 위치 계산 최적화 및 못 찾을 경우 무한 렌더링 방지
   useEffect(() => {
+    let timer;
+    const calcPosition = () => {
+      if (!current?.target) {
+        setMaskRect({ x: 0, y: 0, width: 0, height: 0, padding: 0 });
+        setTipPos({ top: window.innerHeight / 2 - 130, left: window.innerWidth / 2 - 160 });
+        return;
+      }
+      
+      const el = document.querySelector(current.target);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const pad  = 12;
+        setMaskRect({ x: rect.left, y: rect.top, width: rect.width, height: rect.height, padding: pad });
+
+        const TIP_W = 320, TIP_H = 260, GAP = 18;
+        let top, left;
+        const pos = current.position || 'bottom';
+
+        if (pos === 'bottom') { top = rect.bottom + pad + GAP; left = rect.left + rect.width / 2 - TIP_W / 2; }
+        if (pos === 'top')    { top = rect.top - pad - TIP_H - GAP; left = rect.left + rect.width / 2 - TIP_W / 2; }
+        if (pos === 'right')  { top = rect.top + rect.height / 2 - TIP_H / 2; left = rect.right + pad + GAP; }
+        if (pos === 'left')   { top = rect.top + rect.height / 2 - TIP_H / 2; left = rect.left - TIP_W - pad - GAP; }
+
+        top  = Math.max(12, Math.min(top,  window.innerHeight - TIP_H - 12));
+        left = Math.max(12, Math.min(left, window.innerWidth  - TIP_W - 12));
+        setTipPos({ top, left });
+      } else {
+        timer = setTimeout(calcPosition, 100);
+      }
+    };
+
     calcPosition();
     window.addEventListener('resize', calcPosition);
-    return () => window.removeEventListener('resize', calcPosition);
-  }, [calcPosition]);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calcPosition);
+    };
+  }, [current]);
 
-  const handleClose = (markDone = false) => {
-    if (markDone || neverShow) localStorage.setItem(tutorialKey, 'true');
+  // 💡 핵심 픽스: 체크박스 유무와 상관없이 창이 닫히면 '무조건' 완료 처리
+  const handleClose = () => {
+    localStorage.setItem(tutorialKey, 'true');
     onClose();
   };
 
   const isCenterModal = !current?.target;
 
-  // 스텝 도트
   const StepDots = () => (
     <div className="flex items-center gap-1.5">
       {steps.map((_, i) => (
@@ -328,7 +328,6 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
     </div>
   );
 
-  // 공통 버튼 영역
   const NavButtons = () => (
     <div className="flex items-center justify-between mt-4">
       <StepDots />
@@ -339,9 +338,9 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
             <ChevronLeft className="w-3.5 h-3.5" /> 이전
           </button>
         )}
-        <button onClick={() => isLast ? handleClose(true) : setStepIndex(i => i + 1)}
+        <button onClick={() => isLast ? handleClose() : setStepIndex(i => i + 1)}
           className="flex items-center gap-1 px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 shadow transition">
-          {isLast ? '시작하기 🚀' : <><span>다음</span><ChevronRight className="w-3.5 h-3.5" /></>}
+          {isLast ? '완료 🎉' : <><span>다음</span><ChevronRight className="w-3.5 h-3.5" /></>}
         </button>
       </div>
     </div>
@@ -349,10 +348,10 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100]">
-      {/* 어두운 배경 + spotlight 구멍 */}
+      {/* 💡 핵심 픽스: mask id에 tutorialKey를 붙여서 탭 전환 시 창이 겹쳐도 SVG 마스크 충돌 방지 */}
       <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
         <defs>
-          <mask id="tut-mask">
+          <mask id={`tut-mask-${tutorialKey}`}>
             <rect width="100%" height="100%" fill="white" />
             {maskRect.width > 0 && (
               <rect
@@ -363,10 +362,9 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
             )}
           </mask>
         </defs>
-        <rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#tut-mask)" />
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask={`url(#tut-mask-${tutorialKey})`} />
       </svg>
 
-      {/* 파란 spotlight 테두리 */}
       {maskRect.width > 0 && (
         <div className="absolute rounded-2xl pointer-events-none transition-all duration-300"
           style={{
@@ -376,7 +374,6 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
           }} />
       )}
 
-      {/* 중앙 모달 (타겟 없는 스텝) */}
       {isCenterModal && (
         <div className="absolute inset-0 flex items-center justify-center" onClick={e => e.stopPropagation()}>
           <div className="w-[400px] bg-white rounded-3xl p-8 shadow-2xl border border-blue-100 flex flex-col gap-4">
@@ -384,7 +381,7 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <button onClick={() => handleClose(false)} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition">
+              <button onClick={() => handleClose()} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -392,39 +389,34 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
               <h2 className="text-xl font-black text-[#1a2332] mb-2">{current.title}</h2>
               <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">{current.description}</p>
             </div>
-            {isLast && (
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={neverShow} onChange={e => setNeverShow(e.target.checked)} className="w-4 h-4 accent-blue-500" />
-                <span className="text-xs text-gray-400">다음에 접속할 때 이 가이드를 보지 않기</span>
-              </label>
-            )}
             <NavButtons />
             {!isLast && (
-              <button onClick={() => handleClose(false)} className="text-xs text-center text-gray-400 hover:text-gray-500 transition">
-                건너뛰기
+              <button onClick={() => handleClose()} className="text-[10px] w-full text-center text-gray-400 hover:text-gray-500 mt-2 transition">
+                더 이상 보지 않기 (건너뛰기)
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* 툴팁 말풍선 (타겟 있는 스텝) */}
       {!isCenterModal && (
         <div className="absolute w-80 bg-white rounded-2xl p-5 shadow-2xl border border-blue-100 transition-all duration-300"
           style={{ top: tipPos.top, left: tipPos.left }}
           onClick={e => e.stopPropagation()}>
           <div className="flex items-start justify-between gap-2 mb-2">
             <h3 className="font-black text-sm text-[#1a2332] leading-snug">{current.title}</h3>
-            <button onClick={() => handleClose(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 flex-shrink-0 transition">
+            <button onClick={() => handleClose()} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 flex-shrink-0 transition">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line">{current.description}</p>
           {current.exampleCard && <ExampleCard card={current.exampleCard} />}
           <NavButtons />
-          <button onClick={() => handleClose(false)} className="text-[10px] w-full text-center text-gray-400 hover:text-gray-500 mt-2 transition">
-            건너뛰기
-          </button>
+          {!isLast && (
+            <button onClick={() => handleClose()} className="text-[10px] w-full text-center text-gray-400 hover:text-gray-500 mt-2 transition">
+              더 이상 보지 않기 (건너뛰기)
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -452,7 +444,6 @@ export default function Dashboard() {
   // 튜토리얼 상태
   const [activeTutorial, setActiveTutorial] = useState(null); // null | 'dashboard' | 'schedule' | 'history'
 
-  // 탭 변경 시 URL state 반영
   useEffect(() => {
     if (location.state?.activeTab) {
       setActiveTab(location.state.activeTab);
@@ -460,7 +451,6 @@ export default function Dashboard() {
     }
   }, [location.state]);
 
-  // 데이터 로드
   useEffect(() => {
     const uid = getCleanUserId();
     if (!uid) { alert('로그인 정보가 만료되었습니다.'); navigate('/login'); return; }
@@ -502,20 +492,21 @@ export default function Dashboard() {
     load();
   }, [navigate]);
 
-  // 탭 전환 시 해당 튜토리얼 자동 노출 (최초 1회)
+  // 💡 핵심 픽스: 탭 이동 시 타이머 충돌 해결 (clearTimeout 추가)
   useEffect(() => {
     if (loading) return;
+    
+    let timer;
+    // 대시보드 탭일 때만 띄움! 나머지 탭(schedule, history)은 다 지움!
     if (activeTab === 'dashboard' && !localStorage.getItem(TUTORIAL_KEY_DASHBOARD)) {
-      setActiveTutorial('dashboard');
-    } else if (activeTab === 'schedule' && !localStorage.getItem(TUTORIAL_KEY_SCHEDULE)) {
-      // ScheduleManager 렌더 후 data-tour 요소가 생길 시간을 줌
-      setTimeout(() => setActiveTutorial('schedule'), 400);
-    } else if (activeTab === 'history' && !localStorage.getItem(TUTORIAL_KEY_HISTORY)) {
-      setTimeout(() => setActiveTutorial('history'), 400);
+      timer = setTimeout(() => setActiveTutorial('dashboard'), 400);
+    } else {
+      setActiveTutorial(null);
     }
+
+    return () => clearTimeout(timer);
   }, [activeTab, loading]);
 
-  // 튜토리얼 닫기
   const closeTutorial = () => setActiveTutorial(null);
 
   // ── 렌더 함수들 ──────────────────────────────────────
@@ -561,8 +552,8 @@ export default function Dashboard() {
                   {upcomingChats.slice(0,4).map((c, i) => (
                     <li 
                       key={c.id||i} 
-                      onClick={() => c.id && navigate(`/coffee-chat-detail/${c.id}`)} // 💡 클릭 시 상세 페이지로 이동
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors" // 💡 마우스 효과 추가
+                      onClick={() => c.id && navigate(`/coffee-chat-detail/${c.id}`)}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
                     >
                       <div>
                         <p className="text-sm font-semibold text-[#1a2332]">{c.mentee_name||c.partner_name||'티타임 참여자'}</p>
@@ -617,8 +608,8 @@ export default function Dashboard() {
                 {upcomingBookings.slice(0,4).map((b, i) => (
                   <li 
                     key={b.id||i} 
-                    onClick={() => b.id && navigate(`/coffee-chat-detail/${b.id}`)} // 💡 클릭 시 상세 페이지로 이동
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors" // 💡 마우스 효과 추가
+                    onClick={() => b.id && navigate(`/coffee-chat-detail/${b.id}`)}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
                   >
                     <div>
                       <p className="text-sm font-semibold text-[#1a2332]">{b.mentor_name||b.partner_name||'호스트'}</p>
@@ -669,13 +660,13 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2">
+          {/* 강제 튜토리얼 다시보기 */}
           <button
             onClick={() => setActiveTutorial('dashboard')}
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition shadow-sm"
           >
             <HelpCircle className="w-4 h-4" /> 가이드 보기
           </button>
-
         </div>
       </div>
 
@@ -705,7 +696,6 @@ export default function Dashboard() {
       {/* ── 사이드바 ── */}
       <aside className="w-64 bg-[#1a2332] text-white flex-shrink-0 flex flex-col">
         <div className="p-6 flex-1 flex flex-col min-h-0">
-          {/* 유저 정보 */}
           <div className="flex items-center gap-3 mb-8 p-3 bg-white/5 rounded-xl border border-white/10 flex-shrink-0">
             <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {userName.slice(0,1)}
@@ -717,7 +707,6 @@ export default function Dashboard() {
           </div>
 
           <nav className="space-y-1 flex-1 overflow-y-auto">
-            {/* 메인 탭 — data-tour */}
             <div data-tour="sidebar-tabs" className="space-y-1 rounded-xl">
               {[
                 { key: 'dashboard', icon: LayoutDashboard, label: '대시보드' },
@@ -738,7 +727,6 @@ export default function Dashboard() {
 
             <div className="my-4 border-t border-white/10" />
 
-            {/* 프로필 — data-tour */}
             <div data-tour="sidebar-profile" className="rounded-xl">
               <button type="button" onClick={() => setActiveTab('profile')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium ${
@@ -767,28 +755,14 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* ── 튜토리얼 오버레이 ── */}
+      {/* 🚨 주의: 만약 ScheduleManager.jsx 나 BookingHistory.jsx 내부 코드에 
+        <TutorialOverlay /> 가 개별적으로 포함되어 있다면, 창이 2개 뜨는 현상이 발생할 수 있습니다!
+        이 Dashboard 안에서만 튜토리얼을 관리하므로 자식 컴포넌트에서는 삭제하시는 것이 좋습니다.
+      */}
       {activeTutorial === 'dashboard' && (
-        <TutorialOverlay
-          steps={DASHBOARD_STEPS}
-          tutorialKey={TUTORIAL_KEY_DASHBOARD}
-          onClose={closeTutorial}
-        />
+        <TutorialOverlay steps={DASHBOARD_STEPS} tutorialKey={TUTORIAL_KEY_DASHBOARD} onClose={closeTutorial} />
       )}
-      {activeTutorial === 'schedule' && (
-        <TutorialOverlay
-          steps={SCHEDULE_STEPS}
-          tutorialKey={TUTORIAL_KEY_SCHEDULE}
-          onClose={closeTutorial}
-        />
-      )}
-      {activeTutorial === 'history' && (
-        <TutorialOverlay
-          steps={HISTORY_STEPS}
-          tutorialKey={TUTORIAL_KEY_HISTORY}
-          onClose={closeTutorial}
-        />
-      )}
+      
     </div>
   );
 }
