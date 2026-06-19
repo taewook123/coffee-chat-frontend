@@ -270,7 +270,7 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // 💡 위치 계산 최적화 및 못 찾을 경우 무한 렌더링 방지
+  // 위치 계산
   useEffect(() => {
     let timer;
     const calcPosition = () => {
@@ -311,10 +311,13 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
     };
   }, [current]);
 
-  // 💡 핵심 픽스: 체크박스 유무와 상관없이 창이 닫히면 '무조건' 완료 처리
-  const handleClose = () => {
-    localStorage.setItem(tutorialKey, 'true');
-    onClose();
+  // 💡 핵심 픽스: 함수명과 로직을 분리하여 '무조건' 로컬 스토리지에 즉시 기록되도록 강제함
+  const forceSaveAndClose = (e) => {
+    if (e) e.stopPropagation(); // 이벤트 버블링 방지
+    localStorage.setItem(tutorialKey, 'true'); // 저장 먼저 확실하게 실행
+    setTimeout(() => {
+      onClose(); // 아주 약간의 지연(0초)을 주어 상태 업데이트 꼬임 방지
+    }, 0);
   };
 
   const isCenterModal = !current?.target;
@@ -338,7 +341,7 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
             <ChevronLeft className="w-3.5 h-3.5" /> 이전
           </button>
         )}
-        <button onClick={() => isLast ? handleClose() : setStepIndex(i => i + 1)}
+        <button onClick={(e) => isLast ? forceSaveAndClose(e) : setStepIndex(i => i + 1)}
           className="flex items-center gap-1 px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 shadow transition">
           {isLast ? '완료 🎉' : <><span>다음</span><ChevronRight className="w-3.5 h-3.5" /></>}
         </button>
@@ -348,7 +351,6 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100]">
-      {/* 💡 핵심 픽스: mask id에 tutorialKey를 붙여서 탭 전환 시 창이 겹쳐도 SVG 마스크 충돌 방지 */}
       <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
         <defs>
           <mask id={`tut-mask-${tutorialKey}`}>
@@ -381,7 +383,7 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <button onClick={() => handleClose()} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition">
+              <button onClick={(e) => forceSaveAndClose(e)} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -391,7 +393,7 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
             </div>
             <NavButtons />
             {!isLast && (
-              <button onClick={() => handleClose()} className="text-[10px] w-full text-center text-gray-400 hover:text-gray-500 mt-2 transition">
+              <button onClick={(e) => forceSaveAndClose(e)} className="text-[10px] w-full text-center text-gray-400 hover:text-gray-500 mt-2 transition">
                 더 이상 보지 않기 (건너뛰기)
               </button>
             )}
@@ -405,7 +407,7 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
           onClick={e => e.stopPropagation()}>
           <div className="flex items-start justify-between gap-2 mb-2">
             <h3 className="font-black text-sm text-[#1a2332] leading-snug">{current.title}</h3>
-            <button onClick={() => handleClose()} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 flex-shrink-0 transition">
+            <button onClick={(e) => forceSaveAndClose(e)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 flex-shrink-0 transition">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -413,7 +415,7 @@ function TutorialOverlay({ steps, tutorialKey, onClose }) {
           {current.exampleCard && <ExampleCard card={current.exampleCard} />}
           <NavButtons />
           {!isLast && (
-            <button onClick={() => handleClose()} className="text-[10px] w-full text-center text-gray-400 hover:text-gray-500 mt-2 transition">
+            <button onClick={(e) => forceSaveAndClose(e)} className="text-[10px] w-full text-center text-gray-400 hover:text-gray-500 mt-2 transition">
               더 이상 보지 않기 (건너뛰기)
             </button>
           )}

@@ -123,10 +123,11 @@ export default function CoffeeChats() {
   };
 
   const renderChatCard = (chat) => {
+    //console.log("백엔드가 준 예약 데이터 확인:", chat);
     const isSent = chat.type === 'sent';
     const partnerName = chat.mentor_name || (isSent ? '파트너' : '상대방');
     const chatId = chat.id;
-    const hasReview = chat.has_review;
+    const hasReview = chat.has_review === true || chat.has_review === 'true' || chat.has_review === 1;
 
     return (
       <div key={chatId} className={`bg-white rounded-2xl p-6 border shadow-sm flex flex-col justify-between min-h-[220px] transition-all hover:shadow-md hover:-translate-y-1 ${isSent ? 'border-blue-100 hover:shadow-blue-100/50' : 'border-orange-100 hover:shadow-orange-100/50'}`}>
@@ -185,12 +186,16 @@ export default function CoffeeChats() {
                   상세보기
                 </button>
               )}
-              {chat.tab_status === 'completed' && hasReview && (
+              
+              {/* 🌟 완료 탭: 리뷰가 이미 작성되었다면 -> 리포트 페이지로 이동 */}
+              {chat.tab_status === 'completed' && (!isSent || hasReview) && (
                 <button onClick={() => navigate(`/coffee-chat-report/${chatId}`)} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
                   <CheckCircle className="w-3.5 h-3.5" /> 리포트
                 </button>
               )}
-              {chat.tab_status === 'completed' && !hasReview && (
+              
+              {/* 🌟 완료 탭: 게스트(멘티)인데 아직 리뷰를 안 썼다면 -> 리뷰 쓰기 버튼 */}
+              {chat.tab_status === 'completed' && isSent && !hasReview && (
                 <button onClick={() => navigate(`/coffee-chat-review/${chatId}`)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
                   <Star className="w-3.5 h-3.5" /> 리뷰 쓰기
                 </button>
