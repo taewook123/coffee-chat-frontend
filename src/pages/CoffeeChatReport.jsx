@@ -75,7 +75,16 @@ export default function CoffeeChatReport() {
   const generateSummary = async () => {
     if (!chatId) return;
     setIsSummaryLoading(true);
-    const pollTimer = setInterval(async () => {
+
+    try {
+      // 🌟 빠진 부분: 실제 생성 요청을 먼저 보내야 함
+      await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
+    } catch (err) {
+      console.error("요약 생성 요청 실패:", err);
+      setIsSummaryLoading(false);
+      return;
+    }
+  const pollTimer = setInterval(async () => {
       try {
         const res = await axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`);
         if (res.data && res.data.ai_summary) {
