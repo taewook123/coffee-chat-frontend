@@ -1,11 +1,10 @@
 import React, { useState, useRef, useMemo } from 'react';
 import ReactQuill from 'react-quill-new';
-import axios from 'axios'; // 🌟 이거 한 줄 꼭 추가해주세요!
+import axios from 'axios';
 import "quill/dist/quill.snow.css";
 import { Upload, Briefcase, MessageSquare, Sparkles, X, Plus, GraduationCap, FileText } from 'lucide-react';
 import ProfileImageUpload from './ProfileImageUpload';
-import TagInput from './TagInput'; // 일반 프로필과 동일한 태그 UI 사용
-
+import TagInput from './TagInput';
 
 export default function MentorProfileForm({
   formData,
@@ -14,15 +13,11 @@ export default function MentorProfileForm({
   dbEmail,
   mentorResumeFile, 
   setMentorResumeFile,
-  handleMentorResumeUpload,
   handleAddArrayItem,
   handleRemoveArrayItem,
-  handleExperienceChange,
-  addExperienceField,
-  removeExperienceField,
 }) {
 
-  const categories = [
+  const categories = [ /* (생략 - 기존 배열과 동일) */ 
     { main: '개발/엔지니어링', subs: ['전체 개발', '프론트엔드', '백엔드', '풀스택', '인프라/DevOps', '데이터 엔지니어', '머신러닝/AI', '모바일(iOS)', '모바일(Android)', '임베디드/펌웨어', '게임 개발', 'QA/테스트', '보안', 'DBA', '블록체인', 'AR/VR'] },
     { main: '기획/PM', subs: ['전체 기획', '서비스 기획', '프로덕트 매니저(PM)', '콘텐츠 기획', '게임 기획', '광고 기획', '이벤트 기획', 'MD/상품기획', '전략기획', 'BM기획', '공연/전시 기획', 'IT컨설턴트'] },
     { main: '디자인', subs: ['전체 디자인', 'UI/UX', '그래픽', '브랜드/BI', '영상/모션', '3D/렌더링', '패션', '제품/산업', '인테리어', '캐릭터/일러스트', '인쇄/출판', '광고디자인'] },
@@ -37,43 +32,30 @@ export default function MentorProfileForm({
   ];
   const statuses = ['현직자', '이직자', '프리랜서', '대학생', '취준생'];
 
-  // 💡 ReactQuill 에디터 설정
   const quillRef = useRef(null);
   
-  const imageHandler = () => {
+  const imageHandler = () => { /* (생략 - 기존 에디터 이미지 핸들러와 동일) */ 
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
     input.setAttribute('accept', 'image/*');
     input.click();
-
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) return;
-
-      // 1. 파일을 FormData에 담기
       const uploadData = new FormData();
       uploadData.append('file', file);
-
       try {
-        // 2. 백엔드의 에디터 전용 업로드 API로 전송 (경로는 백엔드 설정에 맞게 변경)
         const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000'}/api/upload/editor-image`, uploadData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          headers: { 'Content-Type': 'multipart/form-data' },
         });
-
-        // 3. 백엔드에서 받아온 Azure URL
         const imageUrl = response.data.url;
-
-        // 4. 에디터 커서 위치에 이미지 URL 삽입
         const quill = quillRef.current.getEditor();
         const range = quill.getSelection(true);
         quill.insertEmbed(range.index, 'image', imageUrl);
         quill.setSelection(range.index + 1);
-
       } catch (error) {
         console.error("에디터 이미지 업로드 실패:", error);
-        alert("이미지 업로드에 실패했습니다. 파일 용량이나 네트워크 상태를 확인해주세요.");
+        alert("이미지 업로드에 실패했습니다.");
       }
     };
   };
@@ -94,33 +76,46 @@ export default function MentorProfileForm({
 
   const formats = ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'align', 'image', 'link'];
 
-  // 💡 드래그 앤 드롭 설정
+  // 🚀 [추가됨] 멘토 폼 전용 Azure 파일 업로드 핸들러
+  const handlePortfolioUploadAction = async (file) => {
+    if (!file) return;
+    setMentorResumeFile(file); // UI에 표시
+    
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
+      const response = await axios.post(`${BACKEND_URL}/api/user/upload/portfolio`, uploadData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      // DB 컬럼에 맞게 URL 덮어쓰기
+      setFormData({ ...formData, portfolio_file_path: response.data.url });
+    } catch (error) {
+      console.error("포트폴리오 업로드 실패:", error);
+      alert("파일 업로드에 실패했습니다.");
+      setMentorResumeFile(null);
+    }
+  };
+
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleMentorResumeUpload({ target: { files: e.dataTransfer.files } });
+      handlePortfolioUploadAction(e.dataTransfer.files[0]); // 💡 드롭한 파일을 업로드 함수로 전달
     }
   };
 
   return (
     <div className="grid md:grid-cols-3 gap-8 items-start animate-fadeIn font-sans">
       
-      {/* 🟢 일반 프로필과 동일한 왼쪽 고정 사이드바 */}
       <div className="md:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center sticky top-24">
         <label className="block text-sm font-bold text-gray-700 mb-4 text-left">프로필 이미지</label>
-        
         <ProfileImageUpload userId={userId} currentImageUrl={formData.profile_image} onUploadSuccess={(newUrl) => setFormData({ ...formData, profile_image: newUrl })} />
         <div className="mt-5 pt-4 border-t border-gray-100 bg-slate-50/50 rounded-xl p-3">
           <p className="text-[11px] text-gray-400 font-medium uppercase">로그인 이메일</p>
@@ -128,7 +123,6 @@ export default function MentorProfileForm({
         </div>
       </div>
 
-      {/* 🟢 오른쪽 입력란 (일반 프로필 UI 박스 디자인 + 멘토 기능 탑재) */}
       <div className="md:col-span-2 space-y-6">
         
         {/* 1. 호스트 활동 정보 */}
@@ -136,8 +130,6 @@ export default function MentorProfileForm({
           <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 m-0 flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-blue-600" /> 호스트 활동 정보
           </h3>
-          
-          {/* 💡 grid-cols-3를 지우고 flex-col로 세로 배치, 폭은 절반(max-w-md)으로 제한해 너무 길어지지 않게 비율 조절 */}
           <div className="flex flex-col gap-5 max-w-md">
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-2">현재 상태</label>
@@ -205,7 +197,6 @@ export default function MentorProfileForm({
             />
           </div>
 
-          {/* 💡 이 부분의 인덱스 매핑이 수정되었습니다 */}
           <div className="pt-4">
             <label className="block text-xs font-bold text-gray-600 mb-2">이런 경험들을 공유해 드릴 수 있어요 <span className="text-gray-400 font-normal text-xs">(경험 상세 설명)</span></label>
             <div className="space-y-3">
@@ -218,7 +209,6 @@ export default function MentorProfileForm({
                     <textarea
                       rows="2"
                       value={textValue}
-                      // 💡 [핵심 해결] 부모 함수 무시하고 여기서 직접 formData를 변경합니다!
                       onChange={(e) => {
                         const newExp = [...formData.mentor_experiences];
                         if (typeof newExp[index] === 'object' && newExp[index] !== null) {
@@ -234,7 +224,6 @@ export default function MentorProfileForm({
                     {formData.mentor_experiences.length > 1 && (
                       <button
                         type="button"
-                        // 💡 [핵심 해결] 삭제도 여기서 직접 해당 인덱스를 잘라내고 바로 저장합니다!
                         onClick={() => {
                           const newExp = [...formData.mentor_experiences];
                           newExp.splice(index, 1);
@@ -251,7 +240,6 @@ export default function MentorProfileForm({
             </div>
             <button
               type="button"
-              // 💡 [핵심 해결] 추가할 때도 빈 문자열을 직접 배열 끝에 밀어 넣습니다!
               onClick={() => {
                 const newExp = [...(formData.mentor_experiences || [])];
                 newExp.push("");
@@ -296,43 +284,20 @@ export default function MentorProfileForm({
                 type="file" 
                 className="hidden" 
                 ref={fileInputRef}
-                onChange={handleMentorResumeUpload}
+                onChange={(e) => handlePortfolioUploadAction(e.target.files[0])} // 💡 파일 선택 시 업로드 
                 accept=".pdf,.docx,.zip" 
               />
             </div>
 
             {/* 업로드된 파일 표시 */}
-            {mentorResumeFile ? (
-              // 새로 선택한 파일
+            {!mentorResumeFile && !formData.portfolio_file_path ? null : (
               <div className="mt-4 flex items-center justify-between p-4 bg-purple-50 border border-purple-100 rounded-xl shadow-sm">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <FileText className="flex-shrink-0 h-5 w-5 text-purple-600" />
                   <div className="overflow-hidden">
-                    <p className="text-xs text-purple-400 font-medium mb-0.5">새로 선택한 파일</p>
-                    <p className="text-sm font-semibold text-purple-900 truncate">{mentorResumeFile.name}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMentorResumeFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                  className="flex-shrink-0 ml-4 p-1.5 text-purple-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-colors focus:outline-none"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : formData.portfolio_file_path ? (
-              // DB에 저장된 기존 파일
-              <div className="mt-4 flex items-center justify-between p-4 bg-slate-50 border border-gray-200 rounded-xl shadow-sm">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <FileText className="flex-shrink-0 h-5 w-5 text-gray-400" />
-                  <div className="overflow-hidden">
-                    <p className="text-xs text-gray-400 font-medium mb-0.5">저장된 파일</p>
-                    <p className="text-sm font-semibold text-gray-700 truncate">
-                      {formData.portfolio_file_path.split('/').pop()}
+                    <p className="text-xs text-purple-400 font-medium mb-0.5">저장된 파일</p>
+                    <p className="text-sm font-semibold text-purple-900 truncate">
+                      {mentorResumeFile ? mentorResumeFile.name : formData.portfolio_file_path?.split('/').pop()}
                     </p>
                   </div>
                 </div>
@@ -340,14 +305,16 @@ export default function MentorProfileForm({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setFormData({ ...formData, portfolio_file_path: '' });
+                    setMentorResumeFile(null); // UI 지우기
+                    setFormData({ ...formData, portfolio_file_path: '' }); // DB 지우기
+                    if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
-                  className="flex-shrink-0 ml-4 p-1.5 text-gray-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-colors focus:outline-none"
+                  className="flex-shrink-0 ml-4 p-1.5 text-purple-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-colors focus:outline-none"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-            ) : null}
+            )}
           </div>
 
         </div>

@@ -453,6 +453,7 @@ export default function ScheduleManager() {
   const tileContent = ({ date: tileDate }) => {
     const dateKey = formatDate(tileDate);
     if (dateKey < todayKey) return null;
+    
     const slots   = scheduleData[dateKey] || {};
     const entries = Object.entries(slots);
     const hasAvailable = entries.some(([t, s]) => {
@@ -463,10 +464,16 @@ export default function ScheduleManager() {
       if (dateKey === todayKey && isSlotDisabled(t)) return false;
       return s && s.toString().toLowerCase().trim() === 'booked';
     });
+
+    // 🌟 [추가됨] 해당 날짜에 패널티 내역이 있는지 확인
+    const hasPenalty = penaltyData[dateKey] && penaltyData[dateKey].length > 0;
+
     return (
       <div className="flex justify-center gap-0.5 mt-1">
         {hasAvailable && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />}
         {hasBooked    && <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />}
+        {/* 🌟 [추가됨] 패널티가 있으면 노란색/주황색 점 표시 */}
+        {hasPenalty   && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" title="패널티 발생일" />}
       </div>
     );
   };
@@ -504,21 +511,26 @@ export default function ScheduleManager() {
         </div>
 
         {/* ── 범례 — data-tour ── */}
-        <div data-tour="legend" className="flex gap-4 mb-6 text-sm p-3 rounded-xl bg-gray-50 border border-gray-100 w-fit">
+        {/* ── 범례 — data-tour ── */}
+        <div data-tour="legend" className="flex flex-wrap gap-4 mb-6 text-sm p-3 rounded-xl bg-gray-50 border border-gray-100 w-fit">
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded bg-[#4a90e2]" />
             가능 시간
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded bg-red-300" />
-            예약 확정 (취소 시 패널티)
+            예약 확정
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded border border-gray-200 bg-gray-100" />
-            지난 시간 (비활성)
+            지난 시간
+          </span>
+          {/* 🌟 [추가됨] 패널티 범례 */}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-full bg-amber-500" />
+            패널티 발생일
           </span>
         </div>
-
         <div className="flex flex-col md:flex-row gap-8">
 
           {/* ── 캘린더 — data-tour ── */}

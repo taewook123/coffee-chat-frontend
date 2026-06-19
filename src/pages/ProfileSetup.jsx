@@ -146,7 +146,7 @@ export default function ProfileSetup() {
       const commonPayload = {
         name: String(formData.name || ""), bio: String(formData.bio || ""), 
         mbti: String(formData.mbti || ""), portfolio_url: String(formData.portfolio_url || ""), 
-        portfolio_file_path: mentorResumeFile ? mentorResumeFile.name : (portfolioFile ? portfolioFile.name : formData.portfolio_file_path || ""),
+        portfolio_file_path: String(formData.portfolio_file_path || ""),
         profile_image: String(formData.profile_image || ""), // 기존 이미지
         phone_number: String(formData.phone_number || ""), main_category: String(formData.main_category || ""),
         sub_category: String(formData.sub_category || ""), status: String(formData.status || ""),
