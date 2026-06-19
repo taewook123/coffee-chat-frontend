@@ -13,7 +13,7 @@ import ProfileEdit from './pages/ProfileEdit';
 // 호스트(멘토) 및 예약 관련 페이지
 import Mentors from './pages/Mentors';
 import MentorApply from './pages/MentorApply';
-import MentorDashboard from './pages/MentorDashboard';
+import Dashboard from './pages/Dashboard';
 import BookingFlow from './pages/BookingFlow';
 
 // 커피챗 대화방 및 리뷰/신고 관련 페이지
@@ -127,7 +127,7 @@ const App = () => {
         <Route path="/mentors" element={<Mentors />} />
         <Route path="/mentors/apply/:id" element={<MentorApply />} />
         <Route path="/mentor-registration" element={<MentorRegistration />} />
-        <Route path="/dashboard" element={<MentorDashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         
         {/* 예약 및 구매 이력 */}
         <Route path="/booking/:mentorId" element={<BookingFlow />} />

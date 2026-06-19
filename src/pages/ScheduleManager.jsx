@@ -4,7 +4,7 @@ import 'react-calendar/dist/Calendar.css';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { HelpCircle, X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
-
+import usePenaltyData from './usePenaltyData';
 const SLOT_STATUS = {
   AVAILABLE: 'available',
   BOOKED: 'booked',
@@ -308,7 +308,7 @@ export default function ScheduleManager() {
 
   const navigate = useNavigate();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://48.211.169.52:8000';
-
+  const penaltyData = usePenaltyData(realMentorId, BACKEND_URL) || {};
   const formatDate = (d) => {
     const year  = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -460,6 +460,7 @@ export default function ScheduleManager() {
       if (dateKey === todayKey && isSlotDisabled(t)) return false;
       return s && s.toString().toLowerCase().trim() === 'available';
     });
+    
     const hasBooked = entries.some(([t, s]) => {
       if (dateKey === todayKey && isSlotDisabled(t)) return false;
       return s && s.toString().toLowerCase().trim() === 'booked';
