@@ -343,40 +343,63 @@ export default function CoffeeChatRoom() {
   const isMentor = booking && userId ? Number(userId) === Number(booking.mentor_user_id) : false;
 
   const handleEndCall = useCallback(() => {
-    // 🌟 1. 기다림 없이 누르자마자 즉시 역할에 맞는 페이지로 먼저 번개처럼 이동!
-    if (isMentor) {
-      navigate(`/coffee-chat-report/${chatId}`); 
-    } else {
-      navigate(`/coffee-chat-review/${chatId}`);
+  // 🌟 1. 기다림 없이 누르자마자 즉시 역할에 맞는 페이지로 먼저 번개처럼 이동!
+  if (isMentor) {
+    navigate(`/coffee-chat-report/${chatId}`); 
+  } else {
+    navigate(`/coffee-chat-review/${chatId}`);
+  }
+
+  // 🌟 2. 무거운 작업(종료, 저장, AI 호출)은 뒤에서 조용히 비동기로 처리 (Fire-and-Forget)
+  (async () => {
+    // 🚨 [수정] 마운트 시 가져온 session state는 stale할 수 있음
+    //     (useCoffeeChatWebRTC 훅이 비동기로 세션을 생성하는 것과 레이스 컨디션 발생 가능)
+    //     → 종료 직전에 최신 세션 정보를 다시 조회해서 session_id를 확실히 확보
+    let liveSessionId = session?.session_id || null;
+    try {
+      const freshRes = await axios.get(`${BACKEND_URL}/api/chat-session/${chatId}`);
+      if (freshRes.data?.session_id) {
+        liveSessionId = freshRes.data.session_id;
+      }
+    } catch (err) {
+      console.error("🚨 최신 세션 정보 재조회 실패", err);
     }
 
-    // 🌟 2. 무거운 작업(종료, 저장, AI 호출)은 뒤에서 조용히 비동기로 처리 (Fire-and-Forget)
-    (async () => {
-      // 대화 저장
-      if (session?.session_id && fullTranscriptRef.current.trim()) {
-        try {
-          await axios.post(`${BACKEND_URL}/api/chat-session/${session.session_id}/save-transcript`, {
-            transcript: fullTranscriptRef.current
-          });
-        } catch (err) {
-          console.error("🚨 대화 기록 저장 실패", err);
-        }
-      }
-
-      // WebRTC 마이크/캠 안전하게 끄기 (에러 나도 무시)
-      try { await hangUp(); } catch (e) { console.warn("오디오 끄기 무시:", e); }
-      chatWsRef.current?.close();
-      
-      // 세션 완전 종료 처리
+    // 대화 저장
+    if (liveSessionId && fullTranscriptRef.current.trim()) {
       try {
-        if (session?.session_id) await axios.post(`${BACKEND_URL}/api/chat-session/end/${session.session_id}`);
-      } catch (err) {}
+        await axios.post(`${BACKEND_URL}/api/chat-session/${liveSessionId}/save-transcript`, {
+          transcript: fullTranscriptRef.current
+        });
+      } catch (err) {
+        console.error("🚨 대화 기록 저장 실패", err);
+      }
+    } else {
+      console.warn("⚠️ session_id가 없어 대화 기록 저장을 건너뜁니다.", { chatId, liveSessionId });
+    }
 
-      // AI 리포트/요약 백그라운드 호출
-      axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`).catch(() => {});
-      axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`).catch(() => {});
-    })();
-  }, [isMentor, navigate, chatId, session, hangUp]);
+    // WebRTC 마이크/캠 안전하게 끄기 (에러 나도 무시)
+    try { await hangUp(); } catch (e) { console.warn("오디오 끄기 무시:", e); }
+    chatWsRef.current?.close();
+
+    // 세션 완전 종료 처리 (이 호출이 CoffeeChatReport 스켈레톤 row를 생성함 — 빠지면 안 됨!)
+    if (liveSessionId) {
+      try {
+        await axios.post(`${BACKEND_URL}/api/chat-session/end/${liveSessionId}`);
+      } catch (err) {
+        console.error("🚨 세션 종료 처리 실패", err);
+      }
+    } else {
+      console.error("🚨 session_id를 끝내 찾지 못해 /end 호출을 건너뜁니다. CoffeeChatReport row가 생성되지 않습니다!");
+    }
+
+    // AI 리포트/요약 백그라운드 호출
+    axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`)
+      .catch((err) => console.error("🚨 generate-summary 호출 실패", err));
+    axios.post(`${BACKEND_URL}/api/wrap-up/${chatId}`)
+      .catch((err) => console.error("🚨 wrap-up 호출 실패", err));
+  })();
+}, [isMentor, navigate, chatId, session, hangUp]);
 
   // 타이머 훅
   const { formattedDuration } = useChatTimer(booking, handleEndCall);

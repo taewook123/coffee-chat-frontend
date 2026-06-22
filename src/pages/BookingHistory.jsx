@@ -225,9 +225,10 @@ function TutorialOverlay({ onClose }) {
   }, [step, current]);
 
   const handleClose = (markDone = false) => {
-    if (markDone || neverShow) localStorage.setItem(TUTORIAL_KEY, '1');
-    onClose();
-  };
+  // 🌟 체크박스나 완료 여부에 상관없이, '건너뛰기'를 눌러도 무조건 영구 저장!
+  localStorage.setItem(TUTORIAL_KEY, '1');
+  onClose();
+};
 
   const isCenterModal = !current.target;
 

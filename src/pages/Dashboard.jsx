@@ -243,7 +243,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (loading) return;
     let timer;
-    if (activeTab === 'dashboard' && !localStorage.getItem(TUTORIAL_KEY_DASHBOARD)) {
+    // 🌟 명확하게 'true' 라는 문자열이 저장되어 있는지 확인합니다.
+    const isTutorialDone = localStorage.getItem(TUTORIAL_KEY_DASHBOARD) === 'true';
+
+    if (activeTab === 'dashboard' && !isTutorialDone) {
       timer = setTimeout(() => setActiveTutorial('dashboard'), 400);
     } else {
       setActiveTutorial(null);

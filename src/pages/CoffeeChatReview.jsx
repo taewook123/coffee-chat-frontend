@@ -40,32 +40,34 @@ export default function CoffeeChatReview() {
   }, [chatId]);
 
     const handleSubmit = async () => {
-      if (rating === 0) { alert('별점을 선택해주세요!'); return; }
-      if (!reviewText.trim()) { alert('리뷰를 작성해주세요!'); return; }
+  if (rating === 0) { alert('별점을 선택해주세요!'); return; }
+  if (!reviewText.trim()) { alert('리뷰를 작성해주세요!'); return; }
 
-      setSubmitting(true);
-      try {
-        const userId = localStorage.getItem('userId');
+  setSubmitting(true);
+  try {
+    const userId = localStorage.getItem('userId');
 
-        // 1. 리뷰 제출
-        await axios.post(`${BACKEND_URL}/api/review/create`, {
-          booking_id: Number(chatId),
-          rating: rating,
-          review: reviewText
-        });
-      setSubmitted(true);
+    // 1. 리뷰 제출
+    await axios.post(`${BACKEND_URL}/api/review/create`, {
+      booking_id: Number(chatId),
+      rating: rating,
+      review: reviewText
+    });
 
-        // ✅ 2. 요약 생성 API 호출 (여기가 핵심!)
-        await axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`);
+    setSubmitted(true);
 
-        setSubmitted(true);
-      } catch (err) {
-        console.error('리뷰 제출 실패:', err);
-        alert('리뷰 제출에 실패했어요');
-      } finally {
-        setSubmitting(false);
-      }
-    };
+    // 🌟 generate-summary는 통화 종료 시 CoffeeChatRoom에서 이미 호출됨 (중복 제거)
+    //    혹시 모를 안전장치로 백그라운드 호출만 남기고 await는 제거
+    axios.post(`${BACKEND_URL}/api/chat-session/${chatId}/generate-summary`)
+      .catch((err) => console.error("요약 재생성 백그라운드 호출 실패", err));
+
+  } catch (err) {
+    console.error('리뷰 제출 실패:', err);
+    alert('리뷰 제출에 실패했어요');
+  } finally {
+    setSubmitting(false); // 🌟 await 제거했으니 이제 즉시 풀림
+  }
+};
 
   const ratingLabels = ['', '별로예요', '그저 그래요', '괜찮아요', '좋아요', '최고예요!'];
 
