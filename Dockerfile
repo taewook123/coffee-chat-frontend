@@ -5,7 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # 💡 CI 환경이므로 npm install 대신 npm ci 권장
-RUN npm install 
+#RUN npm install 
+RUN npm install --legacy-peer-deps
 
 COPY . .
 RUN npm run build
