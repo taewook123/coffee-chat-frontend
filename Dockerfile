@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 💡 CI 환경이므로 npm install 대신 npm ci 권장
-RUN npm ci 
+RUN npm install 
 
 COPY . .
 RUN npm run build
